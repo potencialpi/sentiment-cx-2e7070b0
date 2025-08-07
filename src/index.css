@@ -1,0 +1,161 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* Sentiment CX Brand Colors */
+    --brand-dark-blue: 218 100% 25%; /* #1E3A8A */
+    --brand-white: 0 0% 100%; /* #FFFFFF */
+    --brand-green: 160 84% 39%; /* #10B981 */
+    --brand-light-gray: 0 0% 94%; /* #F0F0F0 */
+    --brand-bg-gray: 218 11% 83%; /* #D1D5DB */
+    --brand-dark-gray: 0 0% 20%; /* #333333 */
+    
+    /* Design System Colors */
+    --background: var(--brand-white);
+    --foreground: var(--brand-dark-gray);
+
+    --card: var(--brand-white);
+    --card-foreground: var(--brand-dark-gray);
+
+    --popover: var(--brand-white);
+    --popover-foreground: var(--brand-dark-gray);
+
+    --primary: var(--brand-green);
+    --primary-foreground: var(--brand-dark-blue);
+
+    --secondary: var(--brand-light-gray);
+    --secondary-foreground: var(--brand-dark-gray);
+
+    --muted: var(--brand-light-gray);
+    --muted-foreground: 0 0% 45%;
+
+    --accent: var(--brand-green);
+    --accent-foreground: var(--brand-dark-blue);
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: var(--brand-white);
+
+    --border: 0 0% 90%;
+    --input: var(--brand-white);
+    --ring: var(--brand-green);
+
+    --radius: 0.5rem;
+    
+    /* Gradients and Effects */
+    --gradient-hero: linear-gradient(135deg, hsl(var(--brand-dark-blue)), hsl(210 90% 8%));
+    --shadow-glow: 0 0 20px hsl(var(--brand-green) / 0.3);
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    --sidebar-background: 0 0% 98%;
+
+    --sidebar-foreground: 240 5.3% 26.1%;
+
+    --sidebar-primary: 240 5.9% 10%;
+
+    --sidebar-primary-foreground: 0 0% 98%;
+
+    --sidebar-accent: 240 4.8% 95.9%;
+
+    --sidebar-accent-foreground: 240 5.9% 10%;
+
+    --sidebar-border: 220 13% 91%;
+
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+  }
+}
+
+@layer components {
+  /* Typography Scale */
+  .text-hero {
+    @apply text-3xl md:text-4xl lg:text-5xl font-bold;
+  }
+  
+  .text-subtitle {
+    @apply text-lg md:text-xl;
+  }
+  
+  .text-body {
+    @apply text-sm md:text-base;
+  }
+  
+  .text-nav {
+    @apply text-sm;
+  }
+  
+  /* Button Variants */
+  .btn-hero {
+    @apply bg-primary text-primary-foreground hover:shadow-[var(--shadow-glow)] transition-all duration-300 hover:scale-105;
+  }
+  
+  .btn-outline-light {
+    @apply border border-white/20 text-white hover:bg-white/10 transition-all duration-300;
+  }
+  
+  /* Card Effects */
+  .card-pricing {
+    @apply transition-all duration-300 hover:scale-105 hover:shadow-xl;
+  }
+  
+  /* Background Patterns */
+  .bg-hero {
+    background: var(--gradient-hero);
+  }
+  
+  .bg-section-light {
+    @apply bg-secondary;
+  }
+}

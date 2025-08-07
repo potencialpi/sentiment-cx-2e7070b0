@@ -1,0 +1,42 @@
+# Docker Compose para desenvolvimento local (alternativa ao Supabase CLI)
+# Use este arquivo se preferir gerenciar os serviços manualmente
+
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: supabase-db
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./supabase/migrations:/docker-entrypoint-initdb.d
+    command: |
+      postgres 
+      -c wal_level=logical 
+      -c max_replication_slots=5 
+      -c max_wal_senders=5
+
+  # Adicione outros serviços conforme necessário
+  # pgadmin:
+  #   image: dpage/pgadmin4
+  #   container_name: pgadmin
+  #   environment:
+  #     PGADMIN_DEFAULT_EMAIL: admin@admin.com
+  #     PGADMIN_DEFAULT_PASSWORD: admin
+  #   ports:
+  #     - "8080:80"
+  #   depends_on:
+  #     - postgres
+
+volumes:
+  postgres_data:
+
+networks:
+  default:
+    name: supabase-network
