@@ -9,7 +9,7 @@ All colors MUST be HSL.
 @layer base {
   :root {
     /* Sentiment CX Brand Colors */
-    --brand-dark-blue: 218 100% 25%; /* #1E3A8A */
+    --brand-dark-blue: 218 100% 15%; /* Darker blue */
     --brand-white: 0 0% 100%; /* #FFFFFF */
     --brand-green: 160 84% 39%; /* #10B981 */
     --brand-light-gray: 0 0% 94%; /* #F0F0F0 */
