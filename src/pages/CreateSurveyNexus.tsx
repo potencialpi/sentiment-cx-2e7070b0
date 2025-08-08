@@ -5,13 +5,13 @@ import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { StarRating } from '@/components/ui/star-rating';
-import { Plus, Minus, ArrowLeft, LogOut, Eye, BarChart3, PieChart, Zap, Brain } from 'lucide-react';
+import { Plus, Minus, ArrowLeft, LogOut, Eye, BarChart3, PieChart, Users, Infinity } from 'lucide-react';
 
 interface Question {
   id: string;
@@ -28,13 +28,13 @@ interface Respondent {
 
 const PLAN_CONFIG = {
   name: 'Nexus Infinito',
-  maxQuestions: null, // Ilimitado
-  maxResponses: null, // Ilimitado
-  maxSurveysPerMonth: 15,
+  maxQuestions: Infinity,
+  maxResponses: Infinity,
+  maxSurveysPerMonth: Infinity,
   features: {
-    analysis: ['Testes de Hipóteses', 'ANOVA', 'Análise Conjoint', 'Clustering', 'Previsão de Tendências', 'Machine Learning'],
-    sentiment: ['Análise Multicanal', 'Sentimento Temporal', 'Análise Comportamental', 'Predição de Churn'],
-    charts: ['Gráficos Avançados', 'Mapas de Calor', 'Análise Temporal', 'Dashboards Interativos', 'Visualizações 3D']
+    analysis: ['Média', 'Mediana', 'Moda', 'Desvio Padrão', 'Percentis', 'Correlação', 'Regressão', 'Análise de Variância', 'Teste de Hipóteses', 'Intervalos de Confiança'],
+    sentiment: ['Positivo', 'Neutro', 'Negativo', 'Muito Positivo', 'Muito Negativo', 'Análise de Emoções', 'Detecção de Sarcasmo', 'Análise Contextual'],
+    charts: ['Gráfico de Barras', 'Gráfico de Pizza', 'Gráfico de Linhas', 'Histograma', 'Box Plot', 'Scatter Plot', 'Heatmap', 'Gráfico de Radar', 'Gráfico de Área', 'Gráfico de Bolhas']
   }
 };
 
@@ -97,22 +97,11 @@ const CreateSurveyNexus = () => {
     }
 
     const newQuestion: Question = {
-      id: crypto.randomUUID(),
+      id: Date.now().toString(),
       text: newQuestionText,
       type: newQuestionType,
-      options: ['single_choice', 'multiple_choice'].includes(newQuestionType) 
-        ? newOptions.filter(opt => opt.trim() !== '') 
-        : []
+      options: ['single_choice', 'multiple_choice'].includes(newQuestionType) ? newOptions.filter(opt => opt.trim()) : []
     };
-
-    if (['single_choice', 'multiple_choice'].includes(newQuestionType) && newQuestion.options.length < 2) {
-      toast({
-        title: "Erro",
-        description: "Questões de múltipla escolha precisam de pelo menos 2 opções",
-        variant: "destructive"
-      });
-      return;
-    }
 
     setQuestions([...questions, newQuestion]);
     setNewQuestionText('');
@@ -135,9 +124,9 @@ const CreateSurveyNexus = () => {
   };
 
   const updateOption = (index: number, value: string) => {
-    const updated = [...newOptions];
-    updated[index] = value;
-    setNewOptions(updated);
+    const updatedOptions = [...newOptions];
+    updatedOptions[index] = value;
+    setNewOptions(updatedOptions);
   };
 
   const addRespondent = () => {
@@ -150,17 +139,8 @@ const CreateSurveyNexus = () => {
       return;
     }
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newRespondentEmail)) {
-      toast({
-        title: "Erro",
-        description: "Email inválido",
-        variant: "destructive"
-      });
-      return;
-    }
-
     const newRespondent: Respondent = {
-      id: crypto.randomUUID(),
+      id: Date.now().toString(),
       name: newRespondentName,
       email: newRespondentEmail
     };
@@ -175,15 +155,6 @@ const CreateSurveyNexus = () => {
   };
 
   const createSurvey = async () => {
-    if (currentSurveyCount >= PLAN_CONFIG.maxSurveysPerMonth) {
-      toast({
-        title: "Limite atingido",
-        description: `O plano ${PLAN_CONFIG.name} permite no máximo ${PLAN_CONFIG.maxSurveysPerMonth} pesquisas por mês.`,
-        variant: "destructive"
-      });
-      return;
-    }
-
     if (!title.trim()) {
       toast({
         title: "Erro",
@@ -212,7 +183,7 @@ const CreateSurveyNexus = () => {
           title,
           description: description || null,
           user_id: user.id,
-          max_responses: 999999, // Valor muito alto para simular ilimitado
+          max_responses: 999999999,
           status: 'active'
         })
         .select()
@@ -280,299 +251,307 @@ const CreateSurveyNexus = () => {
 
   return (
     <div className="min-h-screen bg-brand-bg-gray">
-      {/* Header */}
-      <div className="bg-brand-white shadow-sm border-b border-border">
+      <header className="bg-brand-dark-blue text-brand-white py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                onClick={() => navigate('/dashboard')}
-                className="flex items-center gap-2 text-brand-dark-gray hover:text-brand-dark-blue"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Voltar
-              </Button>
-              <h1 className="text-xl font-semibold text-brand-dark-gray">
-                Criar Pesquisa - {PLAN_CONFIG.name}
-              </h1>
-              <Badge className="bg-purple-500 text-white">
-                {currentSurveyCount}/{PLAN_CONFIG.maxSurveysPerMonth} pesquisas este mês
-              </Badge>
-            </div>
-            <Button
-              variant="ghost"
-              onClick={handleLogout}
-              className="flex items-center gap-2 text-brand-dark-gray hover:text-brand-dark-blue"
+          <div className="flex items-center gap-4 mb-8">
+            <Button 
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/dashboard')}
+              className="bg-brand-dark-blue text-brand-white border-brand-white/20 hover:bg-brand-white/10"
             >
-              <LogOut className="h-4 w-4" />
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Voltar
+            </Button>
+            <Button 
+              variant="outline"
+              size="sm"
+              onClick={handleLogout}
+              className="bg-brand-green text-brand-white hover:bg-brand-green/90 border-brand-green"
+            >
+              <LogOut className="h-4 w-4 mr-2" />
               Sair
             </Button>
           </div>
+          <div className="text-center">
+            <h1 className="text-nav font-semibold mb-4">Sentiment CX</h1>
+            <h2 className="text-hero font-bold mb-4 flex items-center justify-center gap-2">
+              <Infinity className="h-8 w-8" />
+              Criar e Gerenciar Pesquisas - Nexus Infinito
+            </h2>
+            <p className="text-subtitle text-brand-white/80 max-w-3xl mx-auto">
+              Questões ilimitadas, respostas ilimitadas, pesquisas ilimitadas - Poder total para sua análise
+            </p>
+          </div>
         </div>
-      </div>
+      </header>
 
-      {/* Content */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Tabs defaultValue="info" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="info">Informações da Pesquisa</TabsTrigger>
-            <TabsTrigger value="respondents">Respondentes</TabsTrigger>
-            <TabsTrigger value="preview">Prévia & Análise</TabsTrigger>
-          </TabsList>
+      <main className="bg-brand-bg-gray py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <Tabs defaultValue="info" className="w-full">
+            <TabsList className="grid w-full grid-cols-3 mb-8">
+              <TabsTrigger value="info">Criar Pesquisa</TabsTrigger>
+              <TabsTrigger value="respondents">Respondentes</TabsTrigger>
+              <TabsTrigger value="preview">Prévia & Análise</TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="info" className="space-y-6">
-            <Card className="bg-brand-white">
-              <CardHeader>
-                <CardTitle className="text-brand-dark-gray">Detalhes da Pesquisa</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label htmlFor="title" className="text-brand-dark-gray font-medium">
-                    Título da Pesquisa *
-                  </Label>
-                  <Input
-                    id="title"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder="Digite o título da pesquisa"
-                    className="mt-1 font-roboto text-sm"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="description" className="text-brand-dark-gray font-medium">
-                    Descrição (opcional)
-                  </Label>
-                  <Textarea
-                    id="description"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Descreva o objetivo da pesquisa"
-                    className="mt-1 font-roboto text-sm"
-                    rows={3}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-brand-white">
-              <CardHeader>
-                <CardTitle className="text-brand-dark-gray flex justify-between items-center">
-                  Questões ({questions.length})
-                  <Badge className="bg-purple-500 text-white">Ilimitadas</Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Lista de questões existentes */}
-                {questions.map((question, index) => (
-                  <div key={question.id} className="border border-border rounded-lg p-4">
-                    <div className="flex justify-between items-start mb-2">
-                      <span className="text-sm font-medium text-brand-dark-gray">
-                        Questão {index + 1}
-                      </span>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => removeQuestion(question.id)}
-                      >
-                        <Minus className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <p className="text-brand-dark-gray mb-2">{question.text}</p>
-                    <Badge variant="secondary" className="mb-2">
-                      {question.type === 'text' ? 'Texto Livre' :
-                       question.type === 'single_choice' ? 'Escolha Única' :
-                       question.type === 'multiple_choice' ? 'Múltipla Escolha' :
-                       'Avaliação por Estrelas'}
-                    </Badge>
-                    {question.options.length > 0 && (
-                      <div className="mt-2">
-                        <span className="text-sm font-medium text-brand-dark-gray">Opções:</span>
-                        <ul className="list-disc list-inside mt-1 text-sm text-muted-foreground">
-                          {question.options.map((option, idx) => (
-                            <li key={idx}>{option}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-                ))}
-
-                {/* Formulário para nova questão */}
-                <div className="border-2 border-dashed border-border rounded-lg p-4">
-                  <h4 className="font-medium text-brand-dark-gray mb-4">Adicionar Nova Questão</h4>
-                  <div className="space-y-4">
-                    <div>
-                      <Label className="text-brand-dark-gray font-medium">Texto da Questão</Label>
+            <TabsContent value="info" className="space-y-6">
+              <Card className="bg-brand-white shadow-sm">
+                <CardHeader>
+                  <CardTitle className="text-brand-dark-gray flex items-center gap-2">
+                    <Infinity className="h-5 w-5" />
+                    Nova Pesquisa - Nexus Infinito
+                  </CardTitle>
+                  <CardDescription className="text-brand-dark-gray/70">
+                    Crie pesquisas sem limites - questões, respostas e análises ilimitadas
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="title">Nome da Pesquisa</Label>
                       <Input
-                        value={newQuestionText}
-                        onChange={(e) => setNewQuestionText(e.target.value)}
-                        placeholder="Digite a questão"
-                        className="mt-1 font-roboto text-sm"
+                        id="title"
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        placeholder="Digite o nome da pesquisa"
                       />
                     </div>
-                    <div>
-                      <Label className="text-brand-dark-gray font-medium">Tipo de Questão</Label>
-                      <RadioGroup
-                        value={newQuestionType}
-                        onValueChange={(value: any) => setNewQuestionType(value)}
-                        className="mt-2"
-                      >
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="text" id="text" />
-                          <Label htmlFor="text">Texto Livre</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="single_choice" id="single" />
-                          <Label htmlFor="single">Escolha Única</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="multiple_choice" id="multiple" />
-                          <Label htmlFor="multiple">Múltipla Escolha</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="star_rating" id="star" />
-                          <Label htmlFor="star">Avaliação 1-5 Estrelas</Label>
-                        </div>
-                      </RadioGroup>
+                    <div className="space-y-2">
+                      <Label htmlFor="description">Descrição (Opcional)</Label>
+                      <Input
+                        id="description"
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        placeholder="Breve descrição da pesquisa"
+                      />
                     </div>
-                    
-                    {(['single_choice', 'multiple_choice'].includes(newQuestionType)) && (
-                      <div>
-                        <Label className="text-brand-dark-gray font-medium">Opções</Label>
-                        {newOptions.map((option, index) => (
-                          <div key={index} className="flex gap-2 mt-2">
-                            <Input
-                              value={option}
-                              onChange={(e) => updateOption(index, e.target.value)}
-                              placeholder={`Opção ${index + 1}`}
-                              className="font-roboto text-sm"
-                            />
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-semibold flex items-center gap-2">
+                        <Infinity className="h-5 w-5" />
+                        Questões ({questions.length}/∞)
+                      </h3>
+                      <Button onClick={addQuestion} className="flex items-center gap-2 bg-[#10B981] hover:bg-[#059669] text-white">
+                        <Plus className="h-4 w-4" />
+                        Adicionar Questão
+                      </Button>
+                    </div>
+
+                    {questions.map((question, index) => (
+                      <Card key={question.id} className="p-4">
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <Label>Questão {index + 1}</Label>
                             <Button
+                              variant="destructive"
                               size="sm"
-                              variant="outline"
-                              onClick={() => removeOption(index)}
-                              disabled={newOptions.length <= 1}
+                              onClick={() => removeQuestion(question.id)}
                             >
                               <Minus className="h-4 w-4" />
                             </Button>
                           </div>
-                        ))}
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={addOption}
-                          className="mt-2"
-                        >
-                          <Plus className="h-4 w-4 mr-2" />
-                          Adicionar Opção
-                        </Button>
+                          <div className="space-y-2">
+                            <p className="text-sm font-medium">{question.text}</p>
+                            <Badge variant="secondary">
+                              {question.type === 'text' ? 'Texto Livre' :
+                               question.type === 'single_choice' ? 'Escolha Única' :
+                               question.type === 'multiple_choice' ? 'Múltipla Escolha' :
+                               'Avaliação por Estrelas'}
+                            </Badge>
+                            {question.options.length > 0 && (
+                              <div className="mt-2">
+                                <span className="text-sm font-medium">Opções:</span>
+                                <ul className="list-disc list-inside mt-1 text-sm text-muted-foreground">
+                                  {question.options.map((option, idx) => (
+                                    <li key={idx}>{option}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
+
+                    {/* Formulário para nova questão */}
+                    <div className="border-2 border-dashed border-border rounded-lg p-4">
+                      <h4 className="font-medium text-brand-dark-gray mb-4">Adicionar Nova Questão</h4>
+                      <div className="space-y-4">
+                        <div>
+                          <Label className="text-brand-dark-gray font-medium">Texto da Questão</Label>
+                          <Input
+                            value={newQuestionText}
+                            onChange={(e) => setNewQuestionText(e.target.value)}
+                            placeholder="Digite a questão"
+                            className="mt-1 font-roboto text-sm"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-brand-dark-gray font-medium">Tipo de Questão</Label>
+                          <RadioGroup
+                            value={newQuestionType}
+                            onValueChange={(value: any) => setNewQuestionType(value)}
+                            className="mt-2"
+                          >
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="text" id="text" />
+                              <Label htmlFor="text">Texto Livre</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="single_choice" id="single" />
+                              <Label htmlFor="single">Escolha Única</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="multiple_choice" id="multiple" />
+                              <Label htmlFor="multiple">Múltipla Escolha</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="star_rating" id="star" />
+                              <Label htmlFor="star">Avaliação 1-5 Estrelas</Label>
+                            </div>
+                          </RadioGroup>
+                        </div>
+                        
+                        {(['single_choice', 'multiple_choice'].includes(newQuestionType)) && (
+                          <div>
+                            <Label className="text-brand-dark-gray font-medium">Opções</Label>
+                            {newOptions.map((option, index) => (
+                              <div key={index} className="flex gap-2 mt-2">
+                                <Input
+                                  value={option}
+                                  onChange={(e) => updateOption(index, e.target.value)}
+                                  placeholder={`Opção ${index + 1}`}
+                                  className="font-roboto text-sm"
+                                />
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => removeOption(index)}
+                                  disabled={newOptions.length <= 1}
+                                >
+                                  <Minus className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            ))}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={addOption}
+                              className="mt-2"
+                            >
+                              <Plus className="h-4 w-4 mr-2" />
+                              Adicionar Opção
+                            </Button>
+                          </div>
+                        )}
                       </div>
-                    )}
-                    
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end pt-6">
                     <Button
-                      onClick={addQuestion}
+                      onClick={createSurvey}
+                      disabled={isCreating || !title.trim() || questions.length === 0}
                       className="bg-brand-green text-brand-white hover:bg-brand-green/90"
                     >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Adicionar Questão
+                      {isCreating ? 'Criando...' : 'Criar Pesquisa'}
                     </Button>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-          <TabsContent value="respondents" className="space-y-6">
-            <Card className="bg-brand-white">
-              <CardHeader>
-                <CardTitle className="text-brand-dark-gray">
-                  Respondentes ({respondents.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Lista de respondentes */}
-                {respondents.map((respondent) => (
-                  <div key={respondent.id} className="flex justify-between items-center p-3 border border-border rounded-lg">
-                    <div>
-                      <p className="font-medium text-brand-dark-gray">{respondent.name}</p>
-                      <p className="text-sm text-muted-foreground">{respondent.email}</p>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={() => removeRespondent(respondent.id)}
-                    >
-                      <Minus className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-
-                {/* Formulário para novo respondente */}
-                <div className="border-2 border-dashed border-border rounded-lg p-4">
-                  <h4 className="font-medium text-brand-dark-gray mb-4">Adicionar Respondente</h4>
+            <TabsContent value="respondents" className="space-y-6">
+              <Card className="bg-brand-white shadow-sm">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-brand-dark-gray">
+                    <Users className="h-5 w-5" />
+                    <Infinity className="h-4 w-4" />
+                    Gerenciar Respondentes - Nexus Infinito ({respondents.length}/∞)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <Label className="text-brand-dark-gray font-medium">Nome</Label>
+                      <Label htmlFor="respondent-name">Nome do Respondente</Label>
                       <Input
+                        id="respondent-name"
                         value={newRespondentName}
                         onChange={(e) => setNewRespondentName(e.target.value)}
-                        placeholder="Nome do respondente"
-                        className="mt-1 font-roboto text-sm"
+                        placeholder="Digite o nome"
                       />
                     </div>
                     <div>
-                      <Label className="text-brand-dark-gray font-medium">Email</Label>
+                      <Label htmlFor="respondent-email">Email do Respondente</Label>
                       <Input
+                        id="respondent-email"
                         type="email"
                         value={newRespondentEmail}
                         onChange={(e) => setNewRespondentEmail(e.target.value)}
-                        placeholder="email@exemplo.com"
-                        className="mt-1 font-roboto text-sm"
+                        placeholder="Digite o email"
                       />
                     </div>
                   </div>
-                  <Button
-                    onClick={addRespondent}
-                    className="mt-4 bg-brand-green text-brand-white hover:bg-brand-green/90"
-                  >
+                  <Button onClick={addRespondent} className="bg-brand-green text-brand-white hover:bg-brand-green/90">
                     <Plus className="h-4 w-4 mr-2" />
                     Adicionar Respondente
                   </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
 
-          <TabsContent value="preview" className="space-y-6">
-            <Card className="bg-brand-white">
-              <CardHeader>
-                <CardTitle className="text-brand-dark-gray flex items-center gap-2">
-                  <Eye className="h-5 w-5" />
-                  Prévia da Pesquisa - {PLAN_CONFIG.name}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="bg-secondary p-4 rounded-lg">
-                  <h3 className="text-lg font-semibold text-brand-dark-gray mb-2">
-                    {title || 'Título da Pesquisa'}
-                  </h3>
-                  {description && (
-                    <p className="text-muted-foreground mb-4">{description}</p>
+                  {respondents.length > 0 && (
+                    <div className="space-y-2">
+                      <h4 className="font-medium">Respondentes Adicionados:</h4>
+                      {respondents.map((respondent) => (
+                        <div key={respondent.id} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div>
+                            <p className="font-medium">{respondent.name}</p>
+                            <p className="text-sm text-muted-foreground">{respondent.email}</p>
+                          </div>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => removeRespondent(respondent.id)}
+                          >
+                            <Minus className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
                   )}
-                  <Badge className="bg-purple-500 text-white">
-                    Respostas Ilimitadas
-                  </Badge>
-                </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-                {questions.map((question, index) => (
-                  <div key={question.id} className="border border-border rounded-lg p-4">
-                    <div className="flex items-start gap-3 mb-4">
-                      <span className="bg-purple-500 text-white text-sm px-2 py-1 rounded font-medium">
-                        {index + 1}
-                      </span>
-                      <div className="flex-1">
-                        <p className="font-medium text-brand-dark-gray mb-2">{question.text}</p>
+            <TabsContent value="preview" className="space-y-6">
+              <Card className="bg-brand-white shadow-sm">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-brand-dark-gray">
+                    <Eye className="h-5 w-5" />
+                    <Infinity className="h-4 w-4" />
+                    Prévia da Pesquisa - Nexus Infinito
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {title && (
+                    <div>
+                      <h3 className="text-xl font-semibold text-brand-dark-gray">{title}</h3>
+                      {description && (
+                        <p className="text-muted-foreground mt-2">{description}</p>
+                      )}
+                    </div>
+                  )}
+
+                  {questions.map((question, index) => (
+                    <div key={question.id} className="border border-border rounded-lg p-4">
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-brand-dark-gray">
+                            {index + 1}.
+                          </span>
+                          <p className="font-medium text-brand-dark-gray">{question.text}</p>
+                        </div>
                         
                         {question.type === 'text' && (
                           <Textarea
@@ -611,80 +590,54 @@ const CreateSurveyNexus = () => {
                         )}
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
 
-                {/* Recursos de Análise do Plano Nexus */}
-                <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-lg border border-purple-200">
-                  <h4 className="font-semibold text-brand-dark-gray mb-4 flex items-center gap-2">
-                    <Brain className="h-5 w-5" />
-                    Recursos de Análise Avançada - {PLAN_CONFIG.name}
-                  </h4>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div>
-                      <h5 className="font-medium text-brand-dark-gray mb-2 flex items-center gap-1">
-                        <Zap className="h-4 w-4" />
-                        IA & Machine Learning
-                      </h5>
-                      <ul className="text-sm text-muted-foreground space-y-1">
-                        {PLAN_CONFIG.features.analysis.map((item, idx) => (
-                          <li key={idx}>• {item}</li>
-                        ))}
-                      </ul>
-                    </div>
+                  {/* Recursos de Análise do Plano Nexus */}
+                  <div className="bg-brand-light-gray p-6 rounded-lg">
+                    <h4 className="font-semibold text-brand-dark-gray mb-4 flex items-center gap-2">
+                      <BarChart3 className="h-5 w-5" />
+                      <Infinity className="h-4 w-4" />
+                      Recursos de Análise - {PLAN_CONFIG.name}
+                    </h4>
                     
-                    <div>
-                      <h5 className="font-medium text-brand-dark-gray mb-2">💭 Sentimento Multicanal</h5>
-                      <ul className="text-sm text-muted-foreground space-y-1">
-                        {PLAN_CONFIG.features.sentiment.map((item, idx) => (
-                          <li key={idx}>• {item}</li>
-                        ))}
-                      </ul>
-                    </div>
-                    
-                    <div>
-                      <h5 className="font-medium text-brand-dark-gray mb-2 flex items-center gap-1">
-                        <BarChart3 className="h-4 w-4" />
-                        Visualizações Avançadas
-                      </h5>
-                      <ul className="text-sm text-muted-foreground space-y-1">
-                        {PLAN_CONFIG.features.charts.map((item, idx) => (
-                          <li key={idx}>• {item}</li>
-                        ))}
-                      </ul>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div>
+                        <h5 className="font-medium text-brand-dark-gray mb-2">📊 Análise Estatística Avançada</h5>
+                        <ul className="text-sm text-muted-foreground space-y-1">
+                          {PLAN_CONFIG.features.analysis.map((item, idx) => (
+                            <li key={idx}>• {item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                      
+                      <div>
+                        <h5 className="font-medium text-brand-dark-gray mb-2">💭 Análise de Sentimento IA</h5>
+                        <ul className="text-sm text-muted-foreground space-y-1">
+                          {PLAN_CONFIG.features.sentiment.map((item, idx) => (
+                            <li key={idx}>• {item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                      
+                      <div>
+                        <h5 className="font-medium text-brand-dark-gray mb-2 flex items-center gap-1">
+                          <PieChart className="h-4 w-4" />
+                          Visualizações Completas
+                        </h5>
+                        <ul className="text-sm text-muted-foreground space-y-1">
+                          {PLAN_CONFIG.features.charts.map((item, idx) => (
+                            <li key={idx}>• {item}</li>
+                          ))}
+                        </ul>
+                      </div>
                     </div>
                   </div>
-                  
-                  <div className="mt-4 p-4 bg-white/50 rounded-lg">
-                    <p className="text-xs text-muted-foreground">
-                      ⚡ Processamento em tempo real • 🧠 IA para insights automatizados • 📊 Relatórios executivos personalizados
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-
-        {/* Botões de ação */}
-        <div className="flex justify-between items-center pt-6">
-          <Button
-            variant="outline"
-            onClick={() => navigate('/dashboard')}
-            className="border-brand-dark-blue text-brand-dark-blue hover:bg-brand-dark-blue hover:text-brand-white"
-          >
-            Cancelar
-          </Button>
-          <Button
-            onClick={createSurvey}
-            disabled={isCreating || !title.trim() || questions.length === 0 || currentSurveyCount >= PLAN_CONFIG.maxSurveysPerMonth}
-            className="bg-brand-green text-brand-white hover:bg-brand-green/90"
-          >
-            {isCreating ? 'Criando...' : 'Criar Pesquisa'}
-          </Button>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </div>
-      </div>
+      </main>
     </div>
   );
 };

@@ -183,36 +183,36 @@ const CreateSurvey = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#D1D5DB]">
+    <div className="min-h-screen bg-brand-bg-gray">
       {/* Header */}
-      <div className="bg-[#FFFFFF] shadow-sm border-b border-gray-200">
+      <div className="bg-brand-white shadow-sm border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-4">
               <Button
                 variant="ghost"
                 onClick={() => navigate('/')}
-                className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
+                className="flex items-center gap-2 text-brand-dark-gray hover:text-brand-dark-blue"
               >
                 <ArrowLeft className="h-4 w-4" />
                 Voltar
               </Button>
-              <h1 className="text-xl font-semibold text-gray-900">Minhas Pesquisas</h1>
+              <h1 className="text-xl font-semibold text-brand-dark-gray">Minhas Pesquisas</h1>
             </div>
             <div className="flex items-center gap-2">
               <Button
                 onClick={handleCreateSurvey}
-                className="bg-[#10B981] text-white hover:bg-[#059669]"
+                className="bg-brand-dark-blue hover:bg-brand-dark-blue/90 text-brand-white"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Nova Pesquisa
               </Button>
               <Button
-                variant="ghost"
+                variant="outline"
                 onClick={handleLogout}
-                className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
+                className="text-brand-dark-gray hover:text-brand-dark-blue border-border"
               >
-                <LogOut className="h-4 w-4" />
+                <LogOut className="h-4 w-4 mr-2" />
                 Sair
               </Button>
             </div>
@@ -223,12 +223,12 @@ const CreateSurvey = () => {
       {/* Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {surveys.length === 0 ? (
-          <Card className="bg-[#FFFFFF]">
+          <Card className="bg-brand-white shadow-sm">
             <CardContent className="p-8 text-center">
-              <p className="text-gray-500 mb-4">Nenhuma pesquisa encontrada</p>
+              <p className="text-muted-foreground mb-4">Nenhuma pesquisa encontrada</p>
               <Button
                 onClick={handleCreateSurvey}
-                className="bg-[#10B981] text-white hover:bg-[#059669]"
+                className="bg-brand-green text-brand-white hover:bg-brand-green/90"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Criar primeira pesquisa
@@ -238,12 +238,12 @@ const CreateSurvey = () => {
         ) : (
           <div className="space-y-4">
             {surveys.map((survey) => (
-              <Card key={survey.id} className="bg-[#FFFFFF]">
+              <Card key={survey.id} className="bg-brand-white shadow-sm hover:shadow-md transition-shadow">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-lg font-semibold text-gray-900">{survey.title}</h3>
+                        <h3 className="text-lg font-semibold text-brand-dark-gray">{survey.title}</h3>
                         <Badge 
                           variant={survey.status === 'active' ? 'default' : 'secondary'}
                           className={survey.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}
@@ -252,9 +252,9 @@ const CreateSurvey = () => {
                         </Badge>
                       </div>
                       {survey.description && (
-                        <p className="text-gray-600 mb-2">{survey.description}</p>
+                        <p className="text-muted-foreground mb-2">{survey.description}</p>
                       )}
-                      <div className="flex items-center gap-4 text-sm text-gray-500">
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
                         <span>Criada em: {formatDate(survey.created_at)}</span>
                         <span>Respostas: {survey.current_responses}/{survey.max_responses}</span>
                         <span>Perguntas: {survey.questions?.length || 0}</span>
@@ -266,7 +266,7 @@ const CreateSurvey = () => {
                         <DialogTrigger asChild>
                           <Button
                             size="sm"
-                            className="bg-[#10B981] text-white hover:bg-[#059669]"
+                            className="bg-brand-green text-brand-white hover:bg-brand-green/90"
                             onClick={() => setSelectedSurvey(survey)}
                           >
                             <Eye className="h-4 w-4 mr-1" />
@@ -284,7 +284,7 @@ const CreateSurvey = () => {
                             <div className="space-y-6">
                               {/* Info da pesquisa */}
                               <div className="space-y-2">
-                                <h4 className="font-medium text-gray-900">Informações Gerais</h4>
+                                <h4 className="font-medium text-brand-dark-gray">Informações Gerais</h4>
                                 <div className="grid grid-cols-2 gap-4 text-sm">
                                   <div>
                                     <span className="font-medium">Status:</span> 
@@ -308,27 +308,27 @@ const CreateSurvey = () => {
                                 {selectedSurvey.description && (
                                   <div>
                                     <span className="font-medium">Descrição:</span>
-                                    <p className="text-gray-600 mt-1">{selectedSurvey.description}</p>
+                                    <p className="text-muted-foreground mt-1">{selectedSurvey.description}</p>
                                   </div>
                                 )}
                               </div>
 
                               {/* Perguntas */}
                               <div className="space-y-4">
-                                <h4 className="font-medium text-gray-900">Perguntas ({selectedSurvey.questions?.length || 0})</h4>
+                                <h4 className="font-medium text-brand-dark-gray">Perguntas ({selectedSurvey.questions?.length || 0})</h4>
                                 {selectedSurvey.questions && selectedSurvey.questions.length > 0 ? (
                                   <div className="space-y-4">
                                     {selectedSurvey.questions
                                       .sort((a, b) => a.question_order - b.question_order)
                                       .map((question, index) => (
-                                      <div key={question.id} className="border border-gray-200 rounded-lg p-4">
+                                      <div key={question.id} className="border border-border rounded-lg p-4 bg-brand-white">
                                         <div className="flex items-start gap-3">
-                                          <span className="bg-gray-100 text-gray-700 text-sm px-2 py-1 rounded">
+                                          <span className="bg-muted text-muted-foreground text-sm px-2 py-1 rounded">
                                             {index + 1}
                                           </span>
                                           <div className="flex-1">
-                                            <p className="font-medium text-gray-900 mb-2">{question.question_text}</p>
-                                            <div className="flex items-center gap-4 text-sm text-gray-500 mb-2">
+                                            <p className="font-medium text-brand-dark-gray mb-2">{question.question_text}</p>
+                                            <div className="flex items-center gap-4 text-sm text-muted-foreground mb-2">
                                               <span>Tipo: {question.question_type === 'single_choice' ? 'Escolha única' : 
                                                            question.question_type === 'multiple_choice' ? 'Múltipla escolha' :
                                                            question.question_type === 'text' ? 'Texto livre' :
@@ -337,8 +337,8 @@ const CreateSurvey = () => {
                                             </div>
                                             {question.options && question.options.length > 0 && (
                                               <div>
-                                                <span className="text-sm font-medium text-gray-700">Opções:</span>
-                                                <ul className="list-disc list-inside mt-1 text-sm text-gray-600">
+                                                <span className="text-sm font-medium text-brand-dark-gray">Opções:</span>
+                                                <ul className="list-disc list-inside mt-1 text-sm text-muted-foreground">
                                                   {question.options.map((option, optionIndex) => (
                                                     <li key={optionIndex}>{option}</li>
                                                   ))}
@@ -351,7 +351,7 @@ const CreateSurvey = () => {
                                     ))}
                                   </div>
                                 ) : (
-                                  <p className="text-gray-500">Nenhuma pergunta encontrada</p>
+                                  <p className="text-muted-foreground">Nenhuma pergunta encontrada</p>
                                 )}
                               </div>
                             </div>
@@ -364,7 +364,8 @@ const CreateSurvey = () => {
                         <AlertDialogTrigger asChild>
                           <Button
                             size="sm"
-                            className="bg-[#1E3A8A] text-white hover:bg-[#1E40AF]"
+                            variant="destructive"
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                           >
                             <Trash2 className="h-4 w-4 mr-1" />
                             Excluir
@@ -383,7 +384,7 @@ const CreateSurvey = () => {
                             <AlertDialogCancel>Cancelar</AlertDialogCancel>
                             <AlertDialogAction
                               onClick={() => handleDeleteSurvey(survey.id)}
-                              className="bg-[#1E3A8A] text-white hover:bg-[#1E40AF]"
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                             >
                               Excluir
                             </AlertDialogAction>

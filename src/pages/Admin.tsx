@@ -104,7 +104,7 @@ const Admin = () => {
       {/* Conteúdo Principal */}
       <main className="p-6 max-w-7xl mx-auto">
         {/* Card Status da Conta */}
-        <Card className="mb-8 bg-brand-white">
+        <Card className="mb-8 bg-brand-white shadow-sm">
           <CardHeader>
             <CardTitle className="text-base font-medium text-brand-dark-blue" style={{ fontFamily: 'Roboto', fontSize: '16px' }}>
               Status da Conta
@@ -139,7 +139,7 @@ const Admin = () => {
 
         {/* Grid de Cards */}
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card className="card-pricing bg-brand-white">
+          <Card className="bg-brand-white shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-brand-dark-gray">
                 Pesquisas Ativas
@@ -154,7 +154,7 @@ const Admin = () => {
             </CardContent>
           </Card>
 
-          <Card className="card-pricing bg-brand-white">
+          <Card className="bg-brand-white shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-brand-dark-gray">
                 Total de Respostas
@@ -169,7 +169,7 @@ const Admin = () => {
             </CardContent>
           </Card>
 
-          <Card className="card-pricing bg-brand-white">
+          <Card className="bg-brand-white shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-brand-dark-gray">
                 Taxa de Conversão
@@ -184,7 +184,7 @@ const Admin = () => {
             </CardContent>
           </Card>
 
-          <Card className="card-pricing bg-brand-white">
+          <Card className="bg-brand-white shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-brand-dark-gray">
                 Sentiment Score
@@ -202,7 +202,7 @@ const Admin = () => {
 
         {/* Ações Principais */}
         <div className="grid md:grid-cols-2 gap-6">
-          <Card className="bg-brand-white">
+          <Card className="bg-brand-white shadow-sm">
             <CardHeader>
               <CardTitle className="text-brand-dark-gray">Criar Nova Pesquisa</CardTitle>
             </CardHeader>
@@ -222,7 +222,7 @@ const Admin = () => {
             </CardContent>
           </Card>
 
-          <Card className="bg-brand-white">
+          <Card className="bg-brand-white shadow-sm">
             <CardHeader>
               <CardTitle className="text-brand-dark-gray">Relatórios e Analytics</CardTitle>
             </CardHeader>

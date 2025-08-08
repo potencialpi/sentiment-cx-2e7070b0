@@ -134,7 +134,7 @@ const Login = () => {
     <div className="min-h-screen bg-brand-bg-gray">
       <Header />
       <div className="flex items-center justify-center py-12 px-6">
-        <Card className="w-full max-w-md bg-brand-white shadow-lg">
+        <Card className="w-full max-w-md bg-brand-white shadow-sm">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl font-bold text-brand-dark-blue">
               Fazer Login

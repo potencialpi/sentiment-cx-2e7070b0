@@ -9,7 +9,7 @@ import ChoosePlan from "./pages/ChoosePlan";
 import CreateAccount from "./pages/CreateAccount";
 import Login from "./pages/Login";
 import Admin from "./pages/Admin";
-import AdminStart from "./pages/AdminStart";
+
 import AdminQuestionarios from "./pages/AdminQuestionarios";
 import AdminVortex from "./pages/AdminVortex";
 import AdminNexus from "./pages/AdminNexus";
@@ -39,12 +39,12 @@ const App = () => (
           <Route path="/login" element={<Login />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/admin" element={<Admin />} />
-          <Route path="/admin/start" element={<AdminStart />} />
+
           <Route path="/admin/questionarios" element={<AdminQuestionarios />} />
           <Route path="/admin/vortex" element={<AdminVortex />} />
           <Route path="/admin/nexus" element={<AdminNexus />} />
           <Route path="/admin/questionarios/nexus" element={<AdminNexus />} />
-          <Route path="/admin/start/respondentes" element={<AdminRespondents />} />
+
           <Route path="/admin/vortex/respondentes" element={<AdminRespondents />} />
           <Route path="/admin/nexus/respondentes" element={<AdminRespondents />} />
           <Route path="/create-survey" element={<CreateSurveyRedirect />} />

@@ -287,7 +287,7 @@ const AdminQuestionarios = () => {
         description: "Pesquisa criada com sucesso",
       });
 
-      navigate('/admin/start');
+      navigate('/create-survey-start');
     } catch (error) {
       console.error('Error saving survey:', error);
       toast({
@@ -301,16 +301,16 @@ const AdminQuestionarios = () => {
   };
 
   return (
-    <div className="min-h-screen">
-      {/* Header Section - Dark Blue Background */}
-      <header className="bg-[#0A192F] text-white">
+    <div className="min-h-screen bg-brand-bg-gray">
+      {/* Header Section - Padrão do Design System */}
+      <header className="bg-brand-dark-blue text-brand-white py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-4 py-4">
+          <div className="flex items-center gap-4 mb-8">
             <Button 
               variant="outline"
               size="sm"
-              onClick={() => navigate('/admin/start')}
-              className="bg-[#1E3A8A] text-white hover:bg-[#1E3A8A]/90 border-[#1E3A8A]"
+              onClick={() => navigate('/create-survey-start')}
+              className="bg-brand-dark-blue text-brand-white border-brand-white/20 hover:bg-brand-white/10"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Voltar
@@ -322,28 +322,28 @@ const AdminQuestionarios = () => {
                 supabase.auth.signOut();
                 navigate('/');
               }}
-              className="bg-[#10B981] text-white hover:bg-[#10B981]/90 border-[#10B981]"
+              className="bg-brand-green text-brand-white hover:bg-brand-green/90 border-brand-green"
             >
               <LogOut className="h-4 w-4 mr-2" />
               Sair
             </Button>
           </div>
           
-          <div className="py-8">
-            <h1 className="text-sm sm:text-base font-semibold mb-2">Sentiment CX</h1>
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-4">
-              Criar e Gerenciar Pesquisas
+          <div className="text-center">
+            <h1 className="text-nav font-semibold mb-4">Sentiment CX</h1>
+            <h2 className="text-hero font-bold mb-4">
+              Criar e Gerenciar Pesquisas - Start Quântico
             </h2>
-            <p className="text-base sm:text-lg lg:text-xl text-white/80 max-w-3xl">
+            <p className="text-subtitle text-brand-white/80 max-w-3xl mx-auto">
               Configure até 5 questões ou visualize pesquisas ativas
             </p>
           </div>
         </div>
       </header>
 
-      {/* Main Content Section - Light Background */}
-      <main className="bg-[#D1D5DB] min-h-screen">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Main Content Section - Padrão do Design System */}
+      <main className="bg-brand-bg-gray py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <Tabs defaultValue="create" className="space-y-6">
             <TabsList className="grid w-full grid-cols-3 lg:w-[600px]">
               <TabsTrigger value="create">Criar Pesquisa</TabsTrigger>
@@ -353,16 +353,16 @@ const AdminQuestionarios = () => {
 
             <TabsContent value="create" className="space-y-6">
               {/* Survey Information */}
-              <Card className="bg-white shadow-sm">
+              <Card className="bg-brand-white shadow-sm">
                 <CardHeader>
-                  <CardTitle className="text-[#333333] text-lg font-semibold">
+                  <CardTitle className="text-brand-dark-gray text-lg font-semibold">
                     Informações da Pesquisa
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="grid gap-6 md:grid-cols-2">
                     <div>
-                      <Label htmlFor="title" className="text-sm font-medium text-[#333333]">
+                      <Label htmlFor="title" className="text-sm font-medium text-brand-dark-gray">
                         Nome da Pesquisa *
                       </Label>
                       <Input
@@ -391,16 +391,16 @@ const AdminQuestionarios = () => {
               </Card>
 
               {/* Questions Section */}
-              <Card className="bg-white shadow-sm">
+              <Card className="bg-brand-white shadow-sm">
                 <CardHeader>
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-[#333333] text-lg font-semibold">
+                    <CardTitle className="text-brand-dark-gray text-lg font-semibold">
                       Questões ({questions.length}/5)
                     </CardTitle>
                     <Button
                       onClick={addQuestion}
                       disabled={questions.length >= 5}
-                      className="bg-[#10B981] hover:bg-[#059669] text-white font-semibold"
+                      className="bg-brand-green hover:bg-brand-green/90 text-brand-white font-semibold"
                     >
                       <Plus className="h-4 w-4 mr-2" />
                       Adicionar Questão
@@ -409,9 +409,9 @@ const AdminQuestionarios = () => {
                 </CardHeader>
                 <CardContent className="space-y-6">
                   {questions.map((question, index) => (
-                    <div key={question.id} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                    <div key={question.id} className="border border-border rounded-lg p-4 bg-brand-white">
                       <div className="flex items-center justify-between mb-4">
-                        <h4 className="font-medium text-[#333333]">
+                        <h4 className="font-medium text-brand-dark-gray">
                           Questão {index + 1}
                         </h4>
                         {questions.length > 1 && (
@@ -428,7 +428,7 @@ const AdminQuestionarios = () => {
 
                       <div className="grid gap-4 md:grid-cols-2">
                         <div className="md:col-span-2">
-                          <Label htmlFor={`question-${question.id}`} className="text-sm font-medium text-[#333333]">
+                          <Label htmlFor={`question-${question.id}`} className="text-sm font-medium text-brand-dark-gray">
                             Texto da Questão *
                           </Label>
                           <Input
@@ -441,7 +441,7 @@ const AdminQuestionarios = () => {
                         </div>
 
                         <div>
-                          <Label htmlFor={`type-${question.id}`} className="text-sm font-medium text-[#333333]">
+                          <Label htmlFor={`type-${question.id}`} className="text-sm font-medium text-brand-dark-gray">
                             Tipo de Resposta
                           </Label>
                           <Select
@@ -472,7 +472,7 @@ const AdminQuestionarios = () => {
                       {(question.type === 'single_choice' || question.type === 'multiple_choice') && (
                           <div className="mt-4">
                             <div className="flex items-center justify-between mb-3">
-                              <Label className="text-sm font-medium text-[#333333]">
+                              <Label className="text-sm font-medium text-brand-dark-gray">
                                 Opções de Resposta (min. 2, máx. 5)
                               </Label>
                               <Button
@@ -481,7 +481,7 @@ const AdminQuestionarios = () => {
                                 size="sm"
                                 onClick={() => addOption(question.id)}
                                 disabled={(question.options || []).length >= 5}
-                                className="bg-[#10B981] text-white hover:bg-[#059669] border-[#10B981]"
+                                className="bg-brand-green text-brand-white hover:bg-brand-green/90 border-brand-green"
                               >
                                 <Plus className="h-4 w-4 mr-1" />
                                 Adicionar Opção
@@ -530,7 +530,7 @@ const AdminQuestionarios = () => {
               <div className="flex flex-col sm:flex-row gap-4">
                 <Button
                   variant="outline"
-                  onClick={() => navigate('/admin/start')}
+                  onClick={() => navigate('/create-survey-start')}
                   className="flex-1 border-gray-300 text-[#333333] hover:bg-gray-50"
                 >
                   Cancelar
@@ -620,7 +620,7 @@ const AdminQuestionarios = () => {
                                   variant="outline"
                                   size="sm"
                                   onClick={() => window.open(survey.unique_link, '_blank')}
-                                  className="border-[#00FF00] text-[#00FF00] hover:bg-[#00FF00] hover:text-[#0A192F]"
+                                  className="border-brand-green text-brand-green hover:bg-brand-green hover:text-brand-white"
                                 >
                                   <ExternalLink className="h-4 w-4 mr-1" />
                                   Link da Pesquisa
@@ -637,30 +637,30 @@ const AdminQuestionarios = () => {
 
               {/* Survey Statistics */}
               {activeSurveys.length > 0 && (
-                <Card className="bg-white shadow-sm">
+                <Card className="bg-brand-white shadow-sm">
                   <CardHeader>
-                    <CardTitle className="text-[#333333] text-lg font-semibold flex items-center">
-                      <BarChart3 className="h-5 w-5 mr-2 text-[#00FF00]" />
+                    <CardTitle className="text-brand-dark-gray text-lg font-semibold flex items-center">
+                      <BarChart3 className="h-5 w-5 mr-2 text-brand-green" />
                       Estatísticas Gerais
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="grid md:grid-cols-3 gap-6">
                       <div className="text-center">
-                        <div className="text-2xl font-bold text-[#0A192F]">{activeSurveys.length}</div>
-                        <div className="text-sm text-gray-600">Total de Pesquisas</div>
+                        <div className="text-2xl font-bold text-brand-dark-gray">{activeSurveys.length}</div>
+                        <div className="text-sm text-muted-foreground">Total de Pesquisas</div>
                       </div>
                       <div className="text-center">
-                        <div className="text-2xl font-bold text-[#0A192F]">
+                        <div className="text-2xl font-bold text-brand-dark-gray">
                           {activeSurveys.reduce((acc, survey) => acc + survey.current_responses, 0)}
                         </div>
-                        <div className="text-sm text-gray-600">Total de Respostas</div>
+                        <div className="text-sm text-muted-foreground">Total de Respostas</div>
                       </div>
                       <div className="text-center">
-                        <div className="text-2xl font-bold text-[#0A192F]">
+                        <div className="text-2xl font-bold text-brand-dark-gray">
                           {activeSurveys.filter(s => s.status === 'active').length}
                         </div>
-                        <div className="text-sm text-gray-600">Pesquisas Ativas</div>
+                        <div className="text-sm text-muted-foreground">Pesquisas Ativas</div>
                       </div>
                     </div>
                   </CardContent>
@@ -670,10 +670,10 @@ const AdminQuestionarios = () => {
 
             <TabsContent value="preview" className="space-y-6">
               {/* Preview Section */}
-              <Card className="bg-white shadow-sm">
+              <Card className="bg-brand-white shadow-sm">
                 <CardHeader>
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-[#333333] text-lg font-semibold">
+                    <CardTitle className="text-brand-dark-gray text-lg font-semibold">
                       Prévia da Pesquisa
                     </CardTitle>
                     <div className="flex gap-2">
@@ -681,7 +681,7 @@ const AdminQuestionarios = () => {
                         variant="outline"
                         size="sm"
                         onClick={() => exportData('csv')}
-                        className="border-[#00FF00] text-[#00FF00] hover:bg-[#00FF00] hover:text-[#0A192F]"
+                        className="border-brand-green text-brand-green hover:bg-brand-green hover:text-brand-white"
                       >
                         <Download className="h-4 w-4 mr-2" />
                         CSV

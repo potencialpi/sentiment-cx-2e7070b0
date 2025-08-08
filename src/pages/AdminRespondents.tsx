@@ -229,7 +229,7 @@ const AdminRespondents = () => {
       <section className="bg-section-light py-12 px-6">
         <div className="max-w-6xl mx-auto space-y-8">
           {/* Formulário de Cadastro */}
-          <Card className="shadow-xl">
+          <Card className="bg-brand-white shadow-sm">
             <CardHeader>
               <CardTitle className="text-2xl font-bold text-brand-dark-gray flex items-center gap-2">
                 <Plus className="w-6 h-6 text-primary" />
@@ -288,7 +288,7 @@ const AdminRespondents = () => {
           </Card>
 
           {/* Lista de Respondentes */}
-          <Card className="shadow-xl">
+          <Card className="bg-brand-white shadow-sm">
             <CardHeader>
               <CardTitle className="text-2xl font-bold text-brand-dark-gray">
                 Respondentes Cadastrados ({respondents.length})

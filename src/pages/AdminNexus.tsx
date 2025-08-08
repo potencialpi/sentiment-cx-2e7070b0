@@ -210,17 +210,17 @@ const AdminNexus = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header Section - Dark Blue Background */}
-      <div className="bg-slate-900 py-16">
-        <div className="container mx-auto px-4">
+    <div className="min-h-screen bg-brand-bg-gray">
+      {/* Header Section - Padrão do Design System */}
+      <header className="bg-brand-dark-blue text-brand-white py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-4 mb-8">
-            <h1 className="text-base font-medium text-white">Sentiment CX</h1>
+            <h1 className="text-nav font-semibold">Sentiment CX</h1>
             <Button 
               variant="outline"
               size="sm"
               onClick={() => navigate('/admin/nexus')}
-              className="bg-[#1E3A8A] text-white hover:bg-[#1E3A8A]/90 border-[#1E3A8A]"
+              className="bg-brand-dark-blue text-brand-white border-brand-white/20 hover:bg-brand-white/10"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Voltar
@@ -232,26 +232,26 @@ const AdminNexus = () => {
                 supabase.auth.signOut();
                 navigate('/');
               }}
-              className="bg-[#10B981] text-white hover:bg-[#10B981]/90 border-[#10B981]"
+              className="bg-brand-green text-brand-white hover:bg-brand-green/90 border-brand-green"
             >
               <LogOut className="h-4 w-4 mr-2" />
               Sair
             </Button>
           </div>
           <div className="text-center">
-            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
+            <h2 className="text-hero font-bold mb-4">
               Criar e Gerenciar Pesquisas - Nexus Infinito
             </h2>
-            <p className="text-lg text-white/90">
+            <p className="text-subtitle text-brand-white/80">
               Configure pesquisas ilimitadas ou visualize pesquisas ativas
             </p>
           </div>
         </div>
-      </div>
+      </header>
 
-      {/* Main Content Section - Light Background */}
-      <div className="bg-[#D1D5DB] py-12">
-        <div className="container mx-auto px-4">
+      {/* Main Content Section - Padrão do Design System */}
+      <main className="bg-brand-bg-gray py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="create">Criar Pesquisa</TabsTrigger>
@@ -260,9 +260,9 @@ const AdminNexus = () => {
             </TabsList>
 
             <TabsContent value="create" className="space-y-6">
-              <Card>
+              <Card className="bg-brand-white shadow-sm">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2 text-brand-dark-gray">
                     <BarChart3 className="h-5 w-5" />
                     Criar Nova Pesquisa - Nexus Infinito
                   </CardTitle>
@@ -593,7 +593,7 @@ const AdminNexus = () => {
             </TabsContent>
           </Tabs>
         </div>
-      </div>
+      </main>
     </div>
   );
 };

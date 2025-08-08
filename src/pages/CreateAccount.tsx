@@ -175,14 +175,14 @@ const CreateAccount = () => {
     <div className="min-h-screen bg-brand-bg-gray">
       <Header />
       <div className="flex items-center justify-center py-12 px-6">
-        <Card className="w-full max-w-2xl bg-brand-white shadow-lg">
+        <Card className="w-full max-w-2xl bg-brand-white shadow-sm">
           <CardHeader className="text-center">
             <CardTitle className="text-3xl font-bold text-brand-dark-blue mb-4">
               Criar Conta
             </CardTitle>
             
             {selectedPlanData && (
-              <div className="bg-gray-50 p-4 rounded-lg mb-6">
+              <div className="bg-muted p-4 rounded-lg mb-6">
                 <h3 className="text-lg font-semibold text-brand-dark-blue mb-2">
                   Plano Selecionado: {selectedPlanData.name}
                 </h3>

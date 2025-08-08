@@ -410,33 +410,33 @@ const CreateSurveyForm = () => {
   const maxQuestions = planConfig?.maxQuestions;
 
   return (
-    <div className="min-h-screen bg-[#D1D5DB]">
+    <div className="min-h-screen bg-brand-bg-gray">
       {/* Header */}
-      <div className="bg-[#FFFFFF] shadow-sm border-b border-gray-200">
+      <div className="bg-brand-white shadow-sm border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-4">
               <Button
-                variant="ghost"
+                variant="outline"
                 onClick={() => {
                   const adminRoute = getPlanAdminRoute(userPlan);
                   navigate(adminRoute);
                 }}
-                className="flex items-center gap-2 text-[#1E3A8A] hover:text-[#1E40AF] bg-[#1E3A8A] text-white hover:bg-[#1E40AF]"
+                className="flex items-center gap-2 text-brand-dark-blue hover:text-brand-dark-blue/80 border-border"
               >
                 <ArrowLeft className="h-4 w-4" />
                 Voltar
               </Button>
-              <h1 className="text-xl font-semibold text-gray-900">Nova Pesquisa</h1>
+              <h1 className="text-xl font-semibold text-brand-dark-gray">Nova Pesquisa</h1>
             </div>
             <div className="flex items-center gap-4">
-              <div className="text-sm text-gray-600">
+              <div className="text-sm text-brand-dark-gray/70">
                 Pesquisas este mês: {surveyCount}/{planConfig.maxSurveysPerMonth} | Plano: {planConfig.displayName}
               </div>
               <Button
-                variant="ghost"
+                variant="outline"
                 onClick={handleLogout}
-                className="flex items-center gap-2 text-white hover:text-[#059669] bg-[#10B981] hover:bg-[#059669]"
+                className="flex items-center gap-2 text-brand-green hover:text-brand-green/80 border-border"
               >
                 <LogOut className="h-4 w-4" />
                 Sair
@@ -454,27 +454,27 @@ const CreateSurveyForm = () => {
         )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 bg-white">
-            <TabsTrigger value="info" className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              Informações & Questões
-            </TabsTrigger>
-            <TabsTrigger value="respondents" className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              Respondentes
-            </TabsTrigger>
-            <TabsTrigger value="preview" className="flex items-center gap-2">
-              <Eye className="h-4 w-4" />
-              Prévia & Análise
-            </TabsTrigger>
-          </TabsList>
+           <TabsList className="grid w-full grid-cols-3 bg-brand-white">
+             <TabsTrigger value="info" className="flex items-center gap-2">
+               <Users className="h-4 w-4" />
+               Informações & Questões
+             </TabsTrigger>
+             <TabsTrigger value="respondents" className="flex items-center gap-2">
+               <Users className="h-4 w-4" />
+               Respondentes
+             </TabsTrigger>
+             <TabsTrigger value="preview" className="flex items-center gap-2">
+               <Eye className="h-4 w-4" />
+               Prévia & Análise
+             </TabsTrigger>
+           </TabsList>
 
           <TabsContent value="info" className="space-y-6">
             {/* Survey Info */}
-            <Card className="bg-[#FFFFFF]">
-              <CardHeader>
-                <CardTitle>Informações da Pesquisa</CardTitle>
-              </CardHeader>
+             <Card className="bg-brand-white shadow-sm">
+               <CardHeader>
+                 <CardTitle className="text-brand-dark-gray">Informações da Pesquisa</CardTitle>
+               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
                   <Label htmlFor="title">Título*</Label>
@@ -528,10 +528,10 @@ const CreateSurveyForm = () => {
             </Card>
 
             {/* Add Question */}
-            <Card className="bg-[#FFFFFF]">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle>Adicionar Pergunta</CardTitle>
+             <Card className="bg-brand-white shadow-sm">
+               <CardHeader>
+                 <div className="flex items-center justify-between">
+                   <CardTitle className="text-brand-dark-gray">Adicionar Pergunta</CardTitle>
                   {maxQuestions && (
                     <div className={`text-sm px-3 py-1 rounded-full ${
                       questionsUsed >= maxQuestions 
@@ -636,11 +636,11 @@ const CreateSurveyForm = () => {
             </Card>
 
             {/* Questions List */}
-            {questions.length > 0 && (
-              <Card className="bg-[#FFFFFF]">
-                <CardHeader>
-                  <CardTitle>Perguntas Adicionadas ({questions.length})</CardTitle>
-                </CardHeader>
+             {questions.length > 0 && (
+               <Card className="bg-brand-white shadow-sm">
+                 <CardHeader>
+                   <CardTitle className="text-brand-dark-gray">Perguntas Adicionadas ({questions.length})</CardTitle>
+                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
                     {questions.map((question, index) => (
@@ -680,8 +680,8 @@ const CreateSurveyForm = () => {
             )}
 
             {/* Actions */}
-            <Card className="bg-[#FFFFFF]">
-              <CardContent className="pt-6">
+             <Card className="bg-brand-white shadow-sm">
+               <CardContent className="pt-6">
                 <div className="flex flex-col sm:flex-row gap-4">
                   <Button
                     onClick={createSurvey}
@@ -704,13 +704,13 @@ const CreateSurveyForm = () => {
           </TabsContent>
 
           <TabsContent value="respondents" className="space-y-6">
-            <Card className="bg-[#FFFFFF]">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="h-5 w-5" />
-                  Cadastrar Respondentes
-                </CardTitle>
-              </CardHeader>
+             <Card className="bg-brand-white shadow-sm">
+               <CardHeader>
+                 <CardTitle className="flex items-center gap-2 text-brand-dark-gray">
+                   <Users className="h-5 w-5" />
+                   Cadastrar Respondentes
+                 </CardTitle>
+               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
@@ -767,14 +767,14 @@ const CreateSurveyForm = () => {
           </TabsContent>
 
           <TabsContent value="preview" className="space-y-6">
-            {/* Survey Preview */}
-            <Card className="bg-[#FFFFFF]">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Eye className="h-5 w-5" />
-                  Prévia da Pesquisa
-                </CardTitle>
-              </CardHeader>
+             {/* Survey Preview */}
+             <Card className="bg-brand-white shadow-sm">
+               <CardHeader>
+                 <CardTitle className="flex items-center gap-2 text-brand-dark-gray">
+                   <Eye className="h-5 w-5" />
+                   Prévia da Pesquisa
+                 </CardTitle>
+               </CardHeader>
               <CardContent>
                 {surveyTitle ? (
                   <div className="space-y-4">
@@ -827,13 +827,13 @@ const CreateSurveyForm = () => {
             </Card>
 
             {/* Analysis Features by Plan */}
-            <Card className="bg-[#FFFFFF]">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5" />
-                  Funcionalidades de Análise - {planConfig.displayName}
-                </CardTitle>
-              </CardHeader>
+             <Card className="bg-brand-white shadow-sm">
+               <CardHeader>
+                 <CardTitle className="flex items-center gap-2 text-brand-dark-gray">
+                   <BarChart3 className="h-5 w-5" />
+                   Funcionalidades de Análise - {planConfig.displayName}
+                 </CardTitle>
+               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>

@@ -331,7 +331,7 @@ const SurveyResponse = () => {
         {/* Error Content */}
         <section className="bg-section-light py-20 px-6">
           <div className="max-w-2xl mx-auto text-center">
-            <Card className="shadow-xl">
+            <Card className="bg-brand-white shadow-xl">
               <CardContent className="p-12">
                 <AlertTriangle className="w-16 h-16 text-yellow-500 mx-auto mb-6" />
                 <h2 className="text-2xl font-bold text-brand-dark-gray mb-4">
@@ -372,9 +372,9 @@ const SurveyResponse = () => {
         {/* Success Content */}
         <section className="bg-section-light py-20 px-6">
           <div className="max-w-2xl mx-auto text-center">
-            <Card className="shadow-xl">
+            <Card className="bg-brand-white shadow-xl">
               <CardContent className="p-12">
-                <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-6" />
+                <CheckCircle className="w-16 h-16 text-brand-green mx-auto mb-6" />
                 <h2 className="text-2xl font-bold text-brand-dark-gray mb-4">
                   Obrigado pela sua participação!
                 </h2>
@@ -427,7 +427,7 @@ const SurveyResponse = () => {
       {/* Form Content */}
       <section className="bg-section-light py-12 px-6">
         <div className="max-w-4xl mx-auto">
-          <Card className="shadow-xl">
+          <Card className="bg-brand-white shadow-xl">
             <CardHeader>
               <CardTitle className="text-2xl font-bold text-brand-dark-gray flex items-center gap-2">
                 <FileText className="w-6 h-6 text-primary" />
@@ -440,7 +440,7 @@ const SurveyResponse = () => {
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-8">
                 {questions.map((question, index) => (
-                  <div key={question.id} className="p-6 bg-white rounded-lg border border-gray-200">
+                  <div key={question.id} className="p-6 bg-brand-white rounded-lg border border-border">
                     <div className="flex items-start gap-3 mb-4">
                       <span className="flex-shrink-0 w-8 h-8 bg-primary text-white rounded-full flex items-center justify-center font-bold text-sm">
                         {index + 1}

@@ -90,7 +90,7 @@ const PricingSection = () => {
     setLoading(true);
     try {
       // Configurar redirect URL para autenticação
-      const redirectUrl = `${window.location.origin}/admin/start`;
+      const redirectUrl = `${window.location.origin}/create-survey-start`;
       
       const { data, error } = await supabase.auth.signUp({
         email,
