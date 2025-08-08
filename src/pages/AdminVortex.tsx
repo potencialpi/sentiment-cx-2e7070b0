@@ -183,12 +183,12 @@ const AdminVortex = () => {
 
       const uniqueLink = generateUniqueLink();
 
-      const { data, error } = await supabase
+      // Primeiro, criar a pesquisa
+      const { data: surveyData, error: surveyError } = await supabase
         .from('surveys')
         .insert({
           title: surveyTitle,
           description: surveyDescription,
-          questions: questions,
           status: 'active',
           unique_link: uniqueLink,
           user_id: user.id,
@@ -198,8 +198,29 @@ const AdminVortex = () => {
         .select()
         .single();
 
-      if (error) {
-        throw error;
+      if (surveyError) {
+        throw surveyError;
+      }
+
+      // Depois, criar as perguntas associadas à pesquisa
+      if (questions.length > 0) {
+        const questionsToInsert = questions.map((question, index) => ({
+          survey_id: surveyData.id,
+          question_text: question.text,
+          question_type: question.type,
+          options: question.options.length > 0 ? question.options : null,
+          question_order: index + 1
+        }));
+
+        const { error: questionsError } = await supabase
+          .from('questions')
+          .insert(questionsToInsert);
+
+        if (questionsError) {
+          // Se falhar ao inserir perguntas, remover a pesquisa criada
+          await supabase.from('surveys').delete().eq('id', surveyData.id);
+          throw questionsError;
+        }
       }
 
       toast({
