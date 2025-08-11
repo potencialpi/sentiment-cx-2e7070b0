@@ -15,7 +15,7 @@ interface Question {
   id: string;
   question_text: string;
   question_type: string;
-  options: string[] | null;
+  options: any;
   question_order: number;
 }
 
@@ -104,7 +104,10 @@ const SurveyResponse = () => {
         return;
       }
 
-      setQuestions(questionsData || []);
+      setQuestions(questionsData?.map(q => ({
+        ...q,
+        options: q.options as any
+      })) || []);
     } catch (error) {
       console.error('Load error:', error);
       setError('Erro inesperado ao carregar pesquisa');
@@ -135,7 +138,7 @@ const SurveyResponse = () => {
       } else {
         return {
           ...prev,
-          [questionId]: currentValues.filter((v: string) => v !== option)
+          [questionId]: Array.isArray(currentValues) ? currentValues.filter((v: string) => v !== option) : []
         };
       }
     });
@@ -173,19 +176,16 @@ const SurveyResponse = () => {
       // Gerar ID único para o respondente (anônimo)
       const respondentId = crypto.randomUUID();
 
-      // Preparar dados da resposta
-      const responseData = {
+      // Inserir cada resposta individualmente
+      const responseInserts = Object.entries(responses).map(([questionId, value]) => ({
         survey_id: survey.id,
-        respondent_id: respondentId,
-        responses: responses,
-        sentiment_score: null,
-        sentiment_category: null
-      };
+        question_id: questionId,
+        response_value: Array.isArray(value) ? value : [value]
+      }));
 
-      // Inserir resposta
       const { error: responseError } = await supabase
         .from('responses')
-        .insert(responseData);
+        .insert(responseInserts);
 
       if (responseError) {
         console.error('Response error:', responseError);
@@ -232,7 +232,7 @@ const SurveyResponse = () => {
     
     // Converter options para array de strings se necessário
     const optionsArray = Array.isArray(options) ? options : 
-                        (options && typeof options === 'object' && options.choices) ? options.choices :
+                        (options && typeof options === 'object' && (options as any).choices) ? (options as any).choices :
                         [];
 
     switch (question_type) {

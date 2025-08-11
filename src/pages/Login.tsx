@@ -41,26 +41,15 @@ const Login = () => {
       if (session) {
         let planCode = 'start-quantico'; // fallback padrão
 
-        // Tentar buscar o plano na tabela companies primeiro
-        const { data: companyData } = await supabase
-          .from('companies')
+        // Buscar o plano na tabela user_plans
+        const { data: userPlanData } = await supabase
+          .from('user_plans')
           .select('plan_name')
           .eq('user_id', session.user.id)
           .single();
 
-        if (companyData?.plan_name) {
-          planCode = companyData.plan_name;
-        } else {
-          // Se não encontrar na companies, tentar na profiles
-          const { data: profileData } = await supabase
-            .from('profiles')
-            .select('plan_name')
-            .eq('user_id', session.user.id)
-            .single();
-          
-          if (profileData?.plan_name) {
-            planCode = profileData.plan_name;
-          }
+        if (userPlanData?.plan_name) {
+          planCode = userPlanData.plan_name;
         }
 
         console.log('Login useEffect - Plano encontrado:', planCode);
@@ -90,26 +79,15 @@ const Login = () => {
       if (authData.user) {
         let planCode = 'start-quantico'; // fallback padrão
 
-        // Tentar buscar o plano na tabela companies primeiro
-        const { data: companyData } = await supabase
-          .from('companies')
+        // Buscar o plano na tabela user_plans
+        const { data: userPlanData } = await supabase
+          .from('user_plans')
           .select('plan_name')
           .eq('user_id', authData.user.id)
           .single();
 
-        if (companyData?.plan_name) {
-          planCode = companyData.plan_name;
-        } else {
-          // Se não encontrar na companies, tentar na profiles
-          const { data: profileData } = await supabase
-            .from('profiles')
-            .select('plan_name')
-            .eq('user_id', authData.user.id)
-            .single();
-          
-          if (profileData?.plan_name) {
-            planCode = profileData.plan_name;
-          }
+        if (userPlanData?.plan_name) {
+          planCode = userPlanData.plan_name;
         }
 
         console.log('Login - Plano encontrado:', planCode);

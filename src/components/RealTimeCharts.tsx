@@ -302,7 +302,7 @@ const RealTimeCharts: React.FC<RealTimeChartsProps> = ({ className }) => {
         <CardContent>
           <div className="flex gap-4 items-center">
             <div className="flex-1">
-              <Label htmlFor="survey-select">Selecionar Pesquisa:</Label>
+              <label htmlFor="survey-select" className="text-sm font-medium">Selecionar Pesquisa:</label>
               <Select value={selectedSurvey} onValueChange={setSelectedSurvey}>
                 <SelectTrigger>
                   <SelectValue placeholder="Escolha uma pesquisa com respostas" />
@@ -318,7 +318,7 @@ const RealTimeCharts: React.FC<RealTimeChartsProps> = ({ className }) => {
             </div>
             
             <div>
-              <Label htmlFor="chart-type">Tipo de Gráfico:</Label>
+              <label htmlFor="chart-type" className="text-sm font-medium">Tipo de Gráfico:</label>
               <Select value={chartType} onValueChange={(value: 'bar' | 'pie' | 'line') => setChartType(value)}>
                 <SelectTrigger className="w-32">
                   <SelectValue />

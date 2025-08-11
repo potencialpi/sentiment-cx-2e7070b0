@@ -47,14 +47,14 @@ const CreateSurvey = () => {
         }
 
         // Buscar plano do usuário
-        const { data: company } = await supabase
-          .from('companies')
+        const { data: userPlan } = await supabase
+          .from('user_plans')
           .select('plan_name')
           .eq('user_id', user.id)
           .single();
 
-        if (company) {
-          setUserPlan(company.plan_name);
+        if (userPlan) {
+          setUserPlan(userPlan.plan_name);
         }
 
         await fetchSurveys();

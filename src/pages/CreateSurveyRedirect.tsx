@@ -16,9 +16,9 @@ const CreateSurveyRedirect = () => {
           return;
         }
 
-        // Buscar plano do usuário na tabela companies
-        const { data: company, error } = await supabase
-          .from('companies')
+        // Buscar plano do usuário na tabela user_plans
+        const { data: userPlan, error } = await supabase
+          .from('user_plans')
           .select('plan_name')
           .eq('user_id', user.id)
           .single();
@@ -31,7 +31,7 @@ const CreateSurveyRedirect = () => {
         }
 
         // Redirecionar baseado no plano
-        switch (company.plan_name) {
+        switch (userPlan.plan_name) {
           case 'start-quantico':
             navigate('/create-survey-start');
             break;

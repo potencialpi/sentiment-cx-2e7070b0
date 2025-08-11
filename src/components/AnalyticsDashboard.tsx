@@ -176,9 +176,9 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ surveyId }) => 
               };
               
               processedData = [
-                { label: 'Positivo', value: sentimentCounts.positive, color: '#10B981' },
-                { label: 'Neutro', value: sentimentCounts.neutral, color: '#6B7280' },
-                { label: 'Negativo', value: sentimentCounts.negative, color: '#EF4444' }
+                { label: 'Positivo', value: sentimentCounts.positive },
+                { label: 'Neutro', value: sentimentCounts.neutral },
+                { label: 'Negativo', value: sentimentCounts.negative }
               ];
             }
           }
