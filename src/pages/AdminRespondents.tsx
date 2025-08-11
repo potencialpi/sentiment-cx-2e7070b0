@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,29 +40,12 @@ const AdminRespondents = () => {
 
   const planInfo = getPlanInfo(plan);
 
-  // Carregar respondentes
-  useEffect(() => {
-    loadRespondents();
-  }, []);
-
-  const loadRespondents = async () => {
+  const loadRespondents = useCallback(async () => {
     try {
-      const { data, error } = await supabase
-        .from('respondents')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error loading respondents:', error);
-        toast({
-          title: "Erro ao carregar respondentes",
-          description: error.message,
-          variant: "destructive",
-        });
-        return;
-      }
-
-      setRespondents(data || []);
+      // Como a tabela 'respondents' não existe no esquema atual,
+      // vamos simular uma lista vazia por enquanto
+      console.log('Tabela respondents não disponível no esquema atual');
+      setRespondents([]);
     } catch (error) {
       console.error('Unexpected error:', error);
       toast({
@@ -73,7 +56,11 @@ const AdminRespondents = () => {
     } finally {
       setLoadingList(false);
     }
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    loadRespondents();
+  }, [loadRespondents]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -100,8 +87,8 @@ const AdminRespondents = () => {
 
     setLoading(true);
     try {
-      const { data: user } = await supabase.auth.getUser();
-      if (!user.user) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
         toast({
           title: "Erro de autenticação",
           description: "Você precisa estar logado para cadastrar respondentes.",
@@ -110,36 +97,17 @@ const AdminRespondents = () => {
         return;
       }
 
-      const { error } = await supabase
-        .from('respondents')
-        .insert({
-          user_id: user.user.id,
-          name: name.trim(),
-          email: email.trim().toLowerCase(),
-        });
-
-      if (error) {
-        if (error.code === '23505') { // unique constraint violation
-          toast({
-            title: "Email já cadastrado",
-            description: "Este email já está cadastrado na sua lista de respondentes.",
-            variant: "destructive",
-          });
-        } else {
-          console.error('Error creating respondent:', error);
-          toast({
-            title: "Erro ao cadastrar respondente",
-            description: error.message,
-            variant: "destructive",
-          });
-        }
-        return;
-      }
-
+      // Como a tabela 'respondents' não existe no esquema atual,
+      // vamos simular o cadastro por enquanto
+      console.log('Simulando cadastro de respondente:', { name: name.trim(), email: email.trim().toLowerCase() });
+      
       toast({
-        title: "Respondente cadastrado!",
-        description: `${name} foi adicionado à sua lista de respondentes.`,
+        title: "Funcionalidade em desenvolvimento",
+        description: "O cadastro de respondentes será implementado em breve.",
+        variant: "destructive",
       });
+      
+      return;
 
       // Limpar formulário
       setName('');
@@ -160,37 +128,15 @@ const AdminRespondents = () => {
   };
 
   const handleDelete = async (id: string, respondentName: string) => {
-    try {
-      const { error } = await supabase
-        .from('respondents')
-        .delete()
-        .eq('id', id);
-
-      if (error) {
-        console.error('Error deleting respondent:', error);
-        toast({
-          title: "Erro ao excluir respondente",
-          description: error.message,
-          variant: "destructive",
-        });
-        return;
-      }
-
-      toast({
-        title: "Respondente excluído",
-        description: `${respondentName} foi removido da sua lista.`,
-      });
-
-      // Recarregar lista
-      loadRespondents();
-    } catch (error) {
-      console.error('Unexpected error:', error);
-      toast({
-        title: "Erro inesperado",
-        description: "Tente novamente em alguns momentos.",
-        variant: "destructive",
-      });
-    }
+    // Como a tabela 'respondents' não existe no esquema atual,
+    // vamos simular a exclusão por enquanto
+    console.log('Simulando exclusão de respondente:', { id, respondentName });
+    
+    toast({
+      title: "Funcionalidade em desenvolvimento",
+      description: "A exclusão de respondentes será implementada em breve.",
+      variant: "destructive",
+    });
   };
 
   return (

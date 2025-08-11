@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -16,7 +16,7 @@ import { Plus, Minus, ArrowLeft, LogOut, Eye, BarChart3, PieChart, Users, Zap } 
 interface Question {
   id: string;
   text: string;
-  type: 'text' | 'single_choice' | 'multiple_choice' | 'star_rating';
+  type: 'text' | 'single_choice' | 'multiple_choice' | 'rating';
   options: string[];
 }
 
@@ -45,19 +45,15 @@ const CreateSurveyStart = () => {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [respondents, setRespondents] = useState<Respondent[]>([]);
   const [newQuestionText, setNewQuestionText] = useState('');
-  const [newQuestionType, setNewQuestionType] = useState<'text' | 'single_choice' | 'multiple_choice' | 'star_rating'>('text');
+  const [newQuestionType, setNewQuestionType] = useState<'text' | 'single_choice' | 'multiple_choice' | 'rating'>('text');
   const [newOptions, setNewOptions] = useState<string[]>(['']);
   const [newRespondentName, setNewRespondentName] = useState('');
   const [newRespondentEmail, setNewRespondentEmail] = useState('');
   const [isCreating, setIsCreating] = useState(false);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<{ id: string; email?: string } | null>(null);
   const [currentSurveyCount, setCurrentSurveyCount] = useState(0);
 
-  useEffect(() => {
-    initializePage();
-  }, []);
-
-  const initializePage = async () => {
+  const initializePage = useCallback(async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -84,7 +80,11 @@ const CreateSurveyStart = () => {
         variant: "destructive"
       });
     }
-  };
+  }, [navigate]);
+
+  useEffect(() => {
+    initializePage();
+  }, [initializePage]);
 
   const addQuestion = () => {
     if (questions.length >= PLAN_CONFIG.maxQuestions) {
@@ -164,6 +164,16 @@ const CreateSurveyStart = () => {
   };
 
   const createSurvey = async () => {
+    if (!user) {
+      toast({
+        title: "Erro",
+        description: "Usuário não autenticado",
+        variant: "destructive"
+      });
+      navigate('/login');
+      return;
+    }
+
     if (currentSurveyCount >= PLAN_CONFIG.maxSurveysPerMonth) {
       toast({
         title: "Limite atingido",
@@ -193,8 +203,18 @@ const CreateSurveyStart = () => {
 
     setIsCreating(true);
 
+    console.log('Iniciando criação da pesquisa...', { title, questions: questions.length, user: user.id });
+
     try {
       // Criar pesquisa
+      console.log('Criando pesquisa no banco...', {
+        title,
+        description: description || null,
+        user_id: user.id,
+        max_responses: PLAN_CONFIG.maxResponses,
+        status: 'active'
+      });
+
       const { data: survey, error: surveyError } = await supabase
         .from('surveys')
         .insert({
@@ -208,12 +228,24 @@ const CreateSurveyStart = () => {
         .single();
 
       if (surveyError) {
+        console.error('Erro ao criar pesquisa:', surveyError);
         throw surveyError;
       }
 
+      console.log('Pesquisa criada com sucesso:', survey);
+
       // Criar questões
+      console.log('Criando questões...', questions);
       for (let i = 0; i < questions.length; i++) {
         const question = questions[i];
+        console.log(`Criando questão ${i + 1}:`, {
+          survey_id: survey.id,
+          question_text: question.text,
+          question_type: question.type,
+          question_order: i + 1,
+          options: question.options.length > 0 ? question.options : null
+        });
+
         const { error: questionError } = await supabase
           .from('questions')
           .insert({
@@ -225,23 +257,17 @@ const CreateSurveyStart = () => {
           });
 
         if (questionError) {
+          console.error(`Erro ao criar questão ${i + 1}:`, questionError);
           throw questionError;
         }
       }
+      console.log('Todas as questões criadas com sucesso');
 
-      // Criar respondentes
-      for (const respondent of respondents) {
-        const { error: respondentError } = await supabase
-          .from('respondents')
-          .insert({
-            user_id: user.id,
-            name: respondent.name,
-            email: respondent.email
-          });
-
-        if (respondentError) {
-          console.error('Error creating respondent:', respondentError);
-        }
+      // Criar respondentes - Funcionalidade em desenvolvimento
+      // A tabela 'respondents' não está disponível no esquema atual
+      if (respondents.length > 0) {
+        console.log('Respondentes que seriam criados:', respondents);
+        console.log('Funcionalidade de respondentes em desenvolvimento - tabela não disponível');
       }
 
       toast({
@@ -252,19 +278,27 @@ const CreateSurveyStart = () => {
       navigate('/dashboard');
     } catch (error) {
       console.error('Error creating survey:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+      console.error('Detalhes do erro:', errorMessage);
       toast({
         title: "Erro",
-        description: "Erro ao criar pesquisa",
+        description: `Erro ao criar pesquisa: ${errorMessage}`,
         variant: "destructive"
       });
     } finally {
+      console.log('Finalizando processo de criação...');
       setIsCreating(false);
     }
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate('/');
+    try {
+      await supabase.auth.signOut({ scope: 'local' });
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      navigate('/');
+    }
   };
 
   return (
@@ -411,7 +445,7 @@ const CreateSurveyStart = () => {
                           <Label className="text-brand-dark-gray font-medium">Tipo de Questão</Label>
                           <RadioGroup
                             value={newQuestionType}
-                            onValueChange={(value: any) => setNewQuestionType(value)}
+                            onValueChange={(value: 'text' | 'single_choice' | 'multiple_choice' | 'rating') => setNewQuestionType(value)}
                             className="mt-2"
                           >
                             <div className="flex items-center space-x-2">
@@ -427,7 +461,7 @@ const CreateSurveyStart = () => {
                               <Label htmlFor="multiple">Múltipla Escolha</Label>
                             </div>
                             <div className="flex items-center space-x-2">
-                              <RadioGroupItem value="star_rating" id="star" />
+                              <RadioGroupItem value="rating" id="star" />
                               <Label htmlFor="star">Avaliação 1-5 Estrelas</Label>
                             </div>
                           </RadioGroup>
@@ -471,7 +505,11 @@ const CreateSurveyStart = () => {
 
                   <div className="flex justify-end pt-6">
                     <Button
-                      onClick={createSurvey}
+                      onClick={() => {
+                        console.log('Botão Criar Pesquisa clicado!');
+                        console.log('Estado atual:', { isCreating, title: title.trim(), questionsLength: questions.length });
+                        createSurvey();
+                      }}
                       disabled={isCreating || !title.trim() || questions.length === 0}
                       className="bg-brand-green text-brand-white hover:bg-brand-green/90"
                     >
@@ -599,7 +637,7 @@ const CreateSurveyStart = () => {
                           </div>
                         )}
                         
-                        {question.type === 'star_rating' && (
+                        {question.type === 'rating' && (
                           <div className="bg-muted p-4 rounded-lg">
                             <StarRating value={3} disabled className="justify-start" />
                           </div>

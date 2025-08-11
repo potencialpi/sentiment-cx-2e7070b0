@@ -1,0 +1,14 @@
+src/
+├── __tests__/
+│   ├── components/
+│   │   ├── Header.test.tsx
+│   │   ├── WelcomeSection.test.tsx
+│   │   └── PricingSection.test.tsx
+│   ├── lib/
+│   │   ├── sentimentAnalysis.test.ts
+│   │   └── planUtils.test.ts
+│   └── pages/
+│       ├── Index.test.tsx
+│       └── Dashboard.test.tsx
+└── test/
+    └── setup.ts

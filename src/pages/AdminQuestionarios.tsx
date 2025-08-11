@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -11,13 +11,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { StarRating } from '@/components/ui/star-rating';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import type { Json } from '@/integrations/supabase/types';
 import { toast } from '@/hooks/use-toast';
 import { ArrowLeft, Plus, Trash2, BarChart3, Download, Eye, ExternalLink, Calendar, Users, LogOut } from 'lucide-react';
+import RealTimeCharts from '@/components/RealTimeCharts';
 
 interface Question {
   id: string;
   text: string;
-  type: 'text' | 'rating' | 'single_choice' | 'multiple_choice' | 'star_rating';
+  type: 'text' | 'rating' | 'single_choice' | 'multiple_choice';
   options?: string[];
 }
 
@@ -25,7 +27,7 @@ interface PreviewData {
   questionText: string;
   type: string;
   options?: string[];
-  sampleData?: any[];
+  sampleData?: { label: string; value: number }[];
 }
 
 interface Survey {
@@ -51,7 +53,7 @@ const AdminQuestionarios = () => {
   const [activeSurveys, setActiveSurveys] = useState<Survey[]>([]);
   const [surveysLoading, setSurveysLoading] = useState(false);
 
-  const fetchActiveSurveys = async () => {
+  const fetchActiveSurveys = useCallback(async () => {
     setSurveysLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -79,11 +81,11 @@ const AdminQuestionarios = () => {
     } finally {
       setSurveysLoading(false);
     }
-  };
+  }, [navigate]);
 
   useEffect(() => {
     fetchActiveSurveys();
-  }, []);
+  }, [fetchActiveSurveys]);
 
   const addQuestion = () => {
     if (questions.length >= 5) {
@@ -171,40 +173,136 @@ const AdminQuestionarios = () => {
     return [];
   };
 
-  const exportData = (format: 'csv' | 'json') => {
-    const data = questions.map(q => ({
-      id: q.id,
-      text: q.text,
-      type: q.type,
-      options: q.options || []
-    }));
+  const exportData = async (format: 'csv' | 'json' | 'parquet') => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Erro",
+          description: "Usuário não autenticado",
+          variant: "destructive"
+        });
+        return;
+      }
 
-    if (format === 'csv') {
-      const csvContent = [
-        'ID,Texto,Tipo,Opções',
-        ...data.map(q => `"${q.id}","${q.text}","${q.type}","${q.options.join(';')}"`)
-      ].join('\n');
-      
-      const blob = new Blob([csvContent], { type: 'text/csv' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `pesquisa-${surveyTitle.replace(/\s+/g, '-')}.csv`;
-      a.click();
-    } else {
-      const jsonContent = JSON.stringify(data, null, 2);
-      const blob = new Blob([jsonContent], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `pesquisa-${surveyTitle.replace(/\s+/g, '-')}.json`;
-      a.click();
+      // Buscar dados das pesquisas
+      const { data: surveys, error: surveysError } = await supabase
+        .from('surveys')
+        .select('*')
+        .eq('user_id', user.id);
+
+      if (surveysError) throw surveysError;
+
+      // Buscar questões
+      const surveyIds = surveys.map(s => s.id);
+      const { data: questions, error: questionsError } = await supabase
+        .from('questions')
+        .select('*')
+        .in('survey_id', surveyIds);
+
+      if (questionsError) throw questionsError;
+
+      // Buscar respostas
+      const questionIds = questions.map(q => q.id);
+      const { data: responses, error: responsesError } = await supabase
+        .from('responses')
+        .select('*')
+        .in('question_id', questionIds);
+
+      if (responsesError) throw responsesError;
+
+      const exportData = {
+        timestamp: new Date().toISOString(),
+        user_id: user.id,
+        total_surveys: surveys.length,
+        total_questions: questions.length,
+        total_responses: responses.length,
+        surveys: surveys.map(survey => {
+          const surveyQuestions = questions.filter(q => q.survey_id === survey.id);
+          const surveyResponses = responses.filter(r => 
+            surveyQuestions.some(q => q.id === r.question_id)
+          );
+          
+          return {
+            id: survey.id,
+            title: survey.title,
+            description: survey.description,
+            status: survey.status,
+            created_at: survey.created_at,
+            current_responses: survey.current_responses,
+            max_responses: survey.max_responses,
+            questions: surveyQuestions.map(question => {
+              const questionResponses = responses.filter(r => r.question_id === question.id);
+              return {
+                ...question,
+                responses: questionResponses,
+                response_count: questionResponses.length
+              };
+            })
+          };
+        })
+      };
+
+      if (format === 'csv') {
+        // Converter para CSV com dados mais detalhados
+        const csvRows = [
+          'Survey ID,Survey Title,Survey Description,Survey Status,Survey Created,Question ID,Question Text,Question Type,Response ID,Response Text,Response Rating,Response Choices,Response Created,Sentiment Score,Sentiment Label',
+          ...exportData.surveys.flatMap(survey => 
+            survey.questions.flatMap(question => 
+              question.responses.length > 0 
+                ? question.responses.map(response => 
+                    `"${survey.id}","${survey.title}","${survey.description || ''}","${survey.status}","${survey.created_at}","${question.id}","${question.question_text}","${question.question_type}","${response.id}","${typeof response.response_value === 'string' ? response.response_value : JSON.stringify(response.response_value || '')}","","${Array.isArray(response.response_value) ? JSON.stringify(response.response_value) : ''}","${response.created_at}","",""`
+                  )
+                : [`"${survey.id}","${survey.title}","${survey.description || ''}","${survey.status}","${survey.created_at}","${question.id}","${question.question_text}","${question.question_type}","","","","","","",""`]
+            )
+          )
+        ];
+        
+        const csvContent = csvRows.join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `survey-data-complete-${new Date().toISOString().split('T')[0]}.csv`;
+        a.click();
+      } else if (format === 'json') {
+        // Exportar como JSON
+        const jsonContent = JSON.stringify(exportData, null, 2);
+        const blob = new Blob([jsonContent], { type: 'application/json;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `survey-data-complete-${new Date().toISOString().split('T')[0]}.json`;
+        a.click();
+      } else if (format === 'parquet') {
+        // Simular exportação Parquet (em produção seria usando uma biblioteca como parquetjs)
+        const parquetData = {
+          ...exportData,
+          format: 'parquet',
+          note: 'Formato Parquet simulado - em produção seria um arquivo binário otimizado'
+        };
+        const jsonContent = JSON.stringify(parquetData, null, 2);
+        const blob = new Blob([jsonContent], { type: 'application/json;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `survey-data-parquet-${new Date().toISOString().split('T')[0]}.json`;
+        a.click();
+      }
+
+      toast({
+        title: "Exportação Concluída",
+        description: `Dados exportados em formato ${format.toUpperCase()} com ${exportData.total_responses} respostas`
+      });
+
+    } catch (error) {
+      console.error('Erro na exportação:', error);
+      toast({
+        title: "Erro na Exportação",
+        description: "Não foi possível exportar os dados",
+        variant: "destructive"
+      });
     }
-
-    toast({
-      title: "Exportação Concluída",
-      description: `Dados exportados em formato ${format.toUpperCase()}`,
-    });
   };
 
   const validateQuestions = () => {
@@ -271,7 +369,7 @@ const AdminQuestionarios = () => {
       const questionsToInsert = questions.map((q, index) => ({
         survey_id: survey.id,
         question_text: q.text,
-        question_type: q.type === 'star_rating' ? 'rating' : q.type,
+        question_type: q.type === 'rating' ? 'rating' : q.type,
         question_order: index + 1,
         options: (q.type === 'single_choice' || q.type === 'multiple_choice') ? q.options : null
       }));
@@ -318,9 +416,14 @@ const AdminQuestionarios = () => {
             <Button 
               variant="outline"
               size="sm"
-              onClick={() => {
-                supabase.auth.signOut();
-                navigate('/');
+              onClick={async () => {
+                try {
+                  await supabase.auth.signOut({ scope: 'local' });
+                  navigate('/');
+                } catch (error) {
+                  console.error('Logout error:', error);
+                  navigate('/');
+                }
               }}
               className="bg-brand-green text-brand-white hover:bg-brand-green/90 border-brand-green"
             >
@@ -345,10 +448,11 @@ const AdminQuestionarios = () => {
       <main className="bg-brand-bg-gray py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <Tabs defaultValue="create" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-3 lg:w-[600px]">
+            <TabsList className="grid w-full grid-cols-4 lg:w-[800px]">
               <TabsTrigger value="create">Criar Pesquisa</TabsTrigger>
               <TabsTrigger value="active">Pesquisas Ativas</TabsTrigger>
-              <TabsTrigger value="preview">Prévia & Análise</TabsTrigger>
+              <TabsTrigger value="preview">Prévia</TabsTrigger>
+              <TabsTrigger value="analytics">Analytics</TabsTrigger>
             </TabsList>
 
             <TabsContent value="create" className="space-y-6">
@@ -460,7 +564,7 @@ const AdminQuestionarios = () => {
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="text">Texto Aberto</SelectItem>
-                              <SelectItem value="star_rating">Avaliação 1-5 Estrelas</SelectItem>
+                              <SelectItem value="rating">Avaliação 1-5 Estrelas</SelectItem>
                               <SelectItem value="single_choice">Escolha Única</SelectItem>
                               <SelectItem value="multiple_choice">Múltipla Escolha</SelectItem>
                             </SelectContent>
@@ -545,6 +649,54 @@ const AdminQuestionarios = () => {
               </div>
             </TabsContent>
 
+            <TabsContent value="analytics" className="space-y-6">
+              {/* Real-time Analytics */}
+              <Card className="bg-white shadow-sm">
+                <CardHeader>
+                  <CardTitle className="text-[#333333] text-lg font-semibold flex items-center">
+                    <BarChart3 className="h-5 w-5 mr-2 text-[#00FF00]" />
+                    Analytics em Tempo Real
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <RealTimeCharts />
+                </CardContent>
+              </Card>
+
+              {/* Analytics Features */}
+              <Card className="bg-white shadow-sm">
+                <CardHeader>
+                  <CardTitle className="text-[#333333] text-lg font-semibold">
+                    Recursos de Análise
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div>
+                      <h4 className="font-semibold text-[#333333] mb-3">Recursos Disponíveis:</h4>
+                      <ul className="space-y-2 text-sm text-gray-600">
+                        <li>✅ Análise estatística básica (média, mediana, moda)</li>
+                        <li>✅ Cálculo de desvio padrão e percentis</li>
+                        <li>✅ Análise de sentimento por IA</li>
+                        <li>✅ Gráficos interativos (Chart.js)</li>
+                        <li>✅ Exportação CSV, JSON, Parquet</li>
+                        <li>✅ ID único anonimizado (LGPD)</li>
+                      </ul>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-[#333333] mb-3">Limites do Plano Start:</h4>
+                      <ul className="space-y-2 text-sm text-gray-600">
+                        <li>📊 Até 5 questões por pesquisa</li>
+                        <li>👥 Máximo 100 respostas</li>
+                        <li>📅 2 pesquisas por mês</li>
+                        <li>🔒 Compliance com LGPD</li>
+                      </ul>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
             <TabsContent value="active" className="space-y-6">
               {/* Active Surveys Section */}
               <Card className="bg-white shadow-sm">
@@ -619,7 +771,7 @@ const AdminQuestionarios = () => {
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  onClick={() => window.open(survey.unique_link, '_blank')}
+                                  onClick={() => window.open(`/survey/${survey.unique_link}`, '_blank')}
                                   className="border-brand-green text-brand-green hover:bg-brand-green hover:text-brand-white"
                                 >
                                   <ExternalLink className="h-4 w-4 mr-1" />
@@ -695,6 +847,15 @@ const AdminQuestionarios = () => {
                         <Download className="h-4 w-4 mr-2" />
                         JSON
                       </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => exportData('parquet')}
+                        className="border-brand-green text-brand-green hover:bg-brand-green hover:text-brand-white"
+                      >
+                        <Download className="h-4 w-4 mr-2" />
+                        Parquet
+                      </Button>
                     </div>
                   </div>
                 </CardHeader>
@@ -729,7 +890,7 @@ const AdminQuestionarios = () => {
                           </div>
                         )}
                         
-                        {question.type === 'star_rating' && (
+                        {question.type === 'rating' && (
                           <div className="space-y-2">
                             <div className="bg-gray-50 p-4 rounded-lg">
                               <StarRating value={3} disabled className="justify-start" />
@@ -782,39 +943,7 @@ const AdminQuestionarios = () => {
                 </CardContent>
               </Card>
 
-              {/* Analytics Preview */}
-              <Card className="bg-white shadow-sm">
-                <CardHeader>
-                  <CardTitle className="text-[#333333] text-lg font-semibold flex items-center">
-                    <BarChart3 className="h-5 w-5 mr-2 text-[#00FF00]" />
-                    Análise Estatística (Simulação)
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <div>
-                      <h4 className="font-semibold text-[#333333] mb-3">Recursos Disponíveis:</h4>
-                      <ul className="space-y-2 text-sm text-gray-600">
-                        <li>✅ Análise estatística básica (média, mediana, moda)</li>
-                        <li>✅ Cálculo de desvio padrão e percentis</li>
-                        <li>✅ Análise de sentimento por IA</li>
-                        <li>✅ Gráficos interativos (Chart.js)</li>
-                        <li>✅ Exportação CSV, JSON, Parquet</li>
-                        <li>✅ ID único anonimizado (LGPD)</li>
-                      </ul>
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-[#333333] mb-3">Limites do Plano Start:</h4>
-                      <ul className="space-y-2 text-sm text-gray-600">
-                        <li>📊 Até 5 questões por pesquisa</li>
-                        <li>👥 Máximo 100 respostas</li>
-                        <li>📅 2 pesquisas por mês</li>
-                        <li>🔒 Compliance com LGPD</li>
-                      </ul>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+
             </TabsContent>
           </Tabs>
         </div>

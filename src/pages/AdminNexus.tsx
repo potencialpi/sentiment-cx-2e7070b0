@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +18,7 @@ import { useNavigate } from 'react-router-dom';
 interface Question {
   id: string;
   text: string;
-  type: 'single' | 'multiple' | 'text' | 'star_rating';
+  type: 'single' | 'multiple' | 'text' | 'rating';
   options: string[];
 }
 
@@ -43,19 +43,15 @@ const AdminNexus = () => {
   const [activeTab, setActiveTab] = useState("create");
   const { toast } = useToast();
 
-  useEffect(() => {
-    fetchActiveSurveys();
-  }, []);
-
-  const fetchActiveSurveys = async () => {
+  const fetchActiveSurveys = useCallback(async () => {
     try {
-      const { data: user } = await supabase.auth.getUser();
-      if (!user.user) return;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
       const { data, error } = await supabase
         .from('surveys')
         .select('*')
-        .eq('user_id', user.user.id)
+        .eq('user_id', user.id)
         .eq('status', 'active')
         .order('created_at', { ascending: false });
 
@@ -69,7 +65,11 @@ const AdminNexus = () => {
         variant: "destructive",
       });
     }
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    fetchActiveSurveys();
+  }, [fetchActiveSurveys]);
 
   const addQuestion = () => {
     const newQuestion: Question = {
@@ -85,7 +85,7 @@ const AdminNexus = () => {
     setQuestions(questions.filter(q => q.id !== id));
   };
 
-  const updateQuestion = (id: string, field: keyof Question, value: any) => {
+  const updateQuestion = (id: string, field: keyof Question, value: string | string[]) => {
     setQuestions(questions.map(q => 
       q.id === id ? { ...q, [field]: value } : q
     ));
@@ -137,8 +137,8 @@ const AdminNexus = () => {
     setIsLoading(true);
 
     try {
-      const { data: user } = await supabase.auth.getUser();
-      if (!user.user) throw new Error("Usuário não autenticado");
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Usuário não autenticado");
 
       // Create survey
       const { data: survey, error: surveyError } = await supabase
@@ -146,7 +146,7 @@ const AdminNexus = () => {
         .insert({
           title: surveyTitle,
           description: surveyDescription,
-          user_id: user.user.id,
+          user_id: user.id,
           unique_link: `${crypto.randomUUID()}`,
           max_responses: 999999, // Unlimited for Nexus
         })
@@ -159,9 +159,11 @@ const AdminNexus = () => {
       const questionsData = questions.map((q, index) => ({
         survey_id: survey.id,
         question_text: q.text,
-        question_type: q.type === 'star_rating' ? 'rating' : q.type,
+        question_type: q.type === 'single' ? 'single_choice' : 
+                      q.type === 'multiple' ? 'multiple_choice' : 
+                      q.type,
         question_order: index + 1,
-        options: q.type !== 'text' && q.type !== 'star_rating' ? q.options.filter(opt => opt.trim()) : null,
+        options: (q.type === 'single' || q.type === 'multiple') ? q.options.filter(opt => opt.trim()) : null,
       }));
 
       const { error: questionsError } = await supabase
@@ -228,9 +230,14 @@ const AdminNexus = () => {
             <Button 
               variant="outline"
               size="sm"
-              onClick={() => {
-                supabase.auth.signOut();
-                navigate('/');
+              onClick={async () => {
+                try {
+                  await supabase.auth.signOut({ scope: 'local' });
+                  navigate('/');
+                } catch (error) {
+                  console.error('Logout error:', error);
+                  navigate('/');
+                }
               }}
               className="bg-brand-green text-brand-white hover:bg-brand-green/90 border-brand-green"
             >
@@ -334,12 +341,12 @@ const AdminNexus = () => {
                                   <SelectItem value="single">Escolha Única</SelectItem>
                                   <SelectItem value="multiple">Múltipla Escolha</SelectItem>
                                   <SelectItem value="text">Texto Aberto</SelectItem>
-                                  <SelectItem value="star_rating">Avaliação 1-5 Estrelas</SelectItem>
+                                  <SelectItem value="rating">Avaliação 1-5 Estrelas</SelectItem>
                                 </SelectContent>
                               </Select>
                             </div>
 
-                            {(question.type !== 'text' && question.type !== 'star_rating') && (
+                            {(question.type !== 'text' && question.type !== 'rating') && (
                               <div className="space-y-2">
                                 <div className="flex items-center justify-between">
                                   <Label>Opções de Resposta (min. 2, máx. 5)</Label>
@@ -413,7 +420,7 @@ const AdminNexus = () => {
                                 />
                               )}
 
-                              {question.type === 'star_rating' && (
+                              {question.type === 'rating' && (
                                 <div className="mt-2">
                                   <p className="text-sm mb-2">Avaliação por estrelas:</p>
                                   <StarRating value={0} disabled className="justify-start" />
@@ -423,7 +430,7 @@ const AdminNexus = () => {
                           )}
 
                           {/* Star Rating Preview for standalone */}
-                          {question.type === 'star_rating' && (
+                          {question.type === 'rating' && (
                             <div className="mt-4 p-4 bg-gray-50 rounded-lg">
                               <Label className="font-medium">Prévia da Avaliação por Estrelas:</Label>
                               <p className="mt-2 text-sm text-gray-600">{question.text || "Sua questão aparecerá aqui"}</p>

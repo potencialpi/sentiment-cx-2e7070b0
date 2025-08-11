@@ -16,12 +16,13 @@ import AdminNexus from "./pages/AdminNexus";
 import AdminRespondents from "./pages/AdminRespondents";
 import Dashboard from "./pages/Dashboard";
 import CreateSurvey from "./pages/CreateSurvey";
-import CreateSurveyForm from "./pages/CreateSurveyForm";
+
 import CreateSurveyRedirect from "./pages/CreateSurveyRedirect";
 import CreateSurveyStart from "./pages/CreateSurveyStart";
 import CreateSurveyVortex from "./pages/CreateSurveyVortex";
 import CreateSurveyNexus from "./pages/CreateSurveyNexus";
 import SurveyResponse from "./pages/SurveyResponse";
+import Reports from "./pages/Reports";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -53,6 +54,7 @@ const App = () => (
           <Route path="/create-survey-nexus" element={<CreateSurveyNexus />} />
           <Route path="/manage-surveys" element={<CreateSurvey />} />
           <Route path="/survey/:surveyId" element={<SurveyResponse />} />
+          <Route path="/reports" element={<Reports />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

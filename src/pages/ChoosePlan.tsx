@@ -12,11 +12,11 @@ const plans = [
     monthlyPrice: 'R$ 349/mês',
     yearlyPrice: 'R$ 3.499 à vista',
     features: [
+      'Até 5 questões por pesquisa',
+      '100 respostas por pesquisa',
       '2 pesquisas por mês',
-      '5 questões por pesquisa',
-      'Análise de sentimentos básica',
-      'Relatórios em PDF',
-      'Suporte por e-mail'
+      'Análise estatística básica',
+      'Análise de sentimento simples'
     ]
   },
   {
@@ -25,12 +25,11 @@ const plans = [
     monthlyPrice: 'R$ 649/mês',
     yearlyPrice: 'R$ 6.199 à vista',
     features: [
+      'Até 10 questões por pesquisa',
+      '250 respostas por pesquisa',
       '4 pesquisas por mês',
-      '10 questões por pesquisa',
-      'Análise de sentimentos avançada',
-      'Dashboard interativo',
-      'Integração API',
-      'Suporte prioritário'
+      'Análise estatística intermediária',
+      'Análise de sentimentos segmentada'
     ]
   },
   {
@@ -39,13 +38,12 @@ const plans = [
     monthlyPrice: 'R$ 1.249/mês',
     yearlyPrice: 'R$ 11.899 à vista',
     features: [
+      'Questões ilimitadas por pesquisa',
+      'Respostas ilimitadas por pesquisa',
       '15 pesquisas por mês',
-      'Questões ilimitadas',
-      'IA avançada de análise',
-      'Relatórios personalizados',
-      'Integração completa',
-      'Suporte dedicado 24/7',
-      'Consultoria especializada'
+      'Análise estatística avançada',
+      'Análise de sentimento multicanal',
+      'Modelos preditivos avançados'
     ]
   }
 ];

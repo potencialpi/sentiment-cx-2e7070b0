@@ -157,8 +157,13 @@ const CreateSurvey = () => {
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate('/');
+    try {
+      await supabase.auth.signOut({ scope: 'local' });
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      navigate('/');
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -332,7 +337,7 @@ const CreateSurvey = () => {
                                               <span>Tipo: {question.question_type === 'single_choice' ? 'Escolha única' : 
                                                            question.question_type === 'multiple_choice' ? 'Múltipla escolha' :
                                                            question.question_type === 'text' ? 'Texto livre' :
-                                                           question.question_type === 'star_rating' ? 'Avaliação por estrelas' : 
+                                                           question.question_type === 'rating' ? 'Avaliação por estrelas' : 
                                                            question.question_type}</span>
                                             </div>
                                             {question.options && question.options.length > 0 && (

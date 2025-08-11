@@ -17,7 +17,7 @@ import { Trash2, Plus, Copy, BarChart3, PieChart, Activity, ArrowLeft, LogOut } 
 interface Question {
   id: string;
   text: string;
-  type: 'text' | 'rating' | 'single_choice' | 'multiple_choice' | 'star_rating';
+  type: 'text' | 'rating' | 'single_choice' | 'multiple_choice';
   options: string[];
 }
 
@@ -88,7 +88,7 @@ const AdminVortex = () => {
     setQuestions([...questions, newQuestion]);
   };
 
-  const updateQuestion = (id: string, field: keyof Question, value: any) => {
+  const updateQuestion = (id: string, field: keyof Question, value: string | string[]) => {
     setQuestions(questions.map(q => q.id === id ? { ...q, [field]: value } : q));
   };
 
@@ -235,11 +235,11 @@ const AdminVortex = () => {
       fetchActiveSurveys();
       setActiveTab('active');
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Erro ao salvar pesquisa:', error);
       toast({
         title: "Erro",
-        description: error.message || "Erro interno do servidor.",
+        description: error instanceof Error ? error.message : "Erro interno do servidor.",
         variant: "destructive",
       });
     } finally {
@@ -277,9 +277,14 @@ const AdminVortex = () => {
             <Button 
               variant="outline"
               size="sm"
-              onClick={() => {
-                supabase.auth.signOut();
-                navigate('/');
+              onClick={async () => {
+                try {
+                  await supabase.auth.signOut({ scope: 'local' });
+                  navigate('/');
+                } catch (error) {
+                  console.error('Logout error:', error);
+                  navigate('/');
+                }
               }}
               className="bg-brand-green text-brand-white hover:bg-brand-green/90 border-brand-green"
             >
@@ -406,7 +411,7 @@ const AdminVortex = () => {
                                   </SelectTrigger>
                                   <SelectContent>
                                     <SelectItem value="text">Texto Aberto</SelectItem>
-                                    <SelectItem value="star_rating">Avaliação 1-5 Estrelas</SelectItem>
+                                    <SelectItem value="rating">Avaliação 1-5 Estrelas</SelectItem>
                                     <SelectItem value="single_choice">Escolha Única</SelectItem>
                                     <SelectItem value="multiple_choice">Múltipla Escolha</SelectItem>
                                   </SelectContent>
@@ -461,7 +466,7 @@ const AdminVortex = () => {
                               </div>
                             )}
 
-                            {question.type === 'star_rating' && (
+                            {question.type === 'rating' && (
                               <div className="mt-4">
                                 <Label className="text-sm font-medium text-brand-dark-gray mb-3 block">
                                   Prévia da Avaliação por Estrelas:

@@ -1,6 +1,6 @@
 import React from 'react';
 import Header from '@/components/Header';
-import WelcomeSection from '@/components/WelcomeSection';
+import { WelcomeSection } from '@/components/WelcomeSection';
 
 const Index = () => {
   return (

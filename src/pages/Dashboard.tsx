@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { getPlanAdminRoute } from '@/lib/planUtils';
@@ -7,11 +7,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    redirectToCorrectAdminPage();
-  }, []);
-
-  const redirectToCorrectAdminPage = async () => {
+  const redirectToCorrectAdminPage = useCallback(async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
@@ -22,26 +18,15 @@ const Dashboard = () => {
 
       let planCode = 'start-quantico'; // fallback padrão
 
-      // Tentar buscar o plano na tabela companies primeiro
-      const { data: companyData } = await supabase
-        .from('companies')
+      // Buscar o plano na tabela user_plans
+      const { data: userPlanData } = await supabase
+        .from('user_plans')
         .select('plan_name')
         .eq('user_id', session.user.id)
         .single();
 
-      if (companyData?.plan_name) {
-        planCode = companyData.plan_name;
-      } else {
-        // Se não encontrar na companies, tentar na profiles
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('plan_name')
-          .eq('user_id', session.user.id)
-          .single();
-        
-        if (profileData?.plan_name) {
-          planCode = profileData.plan_name;
-        }
+      if (userPlanData?.plan_name) {
+        planCode = userPlanData.plan_name;
       }
 
       console.log('Dashboard - Plano encontrado:', planCode);
@@ -56,7 +41,11 @@ const Dashboard = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [navigate]);
+
+  useEffect(() => {
+    redirectToCorrectAdminPage();
+  }, [redirectToCorrectAdminPage]);
 
   if (loading) {
     return (

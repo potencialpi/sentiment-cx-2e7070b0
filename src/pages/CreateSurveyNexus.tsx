@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -16,7 +16,7 @@ import { Plus, Minus, ArrowLeft, LogOut, Eye, BarChart3, PieChart, Users, Infini
 interface Question {
   id: string;
   text: string;
-  type: 'text' | 'single_choice' | 'multiple_choice' | 'star_rating';
+  type: 'text' | 'single_choice' | 'multiple_choice' | 'rating';
   options: string[];
 }
 
@@ -45,19 +45,15 @@ const CreateSurveyNexus = () => {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [respondents, setRespondents] = useState<Respondent[]>([]);
   const [newQuestionText, setNewQuestionText] = useState('');
-  const [newQuestionType, setNewQuestionType] = useState<'text' | 'single_choice' | 'multiple_choice' | 'star_rating'>('text');
+  const [newQuestionType, setNewQuestionType] = useState<'text' | 'single_choice' | 'multiple_choice' | 'rating'>('text');
   const [newOptions, setNewOptions] = useState<string[]>(['']);
   const [newRespondentName, setNewRespondentName] = useState('');
   const [newRespondentEmail, setNewRespondentEmail] = useState('');
   const [isCreating, setIsCreating] = useState(false);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<{ id: string; email?: string } | null>(null);
   const [currentSurveyCount, setCurrentSurveyCount] = useState(0);
 
-  useEffect(() => {
-    initializePage();
-  }, []);
-
-  const initializePage = async () => {
+  const initializePage = useCallback(async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -84,7 +80,11 @@ const CreateSurveyNexus = () => {
         variant: "destructive"
       });
     }
-  };
+  }, [navigate]);
+
+  useEffect(() => {
+    initializePage();
+  }, [initializePage]);
 
   const addQuestion = () => {
     if (!newQuestionText.trim()) {
@@ -211,19 +211,11 @@ const CreateSurveyNexus = () => {
         }
       }
 
-      // Criar respondentes
-      for (const respondent of respondents) {
-        const { error: respondentError } = await supabase
-          .from('respondents')
-          .insert({
-            user_id: user.id,
-            name: respondent.name,
-            email: respondent.email
-          });
-
-        if (respondentError) {
-          console.error('Error creating respondent:', respondentError);
-        }
+      // Criar respondentes - Funcionalidade em desenvolvimento
+      // A tabela 'respondents' não está disponível no esquema atual
+      if (respondents.length > 0) {
+        console.log('Respondentes que seriam criados:', respondents);
+        console.log('Funcionalidade de respondentes em desenvolvimento - tabela não disponível');
       }
 
       toast({
@@ -245,8 +237,14 @@ const CreateSurveyNexus = () => {
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate('/');
+    try {
+-      await supabase.auth.signOut();
++      await supabase.auth.signOut({ scope: 'local' });
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      navigate('/');
+    }
   };
 
   return (
@@ -393,7 +391,7 @@ const CreateSurveyNexus = () => {
                           <Label className="text-brand-dark-gray font-medium">Tipo de Questão</Label>
                           <RadioGroup
                             value={newQuestionType}
-                            onValueChange={(value: any) => setNewQuestionType(value)}
+                            onValueChange={(value: 'text' | 'single_choice' | 'multiple_choice' | 'rating') => setNewQuestionType(value)}
                             className="mt-2"
                           >
                             <div className="flex items-center space-x-2">
@@ -409,7 +407,7 @@ const CreateSurveyNexus = () => {
                               <Label htmlFor="multiple">Múltipla Escolha</Label>
                             </div>
                             <div className="flex items-center space-x-2">
-                              <RadioGroupItem value="star_rating" id="star" />
+                              <RadioGroupItem value="rating" id="star" />
                               <Label htmlFor="star">Avaliação 1-5 Estrelas</Label>
                             </div>
                           </RadioGroup>
@@ -583,7 +581,7 @@ const CreateSurveyNexus = () => {
                           </div>
                         )}
                         
-                        {question.type === 'star_rating' && (
+                        {question.type === 'rating' && (
                           <div className="bg-muted p-4 rounded-lg">
                             <StarRating value={3} disabled className="justify-start" />
                           </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,12 +9,13 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { CheckCircle, AlertTriangle, FileText } from 'lucide-react';
+import SurveyResponseFallback from '@/components/SurveyResponseFallback';
 
 interface Question {
   id: string;
   question_text: string;
   question_type: string;
-  options: any;
+  options: string[] | null;
   question_order: number;
 }
 
@@ -32,20 +33,16 @@ const SurveyResponse = () => {
   const navigate = useNavigate();
   const [survey, setSurvey] = useState<Survey | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [responses, setResponses] = useState<Record<string, any>>({});
+  const [responses, setResponses] = useState<Record<string, string | string[]>>({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [hasRLSError, setHasRLSError] = useState(false);
   const { toast } = useToast();
 
-  useEffect(() => {
-    if (surveyId) {
-      loadSurveyData();
-    }
-  }, [surveyId]);
-
-  const loadSurveyData = async () => {
+  const loadSurveyData = useCallback(async () => {
+    if (!surveyId) return;
     try {
       // Primeiro, tentar buscar a pesquisa pelo link único
       const { data: surveyData, error: surveyError } = await supabase
@@ -57,7 +54,17 @@ const SurveyResponse = () => {
 
       if (surveyError) {
         console.error('Survey error:', surveyError);
-        setError('Erro ao carregar pesquisa');
+        // Detectar erros de RLS
+        if (surveyError.message && (
+          surveyError.message.includes('row-level security') ||
+          surveyError.message.includes('permission denied') ||
+          surveyError.message.includes('insufficient privilege')
+        )) {
+          setHasRLSError(true);
+          setError(surveyError.message);
+        } else {
+          setError('Erro ao carregar pesquisa');
+        }
         return;
       }
 
@@ -83,7 +90,17 @@ const SurveyResponse = () => {
 
       if (questionsError) {
         console.error('Questions error:', questionsError);
-        setError('Erro ao carregar questões');
+        // Detectar erros de RLS
+        if (questionsError.message && (
+          questionsError.message.includes('row-level security') ||
+          questionsError.message.includes('permission denied') ||
+          questionsError.message.includes('insufficient privilege')
+        )) {
+          setHasRLSError(true);
+          setError(questionsError.message);
+        } else {
+          setError('Erro ao carregar questões');
+        }
         return;
       }
 
@@ -94,9 +111,13 @@ const SurveyResponse = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [surveyId]);
 
-  const handleResponseChange = (questionId: string, value: any) => {
+  useEffect(() => {
+    loadSurveyData();
+  }, [loadSurveyData]);
+
+  const handleResponseChange = (questionId: string, value: string | string[]) => {
     setResponses(prev => ({
       ...prev,
       [questionId]: value
@@ -222,7 +243,7 @@ const SurveyResponse = () => {
               {question_text}
             </Label>
             <RadioGroup
-              value={responses[id] || ''}
+              value={(responses[id] as string) || ''}
               onValueChange={(value) => handleResponseChange(id, value)}
               className="space-y-3"
             >
@@ -311,6 +332,11 @@ const SurveyResponse = () => {
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
       </div>
     );
+  }
+
+  // Mostrar fallback se houver erro de RLS
+  if (hasRLSError) {
+    return <SurveyResponseFallback surveyId={surveyId || ''} error={error || undefined} />;
   }
 
   if (error) {
