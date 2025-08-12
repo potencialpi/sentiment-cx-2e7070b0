@@ -11,7 +11,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { StarRating } from '@/components/ui/star-rating';
-import { Plus, Minus, ArrowLeft, LogOut, Eye, BarChart3, PieChart, Users, TrendingUp } from 'lucide-react';
+import { Plus, Minus, ArrowLeft, LogOut, Eye, BarChart3, PieChart, TrendingUp, Copy, Activity } from 'lucide-react';
 
 interface Question {
   id: string;
@@ -20,10 +20,16 @@ interface Question {
   options: string[];
 }
 
-interface Respondent {
+
+interface Survey {
   id: string;
-  name: string;
-  email: string;
+  title: string;
+  description: string | null;
+  status: string;
+  created_at: string;
+  current_responses: number;
+  max_responses: number;
+  unique_link: string;
 }
 
 const PLAN_CONFIG = {
@@ -43,46 +49,112 @@ const CreateSurveyVortex = () => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [respondents, setRespondents] = useState<Respondent[]>([]);
   const [newQuestionText, setNewQuestionText] = useState('');
   const [newQuestionType, setNewQuestionType] = useState<'text' | 'single_choice' | 'multiple_choice' | 'rating'>('text');
   const [newOptions, setNewOptions] = useState<string[]>(['']);
-  const [newRespondentName, setNewRespondentName] = useState('');
-  const [newRespondentEmail, setNewRespondentEmail] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+  const [user, setUser] = useState<{ id: string; email?: string } | null>(null);
   const [currentSurveyCount, setCurrentSurveyCount] = useState(0);
+  const [activeSurveys, setActiveSurveys] = useState<Survey[]>([]);
+  const [isLoadingSurveys, setIsLoadingSurveys] = useState(false);
 
-  const checkAuth = useCallback(async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      navigate('/login');
-      return;
+  const initializePage = useCallback(async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        navigate('/login');
+        return;
+      }
+      setUser(user);
+
+      // Verificar quantidade de pesquisas do mês atual
+      const { data: surveys, error } = await supabase
+        .from('surveys')
+        .select('id')
+        .eq('user_id', user.id)
+        .gte('created_at', new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString());
+
+      if (!error && surveys) {
+        setCurrentSurveyCount(surveys.length);
+      }
+
+      // Carregar pesquisas ativas
+      await loadActiveSurveys(user.id);
+    } catch (error) {
+      console.error('Error initializing page:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao carregar página",
+        variant: "destructive"
+      });
     }
   }, [navigate]);
 
   useEffect(() => {
-    checkAuth();
-    fetchCurrentSurveyCount();
-  }, [checkAuth]);
+    initializePage();
+  }, [initializePage]);
 
-  const fetchCurrentSurveyCount = async () => {
+  const loadActiveSurveys = async (userId: string) => {
+    setIsLoadingSurveys(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      const currentMonth = new Date().toISOString().slice(0, 7);
-      
       const { data: surveys, error } = await supabase
         .from('surveys')
-        .select('id')
-        .eq('user_id', user?.id)
-        .gte('created_at', `${currentMonth}-01`)
-        .lt('created_at', `${currentMonth}-32`);
-      
-      if (!error && surveys) {
-        setCurrentSurveyCount(surveys.length);
+        .select(`
+          id,
+          title,
+          description,
+          status,
+          created_at,
+          unique_link,
+          responses(count)
+        `)
+        .eq('user_id', userId)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error loading surveys:', error);
+        toast({
+          title: "Erro",
+          description: "Erro ao carregar pesquisas ativas",
+          variant: "destructive"
+        });
+        return;
       }
+
+      const surveysWithCounts = surveys?.map(survey => ({
+        ...survey,
+        current_responses: survey.responses?.[0]?.count || 0,
+        max_responses: PLAN_CONFIG.maxResponses
+      })) || [];
+
+      setActiveSurveys(surveysWithCounts);
     } catch (error) {
-      console.error('Error fetching survey count:', error);
+      console.error('Error loading surveys:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao carregar pesquisas ativas",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoadingSurveys(false);
     }
+  };
+
+  const copyToClipboard = (link: string) => {
+    const fullLink = `${window.location.origin}/survey/${link}`;
+    navigator.clipboard.writeText(fullLink).then(() => {
+      toast({
+        title: "Link copiado!",
+        description: "O link da pesquisa foi copiado para a área de transferência."
+      });
+    }).catch(() => {
+      toast({
+        title: "Erro",
+        description: "Não foi possível copiar o link.",
+        variant: "destructive"
+      });
+    });
   };
 
   const addQuestion = () => {
@@ -139,30 +211,7 @@ const CreateSurveyVortex = () => {
     }
   };
 
-  const addRespondent = () => {
-    if (!newRespondentName.trim() || !newRespondentEmail.trim()) {
-      toast({
-        title: "Erro",
-        description: "Preencha nome e email do respondente.",
-        variant: "destructive"
-      });
-      return;
-    }
 
-    const newRespondent: Respondent = {
-      id: Date.now().toString(),
-      name: newRespondentName,
-      email: newRespondentEmail
-    };
-
-    setRespondents([...respondents, newRespondent]);
-    setNewRespondentName('');
-    setNewRespondentEmail('');
-  };
-
-  const removeRespondent = (id: string) => {
-    setRespondents(respondents.filter(r => r.id !== id));
-  };
 
   const createSurvey = async () => {
     try {
@@ -230,19 +279,26 @@ const CreateSurveyVortex = () => {
         }
       }
 
-      // Criar respondentes - Funcionalidade em desenvolvimento
-      // A tabela 'respondents' não está disponível no esquema atual
-      if (respondents.length > 0) {
-        console.log('Respondentes que seriam criados:', respondents);
-        console.log('Funcionalidade de respondentes em desenvolvimento - tabela não disponível');
-      }
+
 
       toast({
         title: "Sucesso!",
         description: "Pesquisa criada com sucesso."
       });
 
-      navigate('/dashboard');
+      // Limpar formulário
+      setTitle('');
+      setDescription('');
+      setQuestions([]);
+      setNewQuestionText('');
+      setNewQuestionType('text');
+      setNewOptions(['']);
+
+      // Recarregar pesquisas ativas e contador
+      if (user) {
+        await loadActiveSurveys(user.id);
+        setCurrentSurveyCount(prev => prev + 1);
+      }
     } catch (error) {
       console.error('Error creating survey:', error);
       toast({
@@ -256,14 +312,8 @@ const CreateSurveyVortex = () => {
   };
 
   const handleLogout = async () => {
-    try {
--      await supabase.auth.signOut();
-+      await supabase.auth.signOut({ scope: 'local' });
-    } catch (error) {
-      console.error('Logout error:', error);
-    } finally {
-      navigate('/');
-    }
+    const { robustLogout } = await import('@/lib/authUtils');
+    await robustLogout(navigate);
   };
 
   return (
@@ -308,8 +358,8 @@ const CreateSurveyVortex = () => {
           <Tabs defaultValue="info" className="w-full">
             <TabsList className="grid w-full grid-cols-3 mb-8">
               <TabsTrigger value="info">Criar Pesquisa</TabsTrigger>
-              <TabsTrigger value="respondents">Respondentes</TabsTrigger>
-              <TabsTrigger value="preview">Prévia & Análise</TabsTrigger>
+              <TabsTrigger value="active">Pesquisas Ativas</TabsTrigger>
+              <TabsTrigger value="analytics">Análises Avançadas</TabsTrigger>
             </TabsList>
 
             <TabsContent value="info" className="space-y-6">
@@ -480,80 +530,75 @@ const CreateSurveyVortex = () => {
               </Card>
             </TabsContent>
 
-            <TabsContent value="respondents" className="space-y-6">
+            <TabsContent value="active" className="space-y-6">
               <Card className="bg-brand-white shadow-sm">
                 <CardHeader>
                   <CardTitle className="text-brand-dark-gray flex items-center gap-2">
-                    <Users className="h-5 w-5" />
-                    Gerenciar Respondentes
+                    <Activity className="h-5 w-5" />
+                    Pesquisas Ativas
                   </CardTitle>
                   <CardDescription className="text-brand-dark-gray/70">
-                    Adicione pessoas que receberão o link da pesquisa
+                    Gerencie suas pesquisas em andamento
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="respondent-name">Nome do Respondente</Label>
-                      <Input
-                        id="respondent-name"
-                        value={newRespondentName}
-                        onChange={(e) => setNewRespondentName(e.target.value)}
-                        placeholder="Digite o nome"
-                      />
+                <CardContent>
+                  {isLoadingSurveys ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#10B981]"></div>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="respondent-email">Email do Respondente</Label>
-                      <div className="flex gap-2">
-                        <Input
-                          id="respondent-email"
-                          type="email"
-                          value={newRespondentEmail}
-                          onChange={(e) => setNewRespondentEmail(e.target.value)}
-                          placeholder="Digite o email"
-                        />
-                        <Button onClick={addRespondent} className="bg-[#10B981] hover:bg-[#059669] text-white">
-                          <Plus className="h-4 w-4" />
-                        </Button>
-                      </div>
+                  ) : activeSurveys.length === 0 ? (
+                    <div className="text-center py-8">
+                      <Activity className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                      <p className="text-gray-500">Nenhuma pesquisa ativa encontrada</p>
+                      <p className="text-sm text-gray-400 mt-2">Crie sua primeira pesquisa na aba "Criar Pesquisa"</p>
                     </div>
-                  </div>
-
-                  {respondents.length > 0 && (
-                    <div className="space-y-2">
-                      <h4 className="font-medium text-brand-dark-gray">Respondentes Adicionados ({respondents.length})</h4>
-                      <div className="space-y-2">
-                        {respondents.map((respondent) => (
-                          <div key={respondent.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                            <div>
-                              <p className="font-medium">{respondent.name}</p>
-                              <p className="text-sm text-muted-foreground">{respondent.email}</p>
+                  ) : (
+                    <div className="grid gap-4">
+                      {activeSurveys.map((survey) => (
+                        <div key={survey.id} className="bg-brand-white p-4 rounded-lg border border-brand-light-gray hover:shadow-md transition-shadow">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <h3 className="font-semibold text-brand-dark-gray">{survey.title}</h3>
+                                <Badge variant="secondary" className="bg-brand-green/10 text-brand-green">
+                                  {survey.status === 'active' ? 'Ativa' : survey.status}
+                                </Badge>
+                              </div>
+                              {survey.description && (
+                                <p className="text-sm text-brand-dark-gray/70 mb-3">{survey.description}</p>
+                              )}
+                              <div className="flex items-center gap-4 text-xs text-brand-dark-gray/60">
+                                <span>📅 {new Date(survey.created_at).toLocaleDateString('pt-BR')}</span>
+                                <span>📊 {survey.current_responses || 0}/{survey.max_responses} respostas</span>
+                              </div>
                             </div>
                             <Button
-                              variant="destructive"
+                              variant="outline"
                               size="sm"
-                              onClick={() => removeRespondent(respondent.id)}
+                              onClick={() => copyToClipboard(survey.unique_link)}
+                              className="ml-4"
                             >
-                              <Minus className="h-4 w-4" />
+                              <Copy className="h-4 w-4 mr-2" />
+                              Copiar Link
                             </Button>
                           </div>
-                        ))}
-                      </div>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </CardContent>
               </Card>
             </TabsContent>
 
-            <TabsContent value="preview" className="space-y-6">
+            <TabsContent value="analytics" className="space-y-6">
               <Card className="bg-brand-white shadow-sm">
                 <CardHeader>
                   <CardTitle className="text-brand-dark-gray flex items-center gap-2">
-                    <Eye className="h-5 w-5" />
-                    Recursos do Plano Vortex Neural
+                    <TrendingUp className="h-5 w-5" />
+                    Análises Avançadas - Vortex Neural
                   </CardTitle>
                   <CardDescription className="text-brand-dark-gray/70">
-                    Veja os recursos avançados disponíveis no seu plano
+                    Recursos de análise disponíveis no seu plano
                   </CardDescription>
                 </CardHeader>
                 <CardContent>

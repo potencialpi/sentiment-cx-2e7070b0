@@ -11,7 +11,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { StarRating } from '@/components/ui/star-rating';
-import { Plus, Minus, ArrowLeft, LogOut, Eye, BarChart3, PieChart, Users, Infinity } from 'lucide-react';
+import { Plus, Minus, ArrowLeft, LogOut, TrendingUp, BarChart3, PieChart, Infinity, Copy, Activity } from 'lucide-react';
 
 interface Question {
   id: string;
@@ -20,10 +20,15 @@ interface Question {
   options: string[];
 }
 
-interface Respondent {
+interface Survey {
   id: string;
-  name: string;
-  email: string;
+  title: string;
+  description: string | null;
+  status: string;
+  created_at: string;
+  current_responses: number;
+  max_responses: number;
+  unique_link: string;
 }
 
 const PLAN_CONFIG = {
@@ -43,15 +48,54 @@ const CreateSurveyNexus = () => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [respondents, setRespondents] = useState<Respondent[]>([]);
   const [newQuestionText, setNewQuestionText] = useState('');
   const [newQuestionType, setNewQuestionType] = useState<'text' | 'single_choice' | 'multiple_choice' | 'rating'>('text');
   const [newOptions, setNewOptions] = useState<string[]>(['']);
-  const [newRespondentName, setNewRespondentName] = useState('');
-  const [newRespondentEmail, setNewRespondentEmail] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [user, setUser] = useState<{ id: string; email?: string } | null>(null);
   const [currentSurveyCount, setCurrentSurveyCount] = useState(0);
+  const [activeSurveys, setActiveSurveys] = useState<Survey[]>([]);
+  const [isLoadingSurveys, setIsLoadingSurveys] = useState(false);
+
+  const loadActiveSurveys = useCallback(async (userId: string) => {
+    setIsLoadingSurveys(true);
+    try {
+      const { data, error } = await supabase
+        .from('surveys')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setActiveSurveys(data || []);
+    } catch (error) {
+      console.error('Error loading active surveys:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao carregar pesquisas ativas",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoadingSurveys(false);
+    }
+  }, []);
+
+  const copyToClipboard = (link: string) => {
+    const fullLink = `${window.location.origin}/survey/${link}`;
+    navigator.clipboard.writeText(fullLink).then(() => {
+      toast({
+        title: "Link copiado!",
+        description: "O link da pesquisa foi copiado para a área de transferência."
+      });
+    }).catch(() => {
+      toast({
+        title: "Erro",
+        description: "Não foi possível copiar o link.",
+        variant: "destructive"
+      });
+    });
+  };
 
   const initializePage = useCallback(async () => {
     try {
@@ -72,6 +116,9 @@ const CreateSurveyNexus = () => {
       if (!error && surveys) {
         setCurrentSurveyCount(surveys.length);
       }
+
+      // Carregar pesquisas ativas
+      await loadActiveSurveys(user.id);
     } catch (error) {
       console.error('Error initializing page:', error);
       toast({
@@ -80,7 +127,7 @@ const CreateSurveyNexus = () => {
         variant: "destructive"
       });
     }
-  }, [navigate]);
+  }, [navigate, loadActiveSurveys]);
 
   useEffect(() => {
     initializePage();
@@ -129,30 +176,7 @@ const CreateSurveyNexus = () => {
     setNewOptions(updatedOptions);
   };
 
-  const addRespondent = () => {
-    if (!newRespondentName.trim() || !newRespondentEmail.trim()) {
-      toast({
-        title: "Erro",
-        description: "Nome e email são obrigatórios",
-        variant: "destructive"
-      });
-      return;
-    }
 
-    const newRespondent: Respondent = {
-      id: Date.now().toString(),
-      name: newRespondentName,
-      email: newRespondentEmail
-    };
-
-    setRespondents([...respondents, newRespondent]);
-    setNewRespondentName('');
-    setNewRespondentEmail('');
-  };
-
-  const removeRespondent = (id: string) => {
-    setRespondents(respondents.filter(r => r.id !== id));
-  };
 
   const createSurvey = async () => {
     if (!title.trim()) {
@@ -211,17 +235,21 @@ const CreateSurveyNexus = () => {
         }
       }
 
-      // Criar respondentes - Funcionalidade em desenvolvimento
-      // A tabela 'respondents' não está disponível no esquema atual
-      if (respondents.length > 0) {
-        console.log('Respondentes que seriam criados:', respondents);
-        console.log('Funcionalidade de respondentes em desenvolvimento - tabela não disponível');
-      }
-
       toast({
         title: "Sucesso",
         description: "Pesquisa criada com sucesso!",
       });
+
+      // Resetar formulário
+      setTitle('');
+      setDescription('');
+      setQuestions([]);
+      setCurrentSurveyCount(prev => prev + 1);
+      
+      // Recarregar pesquisas ativas
+      if (user) {
+        await loadActiveSurveys(user.id);
+      }
 
       navigate('/dashboard');
     } catch (error) {
@@ -237,14 +265,8 @@ const CreateSurveyNexus = () => {
   };
 
   const handleLogout = async () => {
-    try {
--      await supabase.auth.signOut();
-+      await supabase.auth.signOut({ scope: 'local' });
-    } catch (error) {
-      console.error('Logout error:', error);
-    } finally {
-      navigate('/');
-    }
+    const { robustLogout } = await import('@/lib/authUtils');
+    await robustLogout(navigate);
   };
 
   return (
@@ -289,8 +311,8 @@ const CreateSurveyNexus = () => {
           <Tabs defaultValue="info" className="w-full">
             <TabsList className="grid w-full grid-cols-3 mb-8">
               <TabsTrigger value="info">Criar Pesquisa</TabsTrigger>
-              <TabsTrigger value="respondents">Respondentes</TabsTrigger>
-              <TabsTrigger value="preview">Prévia & Análise</TabsTrigger>
+              <TabsTrigger value="active">Pesquisas Ativas</TabsTrigger>
+              <TabsTrigger value="analytics">Análises Avançadas</TabsTrigger>
             </TabsList>
 
             <TabsContent value="info" className="space-y-6">
@@ -462,58 +484,62 @@ const CreateSurveyNexus = () => {
               </Card>
             </TabsContent>
 
-            <TabsContent value="respondents" className="space-y-6">
+            <TabsContent value="active" className="space-y-6">
               <Card className="bg-brand-white shadow-sm">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-brand-dark-gray">
-                    <Users className="h-5 w-5" />
+                    <Activity className="h-5 w-5" />
                     <Infinity className="h-4 w-4" />
-                    Gerenciar Respondentes - Nexus Infinito ({respondents.length}/∞)
+                    Pesquisas Ativas - Nexus Infinito ({activeSurveys.length}/∞)
                   </CardTitle>
+                  <CardDescription>
+                    Gerencie suas pesquisas ativas e copie os links para compartilhar
+                  </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="respondent-name">Nome do Respondente</Label>
-                      <Input
-                        id="respondent-name"
-                        value={newRespondentName}
-                        onChange={(e) => setNewRespondentName(e.target.value)}
-                        placeholder="Digite o nome"
-                      />
+                  {isLoadingSurveys ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="text-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-green mx-auto mb-2"></div>
+                        <p className="text-sm text-muted-foreground">Carregando pesquisas...</p>
+                      </div>
                     </div>
-                    <div>
-                      <Label htmlFor="respondent-email">Email do Respondente</Label>
-                      <Input
-                        id="respondent-email"
-                        type="email"
-                        value={newRespondentEmail}
-                        onChange={(e) => setNewRespondentEmail(e.target.value)}
-                        placeholder="Digite o email"
-                      />
+                  ) : activeSurveys.length === 0 ? (
+                    <div className="text-center py-8">
+                      <Activity className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-brand-dark-gray mb-2">Nenhuma pesquisa ativa</h3>
+                      <p className="text-muted-foreground mb-4">Crie sua primeira pesquisa na aba "Criar Pesquisa"</p>
                     </div>
-                  </div>
-                  <Button onClick={addRespondent} className="bg-brand-green text-brand-white hover:bg-brand-green/90">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Adicionar Respondente
-                  </Button>
-
-                  {respondents.length > 0 && (
-                    <div className="space-y-2">
-                      <h4 className="font-medium">Respondentes Adicionados:</h4>
-                      {respondents.map((respondent) => (
-                        <div key={respondent.id} className="flex items-center justify-between p-3 border rounded-lg">
-                          <div>
-                            <p className="font-medium">{respondent.name}</p>
-                            <p className="text-sm text-muted-foreground">{respondent.email}</p>
+                  ) : (
+                    <div className="grid gap-4">
+                      {activeSurveys.map((survey) => (
+                        <div key={survey.id} className="bg-brand-white p-4 rounded-lg border border-brand-light-gray hover:shadow-md transition-shadow">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <h3 className="font-semibold text-brand-dark-gray">{survey.title}</h3>
+                                <Badge variant="secondary" className="bg-brand-green/10 text-brand-green">
+                                  {survey.status === 'active' ? 'Ativa' : survey.status}
+                                </Badge>
+                              </div>
+                              {survey.description && (
+                                <p className="text-sm text-brand-dark-gray/70 mb-3">{survey.description}</p>
+                              )}
+                              <div className="flex items-center gap-4 text-xs text-brand-dark-gray/60">
+                                <span>📅 {new Date(survey.created_at).toLocaleDateString('pt-BR')}</span>
+                                <span>📊 {survey.current_responses || 0}/∞ respostas</span>
+                              </div>
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => copyToClipboard(survey.unique_link)}
+                              className="ml-4"
+                            >
+                              <Copy className="h-4 w-4 mr-2" />
+                              Copiar Link
+                            </Button>
                           </div>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => removeRespondent(respondent.id)}
-                          >
-                            <Minus className="h-4 w-4" />
-                          </Button>
                         </div>
                       ))}
                     </div>
@@ -522,80 +548,21 @@ const CreateSurveyNexus = () => {
               </Card>
             </TabsContent>
 
-            <TabsContent value="preview" className="space-y-6">
+            <TabsContent value="analytics" className="space-y-6">
               <Card className="bg-brand-white shadow-sm">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-brand-dark-gray">
-                    <Eye className="h-5 w-5" />
+                    <TrendingUp className="h-5 w-5" />
                     <Infinity className="h-4 w-4" />
-                    Prévia da Pesquisa - Nexus Infinito
+                    Análises Avançadas - Nexus Infinito
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-6">
-                  {title && (
-                    <div>
-                      <h3 className="text-xl font-semibold text-brand-dark-gray">{title}</h3>
-                      {description && (
-                        <p className="text-muted-foreground mt-2">{description}</p>
-                      )}
-                    </div>
-                  )}
-
-                  {questions.map((question, index) => (
-                    <div key={question.id} className="border border-border rounded-lg p-4">
-                      <div className="space-y-4">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-brand-dark-gray">
-                            {index + 1}.
-                          </span>
-                          <p className="font-medium text-brand-dark-gray">{question.text}</p>
-                        </div>
-                        
-                        {question.type === 'text' && (
-                          <Textarea
-                            placeholder="Resposta em texto livre..."
-                            disabled
-                            className="bg-muted"
-                          />
-                        )}
-                        
-                        {question.type === 'single_choice' && (
-                          <RadioGroup disabled className="space-y-2">
-                            {question.options.map((option, optIdx) => (
-                              <div key={optIdx} className="flex items-center space-x-2">
-                                <RadioGroupItem value={option} id={`${question.id}-${optIdx}`} />
-                                <Label htmlFor={`${question.id}-${optIdx}`}>{option}</Label>
-                              </div>
-                            ))}
-                          </RadioGroup>
-                        )}
-                        
-                        {question.type === 'multiple_choice' && (
-                          <div className="space-y-2">
-                            {question.options.map((option, optIdx) => (
-                              <div key={optIdx} className="flex items-center space-x-2">
-                                <input type="checkbox" disabled className="rounded" />
-                                <Label>{option}</Label>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                        
-                        {question.type === 'rating' && (
-                          <div className="bg-muted p-4 rounded-lg">
-                            <StarRating value={3} disabled className="justify-start" />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-
-                  {/* Recursos de Análise do Plano Nexus */}
-                  <div className="bg-brand-light-gray p-6 rounded-lg">
+                <CardContent>
+                  <div className="bg-brand-bg-gray p-6 rounded-lg">
                     <h4 className="font-semibold text-brand-dark-gray mb-4 flex items-center gap-2">
                       <BarChart3 className="h-5 w-5" />
                       <Infinity className="h-4 w-4" />
-                      Recursos de Análise - {PLAN_CONFIG.name}
+                      Recursos do Plano {PLAN_CONFIG.name}
                     </h4>
                     
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

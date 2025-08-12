@@ -32,7 +32,7 @@ export function getPlanAdminRoute(planCode: string): string {
   
   switch (normalizedCode) {
     case 'start-quantico':
-      return '/create-survey-start';
+      return '/admin/start';
     case 'vortex-neural':
       return '/admin/vortex';
     case 'nexus-infinito':
@@ -60,7 +60,7 @@ export function getPlanCreateSurveyRoute(planCode: string): string {
 }
 
 // Função utilitária para buscar o plano do usuário de forma consistente
-export async function getUserPlan(supabase: { from: (table: string) => { select: (columns: string) => { eq: (column: string, value: string) => { single: () => Promise<{ data: { plan_name?: string } | null; error: Error | null }> } } } }, userId: string): Promise<string> {
+export async function getUserPlan(supabase: any, userId: string): Promise<string> {
   let planCode = 'start-quantico'; // fallback padrão
 
   try {

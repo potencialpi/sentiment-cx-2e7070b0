@@ -19,13 +19,13 @@ interface Respondent {
 const getPlanInfo = (plan: string) => {
   switch (plan) {
     case 'start':
-      return { name: 'Start Quântico', limits: '5 questões, 100 respostas, 2 pesquisas/mês' };
+      return { name: 'Start Quântico', limits: '5 questões, 50 respostas, 3 pesquisas/mês' };
     case 'vortex':
       return { name: 'Vortex Neural', limits: '10 questões, 250 respostas, 4 pesquisas/mês' };
     case 'nexus':
-      return { name: 'Nexus Infinito', limits: 'Questões e respostas ilimitadas, 15 pesquisas/mês' };
+      return { name: 'Nexus Infinito', limits: 'Questões e respostas ilimitadas, pesquisas ilimitadas' };
     default:
-      return { name: 'Start Quântico', limits: '5 questões, 100 respostas, 2 pesquisas/mês' };
+      return { name: 'Start Quântico', limits: '5 questões, 50 respostas, 3 pesquisas/mês' };
   }
 };
 

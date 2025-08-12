@@ -11,21 +11,21 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { StarRating } from "@/components/ui/star-rating";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/hooks/use-toast";
 import { Plus, Trash2, Copy, ExternalLink, Download, BarChart3, PieChart, TrendingUp, Users, Calendar, Activity, ArrowLeft, LogOut } from "lucide-react";
 import { useNavigate } from 'react-router-dom';
 
 interface Question {
   id: string;
   text: string;
-  type: 'single' | 'multiple' | 'text' | 'rating';
+  type: 'text' | 'single_choice' | 'multiple_choice' | 'rating';
   options: string[];
 }
 
 interface Survey {
   id: string;
   title: string;
-  description: string;
+  description: string | null;
   status: string;
   created_at: string;
   current_responses: number;
@@ -41,7 +41,7 @@ const AdminNexus = () => {
   const [activeSurveys, setActiveSurveys] = useState<Survey[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("create");
-  const { toast } = useToast();
+
 
   const fetchActiveSurveys = useCallback(async () => {
     try {
@@ -75,7 +75,7 @@ const AdminNexus = () => {
     const newQuestion: Question = {
       id: Date.now().toString(),
       text: "",
-      type: 'single',
+      type: 'single_choice',
       options: ["", ""]
     };
     setQuestions([...questions, newQuestion]);
@@ -159,11 +159,9 @@ const AdminNexus = () => {
       const questionsData = questions.map((q, index) => ({
         survey_id: survey.id,
         question_text: q.text,
-        question_type: q.type === 'single' ? 'single_choice' : 
-                      q.type === 'multiple' ? 'multiple_choice' : 
-                      q.type,
+        question_type: q.type,
         question_order: index + 1,
-        options: (q.type === 'single' || q.type === 'multiple') ? q.options.filter(opt => opt.trim()) : null,
+        options: (q.type === 'single_choice' || q.type === 'multiple_choice') ? q.options.filter(opt => opt.trim()) : null,
       }));
 
       const { error: questionsError } = await supabase
@@ -213,15 +211,13 @@ const AdminNexus = () => {
 
   return (
     <div className="min-h-screen bg-brand-bg-gray">
-      {/* Header Section - Padrão do Design System */}
       <header className="bg-brand-dark-blue text-brand-white py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-4 mb-8">
-            <h1 className="text-nav font-semibold">Sentiment CX</h1>
             <Button 
               variant="outline"
               size="sm"
-              onClick={() => navigate('/admin/nexus')}
+              onClick={() => navigate('/dashboard')}
               className="bg-brand-dark-blue text-brand-white border-brand-white/20 hover:bg-brand-white/10"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
@@ -231,13 +227,8 @@ const AdminNexus = () => {
               variant="outline"
               size="sm"
               onClick={async () => {
-                try {
-                  await supabase.auth.signOut({ scope: 'local' });
-                  navigate('/');
-                } catch (error) {
-                  console.error('Logout error:', error);
-                  navigate('/');
-                }
+                const { robustLogout } = await import('@/lib/authUtils');
+                await robustLogout(navigate);
               }}
               className="bg-brand-green text-brand-white hover:bg-brand-green/90 border-brand-green"
             >
@@ -246,10 +237,12 @@ const AdminNexus = () => {
             </Button>
           </div>
           <div className="text-center">
-            <h2 className="text-hero font-bold mb-4">
+            <h1 className="text-nav font-semibold mb-4">Sentiment CX</h1>
+            <h2 className="text-hero font-bold mb-4 flex items-center justify-center gap-2">
+              <Activity className="h-8 w-8" />
               Criar e Gerenciar Pesquisas - Nexus Infinito
             </h2>
-            <p className="text-subtitle text-brand-white/80">
+            <p className="text-subtitle text-brand-white/80 max-w-3xl mx-auto">
               Configure pesquisas ilimitadas ou visualize pesquisas ativas
             </p>
           </div>
@@ -262,8 +255,8 @@ const AdminNexus = () => {
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="create">Criar Pesquisa</TabsTrigger>
-              <TabsTrigger value="surveys">Pesquisas Ativas</TabsTrigger>
-              <TabsTrigger value="analytics">Analytics Avançado</TabsTrigger>
+              <TabsTrigger value="active">Pesquisas Ativas</TabsTrigger>
+              <TabsTrigger value="analytics">Análises Avançadas</TabsTrigger>
             </TabsList>
 
             <TabsContent value="create" className="space-y-6">
@@ -271,7 +264,7 @@ const AdminNexus = () => {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-brand-dark-gray">
                     <BarChart3 className="h-5 w-5" />
-                    Criar Nova Pesquisa - Nexus Infinito
+                    Criar Nova Pesquisa
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -338,15 +331,15 @@ const AdminNexus = () => {
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="single">Escolha Única</SelectItem>
-                                  <SelectItem value="multiple">Múltipla Escolha</SelectItem>
+                                  <SelectItem value="single_choice">Escolha Única</SelectItem>
+                                  <SelectItem value="multiple_choice">Múltipla Escolha</SelectItem>
                                   <SelectItem value="text">Texto Aberto</SelectItem>
                                   <SelectItem value="rating">Avaliação 1-5 Estrelas</SelectItem>
                                 </SelectContent>
                               </Select>
                             </div>
 
-                            {(question.type !== 'text' && question.type !== 'rating') && (
+                            {(question.type === 'single_choice' || question.type === 'multiple_choice') && (
                               <div className="space-y-2">
                                 <div className="flex items-center justify-between">
                                   <Label>Opções de Resposta (min. 2, máx. 5)</Label>
@@ -390,7 +383,7 @@ const AdminNexus = () => {
                               <Label className="font-medium">Prévia:</Label>
                               <p className="mt-2 text-sm">{question.text}</p>
                               
-                              {question.type === 'single' && (
+                              {question.type === 'single_choice' && (
                                 <RadioGroup className="mt-2">
                                   {question.options.filter(opt => opt.trim()).map((option, idx) => (
                                     <div key={idx} className="flex items-center space-x-2">
@@ -401,7 +394,7 @@ const AdminNexus = () => {
                                 </RadioGroup>
                               )}
 
-                              {question.type === 'multiple' && (
+                              {question.type === 'multiple_choice' && (
                                 <div className="mt-2 space-y-2">
                                   {question.options.filter(opt => opt.trim()).map((option, idx) => (
                                     <div key={idx} className="flex items-center space-x-2">
@@ -455,12 +448,12 @@ const AdminNexus = () => {
               </Card>
             </TabsContent>
 
-            <TabsContent value="surveys" className="space-y-6">
+            <TabsContent value="active" className="space-y-6">
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Activity className="h-5 w-5" />
-                    Pesquisas Ativas - Nexus Infinito
+                    Pesquisas Ativas
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -525,7 +518,7 @@ const AdminNexus = () => {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <TrendingUp className="h-5 w-5" />
-                    Analytics Avançado - Nexus Infinito
+                    Analytics Avançado
                   </CardTitle>
                 </CardHeader>
                 <CardContent>

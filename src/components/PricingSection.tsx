@@ -18,8 +18,8 @@ const plans = [
     yearlyPrice: 3499,
     features: [
       'Até 5 questões por pesquisa',
-      '100 respostas por pesquisa',
-      '2 pesquisas por mês',
+      '50 respostas por pesquisa',
+      '3 pesquisas por mês',
       'Análise estatística básica',
       'Análise de sentimento simples'
     ],
@@ -47,7 +47,7 @@ const plans = [
     features: [
       'Questões ilimitadas por pesquisa',
       'Respostas ilimitadas por pesquisa',
-      '15 pesquisas por mês',
+      'Pesquisas ilimitadas por mês',
       'Análise estatística avançada',
       'Análise de sentimento multicanal',
       'Modelos preditivos avançados'

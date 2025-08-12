@@ -12,7 +12,7 @@ import { StarRating } from '@/components/ui/star-rating';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { Trash2, Plus, Copy, BarChart3, PieChart, Activity, ArrowLeft, LogOut } from 'lucide-react';
+import { Trash2, Plus, Copy, BarChart3, PieChart, Activity, ArrowLeft, LogOut, TrendingUp } from 'lucide-react';
 
 interface Question {
   id: string;
@@ -24,7 +24,7 @@ interface Question {
 interface Survey {
   id: string;
   title: string;
-  description: string;
+  description: string | null;
   status: string;
   created_at: string;
   current_responses: number;
@@ -268,7 +268,7 @@ const AdminVortex = () => {
             <Button 
               variant="outline"
               size="sm"
-              onClick={() => navigate('/admin/vortex')}
+              onClick={() => navigate('/dashboard')}
               className="bg-brand-dark-blue text-brand-white border-brand-white/20 hover:bg-brand-white/10"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
@@ -278,13 +278,8 @@ const AdminVortex = () => {
               variant="outline"
               size="sm"
               onClick={async () => {
-                try {
-                  await supabase.auth.signOut({ scope: 'local' });
-                  navigate('/');
-                } catch (error) {
-                  console.error('Logout error:', error);
-                  navigate('/');
-                }
+                const { robustLogout } = await import('@/lib/authUtils');
+                await robustLogout(navigate);
               }}
               className="bg-brand-green text-brand-white hover:bg-brand-green/90 border-brand-green"
             >
@@ -294,7 +289,8 @@ const AdminVortex = () => {
           </div>
           <div className="text-center">
             <h1 className="text-nav font-semibold mb-4">Sentiment CX</h1>
-            <h2 className="text-hero font-bold mb-4">
+            <h2 className="text-hero font-bold mb-4 flex items-center justify-center gap-2">
+              <Activity className="h-8 w-8" />
               Criar e Gerenciar Pesquisas - Vortex Neural
             </h2>
             <p className="text-subtitle text-brand-white/80 max-w-3xl mx-auto">
@@ -316,7 +312,10 @@ const AdminVortex = () => {
             <TabsContent value="create" className="space-y-6">
               <Card className="bg-brand-white shadow-sm">
                 <CardHeader>
-                  <CardTitle className="text-brand-dark-gray">Nova Pesquisa - Vortex Neural</CardTitle>
+                  <CardTitle className="flex items-center gap-2 text-brand-dark-gray">
+                    <BarChart3 className="h-5 w-5" />
+                    Criar Nova Pesquisa
+                  </CardTitle>
                   <CardDescription className="text-brand-dark-gray/70">
                     Crie pesquisas com até 10 questões e 250 respostas
                   </CardDescription>
@@ -499,7 +498,10 @@ const AdminVortex = () => {
             <TabsContent value="active" className="space-y-6">
               <Card className="bg-brand-white shadow-sm">
                 <CardHeader>
-                  <CardTitle className="text-brand-dark-gray">Pesquisas Ativas</CardTitle>
+                  <CardTitle className="flex items-center gap-2">
+                    <Activity className="h-5 w-5" />
+                    Pesquisas Ativas
+                  </CardTitle>
                   <CardDescription className="text-brand-dark-gray/70">
                     Gerencie suas pesquisas em andamento
                   </CardDescription>
@@ -551,9 +553,9 @@ const AdminVortex = () => {
             <TabsContent value="analytics" className="space-y-6">
               <Card className="bg-brand-white shadow-sm">
                 <CardHeader>
-                  <CardTitle className="text-brand-dark-gray flex items-center">
-                    <Activity className="w-5 h-5 mr-2" />
-                    Análises Avançadas - Vortex Neural
+                  <CardTitle className="flex items-center gap-2">
+                    <TrendingUp className="h-5 w-5" />
+                    Análises Avançadas
                   </CardTitle>
                   <CardDescription className="text-brand-dark-gray/70">
                     Análises estatísticas intermediárias e sentimento segmentado

@@ -11,7 +11,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { StarRating } from '@/components/ui/star-rating';
-import { Plus, Minus, ArrowLeft, LogOut, Eye, BarChart3, PieChart, Users, Zap } from 'lucide-react';
+import { Plus, Minus, ArrowLeft, LogOut, Eye, BarChart3, PieChart, Users, Zap, Copy, Activity, TrendingUp } from 'lucide-react';
 
 interface Question {
   id: string;
@@ -26,13 +26,24 @@ interface Respondent {
   email: string;
 }
 
+interface Survey {
+  id: string;
+  title: string;
+  description: string | null;
+  status: string;
+  created_at: string;
+  current_responses: number;
+  max_responses: number;
+  unique_link: string;
+}
+
 const PLAN_CONFIG = {
   name: 'Start Quântico',
   maxQuestions: 5,
-  maxResponses: 100,
-  maxSurveysPerMonth: 2,
+  maxResponses: 50,
+  maxSurveysPerMonth: 3,
   features: {
-    analysis: ['Média', 'Mediana', 'Moda', 'Desvio Padrão', 'Percentis'],
+    analysis: ['Média', 'Mediana', 'Moda'],
     sentiment: ['Positivo', 'Neutro', 'Negativo'],
     charts: ['Gráfico de Barras', 'Gráfico de Pizza']
   }
@@ -52,6 +63,8 @@ const CreateSurveyStart = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [user, setUser] = useState<{ id: string; email?: string } | null>(null);
   const [currentSurveyCount, setCurrentSurveyCount] = useState(0);
+  const [activeSurveys, setActiveSurveys] = useState<Survey[]>([]);
+  const [isLoadingSurveys, setIsLoadingSurveys] = useState(false);
 
   const initializePage = useCallback(async () => {
     try {
@@ -72,6 +85,9 @@ const CreateSurveyStart = () => {
       if (!error && surveys) {
         setCurrentSurveyCount(surveys.length);
       }
+
+      // Carregar pesquisas ativas
+      await loadActiveSurveys(user.id);
     } catch (error) {
       console.error('Error initializing page:', error);
       toast({
@@ -82,24 +98,87 @@ const CreateSurveyStart = () => {
     }
   }, [navigate]);
 
+  const loadActiveSurveys = async (userId: string) => {
+    setIsLoadingSurveys(true);
+    try {
+      const { data: surveys, error } = await supabase
+        .from('surveys')
+        .select(`
+          id,
+          title,
+          description,
+          status,
+          created_at,
+          unique_link,
+          responses(count)
+        `)
+        .eq('user_id', userId)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error loading surveys:', error);
+        toast({
+          title: "Erro",
+          description: "Erro ao carregar pesquisas ativas",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const surveysWithCounts = surveys?.map(survey => ({
+        ...survey,
+        current_responses: survey.responses?.[0]?.count || 0,
+        max_responses: PLAN_CONFIG.maxResponses
+      })) || [];
+
+      setActiveSurveys(surveysWithCounts);
+    } catch (error) {
+      console.error('Error loading active surveys:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao carregar pesquisas ativas",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoadingSurveys(false);
+    }
+  };
+
+  const copyToClipboard = (link: string) => {
+    const fullLink = `${window.location.origin}/survey/${link}`;
+    navigator.clipboard.writeText(fullLink).then(() => {
+      toast({
+        title: "Link copiado!",
+        description: "O link da pesquisa foi copiado para a área de transferência."
+      });
+    }).catch(() => {
+      toast({
+        title: "Erro",
+        description: "Não foi possível copiar o link.",
+        variant: "destructive"
+      });
+    });
+  };
+
   useEffect(() => {
     initializePage();
   }, [initializePage]);
 
   const addQuestion = () => {
-    if (questions.length >= PLAN_CONFIG.maxQuestions) {
+    if (!newQuestionText.trim()) {
       toast({
-        title: "Limite atingido",
-        description: `O plano ${PLAN_CONFIG.name} permite no máximo ${PLAN_CONFIG.maxQuestions} questões por pesquisa.`,
+        title: "Erro",
+        description: "Digite o texto da questão",
         variant: "destructive"
       });
       return;
     }
 
-    if (!newQuestionText.trim()) {
+    if (questions.length >= PLAN_CONFIG.maxQuestions) {
       toast({
-        title: "Erro",
-        description: "Digite o texto da questão",
+        title: "Limite atingido",
+        description: `O plano ${PLAN_CONFIG.name} permite até ${PLAN_CONFIG.maxQuestions} questões`,
         variant: "destructive"
       });
       return;
@@ -170,16 +249,6 @@ const CreateSurveyStart = () => {
         description: "Usuário não autenticado",
         variant: "destructive"
       });
-      navigate('/login');
-      return;
-    }
-
-    if (currentSurveyCount >= PLAN_CONFIG.maxSurveysPerMonth) {
-      toast({
-        title: "Limite atingido",
-        description: `O plano ${PLAN_CONFIG.name} permite no máximo ${PLAN_CONFIG.maxSurveysPerMonth} pesquisas por mês.`,
-        variant: "destructive"
-      });
       return;
     }
 
@@ -201,20 +270,19 @@ const CreateSurveyStart = () => {
       return;
     }
 
-    setIsCreating(true);
+    if (currentSurveyCount >= PLAN_CONFIG.maxSurveysPerMonth) {
+      toast({
+        title: "Limite atingido",
+        description: `O plano ${PLAN_CONFIG.name} permite até ${PLAN_CONFIG.maxSurveysPerMonth} pesquisas por mês`,
+        variant: "destructive"
+      });
+      return;
+    }
 
-    console.log('Iniciando criação da pesquisa...', { title, questions: questions.length, user: user.id });
+    setIsCreating(true);
 
     try {
       // Criar pesquisa
-      console.log('Criando pesquisa no banco...', {
-        title,
-        description: description || null,
-        user_id: user.id,
-        max_responses: PLAN_CONFIG.maxResponses,
-        status: 'active'
-      });
-
       const { data: survey, error: surveyError } = await supabase
         .from('surveys')
         .insert({
@@ -228,24 +296,12 @@ const CreateSurveyStart = () => {
         .single();
 
       if (surveyError) {
-        console.error('Erro ao criar pesquisa:', surveyError);
         throw surveyError;
       }
 
-      console.log('Pesquisa criada com sucesso:', survey);
-
       // Criar questões
-      console.log('Criando questões...', questions);
       for (let i = 0; i < questions.length; i++) {
         const question = questions[i];
-        console.log(`Criando questão ${i + 1}:`, {
-          survey_id: survey.id,
-          question_text: question.text,
-          question_type: question.type,
-          question_order: i + 1,
-          options: question.options.length > 0 ? question.options : null
-        });
-
         const { error: questionError } = await supabase
           .from('questions')
           .insert({
@@ -257,11 +313,9 @@ const CreateSurveyStart = () => {
           });
 
         if (questionError) {
-          console.error(`Erro ao criar questão ${i + 1}:`, questionError);
           throw questionError;
         }
       }
-      console.log('Todas as questões criadas com sucesso');
 
       // Criar respondentes - Funcionalidade em desenvolvimento
       // A tabela 'respondents' não está disponível no esquema atual
@@ -275,30 +329,27 @@ const CreateSurveyStart = () => {
         description: "Pesquisa criada com sucesso!",
       });
 
+      // Recarregar pesquisas ativas
+      if (user) {
+        await loadActiveSurveys(user.id);
+      }
+
       navigate('/dashboard');
     } catch (error) {
       console.error('Error creating survey:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
-      console.error('Detalhes do erro:', errorMessage);
       toast({
         title: "Erro",
-        description: `Erro ao criar pesquisa: ${errorMessage}`,
+        description: "Erro ao criar pesquisa",
         variant: "destructive"
       });
     } finally {
-      console.log('Finalizando processo de criação...');
       setIsCreating(false);
     }
   };
 
   const handleLogout = async () => {
-    try {
-      await supabase.auth.signOut({ scope: 'local' });
-    } catch (error) {
-      console.error('Logout error:', error);
-    } finally {
-      navigate('/');
-    }
+    const { robustLogout } = await import('@/lib/authUtils');
+    await robustLogout(navigate);
   };
 
   return (
@@ -326,13 +377,16 @@ const CreateSurveyStart = () => {
             </Button>
           </div>
           <div className="text-center">
-            <h1 className="text-nav font-semibold mb-4">Sentiment CX</h1>
+            <h1 className="text-nav font-semibold mb-4 flex items-center justify-center gap-2">
+              <Activity className="h-6 w-6" />
+              Sentiment CX
+            </h1>
             <h2 className="text-hero font-bold mb-4 flex items-center justify-center gap-2">
               <Zap className="h-8 w-8" />
               Criar e Gerenciar Pesquisas - Start Quântico
             </h2>
             <p className="text-subtitle text-brand-white/80 max-w-3xl mx-auto">
-              Configure até 5 questões e 100 respostas ({currentSurveyCount}/{PLAN_CONFIG.maxSurveysPerMonth} pesquisas este mês)
+              Até {PLAN_CONFIG.maxQuestions} questões, {PLAN_CONFIG.maxResponses} respostas, {PLAN_CONFIG.maxSurveysPerMonth} pesquisas/mês - Perfeito para começar
             </p>
           </div>
         </div>
@@ -343,19 +397,19 @@ const CreateSurveyStart = () => {
           <Tabs defaultValue="info" className="w-full">
             <TabsList className="grid w-full grid-cols-3 mb-8">
               <TabsTrigger value="info">Criar Pesquisa</TabsTrigger>
-              <TabsTrigger value="respondents">Respondentes</TabsTrigger>
-              <TabsTrigger value="preview">Prévia & Análise</TabsTrigger>
+              <TabsTrigger value="active">Pesquisas Ativas</TabsTrigger>
+              <TabsTrigger value="analytics">Análises Avançadas</TabsTrigger>
             </TabsList>
 
             <TabsContent value="info" className="space-y-6">
               <Card className="bg-brand-white shadow-sm">
                 <CardHeader>
                   <CardTitle className="text-brand-dark-gray flex items-center gap-2">
-                    <Zap className="h-5 w-5" />
-                    Nova Pesquisa - Start Quântico
+                    <BarChart3 className="h-5 w-5" />
+                    Criar Nova Pesquisa
                   </CardTitle>
                   <CardDescription className="text-brand-dark-gray/70">
-                    Crie pesquisas com até 5 questões e 100 respostas
+                    Crie pesquisas eficientes com até {PLAN_CONFIG.maxQuestions} questões e {PLAN_CONFIG.maxResponses} respostas
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -386,7 +440,11 @@ const CreateSurveyStart = () => {
                         <Zap className="h-5 w-5" />
                         Questões ({questions.length}/{PLAN_CONFIG.maxQuestions})
                       </h3>
-                      <Button onClick={addQuestion} className="flex items-center gap-2 bg-[#10B981] hover:bg-[#059669] text-white" disabled={questions.length >= PLAN_CONFIG.maxQuestions}>
+                      <Button 
+                        onClick={addQuestion} 
+                        disabled={questions.length >= PLAN_CONFIG.maxQuestions}
+                        className="flex items-center gap-2 bg-[#10B981] hover:bg-[#059669] text-white"
+                      >
                         <Plus className="h-4 w-4" />
                         Adicionar Questão
                       </Button>
@@ -505,11 +563,7 @@ const CreateSurveyStart = () => {
 
                   <div className="flex justify-end pt-6">
                     <Button
-                      onClick={() => {
-                        console.log('Botão Criar Pesquisa clicado!');
-                        console.log('Estado atual:', { isCreating, title: title.trim(), questionsLength: questions.length });
-                        createSurvey();
-                      }}
+                      onClick={createSurvey}
                       disabled={isCreating || !title.trim() || questions.length === 0}
                       className="bg-brand-green text-brand-white hover:bg-brand-green/90"
                     >
@@ -525,6 +579,7 @@ const CreateSurveyStart = () => {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-brand-dark-gray">
                     <Users className="h-5 w-5" />
+                    <Zap className="h-4 w-4" />
                     Gerenciar Respondentes - Start Quântico ({respondents.length})
                   </CardTitle>
                 </CardHeader>
@@ -584,7 +639,7 @@ const CreateSurveyStart = () => {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-brand-dark-gray">
                     <Eye className="h-5 w-5" />
-                    Prévia da Pesquisa - Start Quântico
+                    Prévia da Pesquisa
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -646,14 +701,29 @@ const CreateSurveyStart = () => {
                     </div>
                   ))}
 
-                  {/* Recursos de Análise do Plano Start */}
-                  <div className="bg-brand-light-gray p-6 rounded-lg">
+
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="analytics" className="space-y-6">
+              <Card className="bg-brand-white shadow-sm">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-brand-dark-gray">
+                    <TrendingUp className="h-5 w-5" />
+                    Análises Avançadas
+                  </CardTitle>
+                  <CardDescription className="text-brand-dark-gray/70">
+                    Recursos avançados de análise disponíveis no plano Start Quântico
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="bg-brand-bg-gray p-6 rounded-lg">
                     <h4 className="font-semibold text-brand-dark-gray mb-4 flex items-center gap-2">
-                      <BarChart3 className="h-5 w-5" />
-                      Recursos de Análise - {PLAN_CONFIG.name}
+                      <Zap className="h-5 w-5" />
+                      Recursos do Plano Start Quântico
                     </h4>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
                         <h5 className="font-medium text-brand-dark-gray mb-2">📊 Análise Estatística</h5>
                         <ul className="text-sm text-muted-foreground space-y-1">
@@ -675,7 +745,7 @@ const CreateSurveyStart = () => {
                       <div>
                         <h5 className="font-medium text-brand-dark-gray mb-2 flex items-center gap-1">
                           <PieChart className="h-4 w-4" />
-                          Gráficos Disponíveis
+                          Visualizações
                         </h5>
                         <ul className="text-sm text-muted-foreground space-y-1">
                           {PLAN_CONFIG.features.charts.map((item, idx) => (
@@ -685,6 +755,66 @@ const CreateSurveyStart = () => {
                       </div>
                     </div>
                   </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="active" className="space-y-6">
+              <Card className="bg-brand-white shadow-sm">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-brand-dark-gray">
+                    <Activity className="h-5 w-5" />
+                    Pesquisas Ativas ({activeSurveys.length})
+                  </CardTitle>
+                  <CardDescription className="text-brand-dark-gray/70">
+                    Gerencie suas pesquisas ativas e acompanhe o desempenho
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {isLoadingSurveys ? (
+                    <div className="text-center py-8">
+                      <p className="text-muted-foreground">Carregando pesquisas...</p>
+                    </div>
+                  ) : activeSurveys.length === 0 ? (
+                    <div className="text-center py-8">
+                      <Activity className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                      <p className="text-muted-foreground mb-2">Nenhuma pesquisa ativa encontrada</p>
+                      <p className="text-sm text-muted-foreground">Crie sua primeira pesquisa na aba "Criar Pesquisa"</p>
+                    </div>
+                  ) : (
+                    <div className="grid gap-4">
+                      {activeSurveys.map((survey) => (
+                        <div key={survey.id} className="bg-brand-white p-4 rounded-lg border border-brand-light-gray hover:shadow-md transition-shadow">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <h3 className="font-semibold text-brand-dark-gray">{survey.title}</h3>
+                                <Badge variant="secondary" className="bg-brand-green/10 text-brand-green">
+                                  {survey.status === 'active' ? 'Ativa' : survey.status}
+                                </Badge>
+                              </div>
+                              {survey.description && (
+                                <p className="text-sm text-brand-dark-gray/70 mb-3">{survey.description}</p>
+                              )}
+                              <div className="flex items-center gap-4 text-xs text-brand-dark-gray/60">
+                                <span>📅 {new Date(survey.created_at).toLocaleDateString('pt-BR')}</span>
+                                <span>📊 {survey.current_responses || 0}/{survey.max_responses} respostas</span>
+                              </div>
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => copyToClipboard(survey.unique_link)}
+                              className="ml-4"
+                            >
+                              <Copy className="h-4 w-4 mr-2" />
+                              Copiar Link
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>

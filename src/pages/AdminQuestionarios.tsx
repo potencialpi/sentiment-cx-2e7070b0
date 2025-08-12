@@ -13,7 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import type { Json } from '@/integrations/supabase/types';
 import { toast } from '@/hooks/use-toast';
-import { ArrowLeft, Plus, Trash2, BarChart3, Download, Eye, ExternalLink, Calendar, Users, LogOut } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, BarChart3, Download, Eye, ExternalLink, Calendar, Users, LogOut, TrendingUp, PieChart } from 'lucide-react';
 import RealTimeCharts from '@/components/RealTimeCharts';
 
 interface Question {
@@ -417,13 +417,8 @@ const AdminQuestionarios = () => {
               variant="outline"
               size="sm"
               onClick={async () => {
-                try {
-                  await supabase.auth.signOut({ scope: 'local' });
-                  navigate('/');
-                } catch (error) {
-                  console.error('Logout error:', error);
-                  navigate('/');
-                }
+                const { robustLogout } = await import('@/lib/authUtils');
+                await robustLogout(navigate);
               }}
               className="bg-brand-green text-brand-white hover:bg-brand-green/90 border-brand-green"
             >
@@ -448,11 +443,10 @@ const AdminQuestionarios = () => {
       <main className="bg-brand-bg-gray py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <Tabs defaultValue="create" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-4 lg:w-[800px]">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="create">Criar Pesquisa</TabsTrigger>
               <TabsTrigger value="active">Pesquisas Ativas</TabsTrigger>
-              <TabsTrigger value="preview">Prévia</TabsTrigger>
-              <TabsTrigger value="analytics">Analytics</TabsTrigger>
+              <TabsTrigger value="analytics">Análises Avançadas</TabsTrigger>
             </TabsList>
 
             <TabsContent value="create" className="space-y-6">
@@ -820,132 +814,53 @@ const AdminQuestionarios = () => {
               )}
             </TabsContent>
 
-            <TabsContent value="preview" className="space-y-6">
-              {/* Preview Section */}
+            <TabsContent value="analytics" className="space-y-6">
               <Card className="bg-brand-white shadow-sm">
                 <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-brand-dark-gray text-lg font-semibold">
-                      Prévia da Pesquisa
-                    </CardTitle>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => exportData('csv')}
-                        className="border-brand-green text-brand-green hover:bg-brand-green hover:text-brand-white"
-                      >
-                        <Download className="h-4 w-4 mr-2" />
-                        CSV
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => exportData('json')}
-                        className="border-[#00FF00] text-[#00FF00] hover:bg-[#00FF00] hover:text-[#0A192F]"
-                      >
-                        <Download className="h-4 w-4 mr-2" />
-                        JSON
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => exportData('parquet')}
-                        className="border-brand-green text-brand-green hover:bg-brand-green hover:text-brand-white"
-                      >
-                        <Download className="h-4 w-4 mr-2" />
-                        Parquet
-                      </Button>
-                    </div>
-                  </div>
+                  <CardTitle className="flex items-center gap-2 text-brand-dark-gray">
+                    <TrendingUp className="h-5 w-5" />
+                    Análises Avançadas
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {surveyTitle && (
-                    <div className="mb-6">
-                      <h3 className="text-xl font-bold text-[#0A192F] mb-2">{surveyTitle}</h3>
-                      {surveyDescription && (
-                        <p className="text-[#333333]">{surveyDescription}</p>
-                      )}
-                    </div>
-                  )}
-
-                  <div className="space-y-6">
-                    {questions.filter(q => q.text.trim()).map((question, index) => (
-                      <div key={question.id} className="border-l-4 border-[#00FF00] pl-4">
-                        <h4 className="font-semibold text-[#333333] mb-3">
-                          {index + 1}. {question.text}
-                        </h4>
-                        
-                        {question.type === 'text' && (
-                          <div className="space-y-2">
-                            <Textarea 
-                              placeholder="Área para resposta em texto livre..."
-                              className="bg-gray-50"
-                              disabled
-                              rows={3}
-                            />
-                            <div className="text-sm text-gray-600">
-                              💡 Análise de sentimento por IA será aplicada: Positivo, Neutro, Negativo
-                            </div>
-                          </div>
-                        )}
-                        
-                        {question.type === 'rating' && (
-                          <div className="space-y-2">
-                            <div className="bg-gray-50 p-4 rounded-lg">
-                              <StarRating value={3} disabled className="justify-start" />
-                            </div>
-                            <div className="text-sm text-gray-600">
-                              📊 Estatísticas: Média, Mediana, Moda, Desvio Padrão
-                            </div>
-                          </div>
-                        )}
-                        
-                        {question.type === 'single_choice' && question.options && (
-                          <div className="space-y-2">
-                            <RadioGroup disabled>
-                              {question.options.map((option, optIndex) => (
-                                <div key={optIndex} className="flex items-center space-x-2">
-                                  <RadioGroupItem value={`option-${optIndex}`} />
-                                  <Label>{option}</Label>
-                                </div>
-                              ))}
-                            </RadioGroup>
-                            <div className="text-sm text-gray-600">
-                              📈 Gráficos: Barras (contagem), Pizza (percentuais)
-                            </div>
-                          </div>
-                        )}
-                        
-                        {question.type === 'multiple_choice' && question.options && (
-                          <div className="space-y-2">
-                            {question.options.map((option, optIndex) => (
-                              <div key={optIndex} className="flex items-center space-x-2">
-                                <Checkbox disabled />
-                                <Label>{option}</Label>
-                              </div>
-                            ))}
-                            <div className="text-sm text-gray-600">
-                              📊 Análise: Combinações de escolhas, Frequência de seleção
-                            </div>
-                          </div>
-                        )}
+                  <div className="bg-brand-bg-gray p-6 rounded-lg">
+                    <h4 className="font-semibold text-brand-dark-gray mb-4">Recursos do Plano Start Quântico</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <h5 className="font-medium text-brand-dark-gray mb-2">📊 Análise Estatística</h5>
+                        <ul className="text-sm text-muted-foreground space-y-1">
+                          <li>• Média</li>
+                          <li>• Mediana</li>
+                          <li>• Moda</li>
+                        </ul>
                       </div>
-                    ))}
-                  </div>
-
-                  {questions.filter(q => q.text.trim()).length === 0 && (
-                    <div className="text-center py-8 text-gray-500">
-                      <Eye className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                      <p>Adicione questões para visualizar a prévia</p>
+                      
+                      <div>
+                        <h5 className="font-medium text-brand-dark-gray mb-2">💭 Análise de Sentimento</h5>
+                        <ul className="text-sm text-muted-foreground space-y-1">
+                          <li>• Positivo</li>
+                          <li>• Neutro</li>
+                          <li>• Negativo</li>
+                        </ul>
+                      </div>
+                      
+                      <div>
+                        <h5 className="font-medium text-brand-dark-gray mb-2 flex items-center gap-1">
+                          <PieChart className="h-4 w-4" />
+                          Visualizações
+                        </h5>
+                        <ul className="text-sm text-muted-foreground space-y-1">
+                          <li>• Gráfico de Barras</li>
+                          <li>• Gráfico de Pizza</li>
+                        </ul>
+                      </div>
                     </div>
-                  )}
+                  </div>
                 </CardContent>
               </Card>
-
-
             </TabsContent>
-          </Tabs>
+
+            </Tabs>
         </div>
       </main>
     </div>

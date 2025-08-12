@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart3, Users, FileText, Settings, ArrowLeft } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { getPlanDisplayName, getPlanCreateSurveyRoute } from '@/lib/planUtils';
+import { getPlanDisplayName, getPlanCreateSurveyRoute, getUserPlan } from '@/lib/planUtils';
 
 interface UserData {
   plan_name: string;
@@ -27,21 +27,11 @@ const Admin = () => {
         return;
       }
 
-      // Buscar dados do plano do usuário
-      const { data, error } = await supabase
-        .from('user_plans')
-        .select('plan_name, user_id')
-        .eq('user_id', session.user.id)
-        .single();
-
-      if (error) {
-        console.error('Erro ao buscar plano do usuário:', error);
-        // Se não encontrar o plano, usar um plano padrão
-        setUserData({ plan_name: 'start-quantico', user_id: session.user.id });
-        return;
-      }
-
-      setUserData(data);
+      // Usar a função getUserPlan que busca nas tabelas corretas (companies e profiles)
+      const planCode = await getUserPlan(supabase, session.user.id);
+      
+      console.log('Admin - Plano encontrado:', planCode);
+      setUserData({ plan_name: planCode, user_id: session.user.id });
     } catch (error) {
       console.error('Erro ao verificar autenticação:', error);
       navigate('/login');
@@ -55,13 +45,8 @@ const Admin = () => {
   }, [checkAuthAndFetchData]);
 
   const handleLogout = async () => {
-    try {
-      await supabase.auth.signOut({ scope: 'local' });
-    } catch (error) {
-      console.error('Logout error:', error);
-    } finally {
-      navigate('/');
-    }
+    const { robustLogout } = await import('@/lib/authUtils');
+    await robustLogout(navigate);
   };
 
   const handleGoBack = () => {

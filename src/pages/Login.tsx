@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import Header from '@/components/Header';
-import { getPlanAdminRoute } from '@/lib/planUtils';
+import { getPlanAdminRoute, getUserPlan } from '@/lib/planUtils';
 
 const loginSchema = z.object({
   email: z.string().email('E-mail inválido'),
@@ -34,28 +34,30 @@ const Login = () => {
     resolver: zodResolver(loginSchema)
   });
 
+  const redirectToCorrectAdminPage = async (userId: string) => {
+    try {
+      // Usar a função getUserPlan que busca nas tabelas corretas (companies e profiles)
+      const planCode = await getUserPlan(supabase, userId);
+
+      console.log('Login - Plano encontrado:', planCode);
+      
+      // Redireciona para a página administrativa correta baseada no plano
+      const adminRoute = getPlanAdminRoute(planCode);
+      console.log('Login - Redirecionando para:', adminRoute);
+      navigate(adminRoute);
+    } catch (error) {
+      console.error('Erro ao buscar plano do usuário:', error);
+      // Em caso de erro, redireciona para o dashboard padrão
+      navigate('/dashboard');
+    }
+  };
+
   useEffect(() => {
     // Verificar se usuário já está logado
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        let planCode = 'start-quantico'; // fallback padrão
-
-        // Buscar o plano na tabela user_plans
-        const { data: userPlanData } = await supabase
-          .from('user_plans')
-          .select('plan_name')
-          .eq('user_id', session.user.id)
-          .single();
-
-        if (userPlanData?.plan_name) {
-          planCode = userPlanData.plan_name;
-        }
-
-        console.log('Login useEffect - Plano encontrado:', planCode);
-        const adminRoute = getPlanAdminRoute(planCode);
-        console.log('Login useEffect - Redirecionando para:', adminRoute);
-        navigate(adminRoute);
+        await redirectToCorrectAdminPage(session.user.id);
       }
     };
     checkUser();
@@ -77,29 +79,12 @@ const Login = () => {
       }
 
       if (authData.user) {
-        let planCode = 'start-quantico'; // fallback padrão
-
-        // Buscar o plano na tabela user_plans
-        const { data: userPlanData } = await supabase
-          .from('user_plans')
-          .select('plan_name')
-          .eq('user_id', authData.user.id)
-          .single();
-
-        if (userPlanData?.plan_name) {
-          planCode = userPlanData.plan_name;
-        }
-
-        console.log('Login - Plano encontrado:', planCode);
-        
         toast({
           title: 'Login realizado com sucesso!',
           description: 'Redirecionando para o painel...'
         });
         
-        const adminRoute = getPlanAdminRoute(planCode);
-        console.log('Login - Redirecionando para:', adminRoute);
-        navigate(adminRoute);
+        await redirectToCorrectAdminPage(authData.user.id);
       }
     } catch (err) {
       setError('Erro interno. Tente novamente.');

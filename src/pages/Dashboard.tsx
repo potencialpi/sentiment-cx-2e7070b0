@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { getPlanAdminRoute } from '@/lib/planUtils';
+import { getPlanAdminRoute, getUserPlan } from '@/lib/planUtils';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -16,18 +16,8 @@ const Dashboard = () => {
         return;
       }
 
-      let planCode = 'start-quantico'; // fallback padrão
-
-      // Buscar o plano na tabela user_plans
-      const { data: userPlanData } = await supabase
-        .from('user_plans')
-        .select('plan_name')
-        .eq('user_id', session.user.id)
-        .single();
-
-      if (userPlanData?.plan_name) {
-        planCode = userPlanData.plan_name;
-      }
+      // Usar a função getUserPlan que busca nas tabelas corretas (companies e profiles)
+      const planCode = await getUserPlan(supabase, session.user.id);
 
       console.log('Dashboard - Plano encontrado:', planCode);
       

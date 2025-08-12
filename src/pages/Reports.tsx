@@ -99,13 +99,8 @@ const Reports = () => {
   }, [checkAuth, fetchSurveys]);
 
   const handleLogout = async () => {
-    try {
-      await supabase.auth.signOut({ scope: 'local' });
-    } catch (error) {
-      console.error('Logout error:', error);
-    } finally {
-      navigate('/');
-    }
+    const { robustLogout } = await import('@/lib/authUtils');
+    await robustLogout(navigate);
   };
 
   const selectedSurvey = surveys.find(s => s.id === selectedSurveyId);

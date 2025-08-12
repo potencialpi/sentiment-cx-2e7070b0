@@ -42,6 +42,7 @@ const App = () => (
           <Route path="/admin" element={<Admin />} />
 
           <Route path="/admin/questionarios" element={<AdminQuestionarios />} />
+          <Route path="/admin/start" element={<CreateSurveyStart />} />
           <Route path="/admin/vortex" element={<AdminVortex />} />
           <Route path="/admin/nexus" element={<AdminNexus />} />
           <Route path="/admin/questionarios/nexus" element={<AdminNexus />} />
