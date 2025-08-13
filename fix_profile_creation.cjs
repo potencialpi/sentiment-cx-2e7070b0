@@ -1,7 +1,21 @@
 const { createClient } = require('@supabase/supabase-js');
 
+// Verificação de variáveis de ambiente
+if (!process.env.SUPABASE_URL && !process.env.VITE_SUPABASE_URL) {
+  console.error('❌ SUPABASE_URL não encontrada nas variáveis de ambiente');
+  console.log('💡 Certifique-se de que o arquivo .env.local existe e contém VITE_SUPABASE_URL');
+  process.exit(1);
+}
+
+if (!process.env.SUPABASE_ANON_KEY && !process.env.VITE_SUPABASE_ANON_KEY) {
+  console.error('❌ SUPABASE_ANON_KEY não encontrada nas variáveis de ambiente');
+  console.log('💡 Certifique-se de que o arquivo .env.local existe e contém VITE_SUPABASE_ANON_KEY');
+  process.exit(1);
+}
+
+
 // Leia as credenciais do Supabase de variáveis de ambiente para evitar chaves hardcoded
-const supabaseUrl = process.env.SUPABASE_URL || 'https://mjuxvppexydaeuoernxa.supabase.co';
+const supabaseUrl = process.env.SUPABASE_URL || process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_ANON_KEY; // defina SUPABASE_ANON_KEY no ambiente antes de rodar
 
 if (!supabaseKey) {
