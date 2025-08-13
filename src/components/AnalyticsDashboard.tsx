@@ -97,7 +97,14 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ surveyId }) => 
       // Processar dados para analytics
       const processedQuestions = await Promise.all(
         (questions || []).map(async (question) => {
-          const qResponses = responses?.filter(r => r.question_id === question.id) || [];
+          // Map responses based on actual schema structure
+          const qResponses = responses?.filter(r => {
+            if (r.responses && typeof r.responses === 'object') {
+              const responsesData = r.responses as Record<string, any>;
+              return Object.keys(responsesData).includes(question.id);
+            }
+            return false;
+          }) || [];
           
           let processedData: { label: string; value: number; count?: number }[] = [];
           let sentimentData = undefined;
@@ -107,15 +114,17 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ surveyId }) => 
             // Processar dados de escolha
             const choiceCounts: { [key: string]: number } = {};
             qResponses.forEach(response => {
-              if (response.response_value) {
-                const choices = Array.isArray(response.response_value) 
-                  ? response.response_value 
-                  : [response.response_value];
-                choices.forEach(choice => {
-                  if (typeof choice === 'string') {
-                    choiceCounts[choice] = (choiceCounts[choice] || 0) + 1;
-                  }
-                });
+              if (response.responses && typeof response.responses === 'object') {
+                const responsesData = response.responses as Record<string, any>;
+                const responseValue = responsesData[question.id];
+                if (responseValue) {
+                  const choices = Array.isArray(responseValue) ? responseValue : [responseValue];
+                  choices.forEach(choice => {
+                    if (typeof choice === 'string') {
+                      choiceCounts[choice] = (choiceCounts[choice] || 0) + 1;
+                    }
+                  });
+                }
               }
             });
             
@@ -127,8 +136,18 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ surveyId }) => 
           } else if (question.question_type === 'rating') {
             // Processar dados de rating
             const ratings = qResponses
-              .filter(r => r.response_value !== null && typeof r.response_value === 'number')
-              .map(r => r.response_value as number);
+              .filter(r => {
+                if (r.responses && typeof r.responses === 'object') {
+                  const responsesData = r.responses as Record<string, any>;
+                  const responseValue = responsesData[question.id];
+                  return responseValue !== null && typeof responseValue === 'number';
+                }
+                return false;
+              })
+              .map(r => {
+                const responsesData = r.responses as Record<string, any>;
+                return responsesData[question.id] as number;
+              });
             
             if (ratings.length > 0) {
               const ratingCounts: { [key: number]: number } = {};
@@ -159,7 +178,10 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ surveyId }) => 
             const textResponses = qResponses.filter(r => r.response_value && typeof r.response_value === 'string' && r.response_value.trim().length > 0);
             
             if (textResponses.length > 0) {
-              const texts = textResponses.map(r => r.response_value as string);
+              const texts = textResponses.map(r => {
+                const responsesData = r.responses as Record<string, any>;
+                return responsesData[question.id] as string;
+              });
               const analysis = analyzeBatchSentiment(texts);
               const insights = getSentimentInsights(analysis.summary);
               

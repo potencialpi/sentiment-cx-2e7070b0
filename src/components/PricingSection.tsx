@@ -116,11 +116,10 @@ const PricingSection = () => {
       if (data.user) {
         // Criar perfil do usuário
         const { error: profileError } = await supabase
-          .from('user_plans')
+          .from('profiles')
           .insert({
             user_id: data.user.id,
-            plan_name: selectedPlan,
-            status: 'active'
+            plan_name: selectedPlan
           });
 
         if (profileError) {

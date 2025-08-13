@@ -47,9 +47,9 @@ const HeroSection = () => {
       if (data.user) {
         let planCode = 'start-quantico'; // fallback padrão
 
-        // Buscar o plano na tabela user_plans
+        // Buscar o plano na tabela profiles
         const { data: userPlanData } = await supabase
-          .from('user_plans')
+          .from('profiles')
           .select('plan_name')
           .eq('user_id', data.user.id)
           .single();
