@@ -1,0 +1,18 @@
+{
+  "timestamp": "2025-08-15T16:50:30.635Z",
+  "tables": {
+    "profiles": {
+      "exists": false,
+      "columns": [],
+      "accessible": false
+    },
+    "companies": {
+      "exists": false,
+      "columns": [],
+      "accessible": false
+    }
+  },
+  "all_tables": [],
+  "triggers": [],
+  "functions": []
+}

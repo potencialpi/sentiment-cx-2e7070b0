@@ -20,8 +20,7 @@ export function Header() {
           </div>
           <div className="flex gap-4">
             <Button 
-              variant="outline" 
-              className="btn-outline-light glow-effect"
+              className="btn-gradient glow-effect"
               onClick={() => navigate('/login')}
             >
               Login

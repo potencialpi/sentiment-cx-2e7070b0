@@ -7,6 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { getPlanAdminRoute } from '@/lib/planUtils';
++import { getPlanAdminRoute, getUserPlan } from '@/lib/planUtils';
 
 const HeroSection = () => {
   const [email, setEmail] = useState('');
@@ -46,21 +47,15 @@ const HeroSection = () => {
 
       if (data.user) {
         let planCode = 'start-quantico'; // fallback padrão
-
-        // Buscar o plano na tabela user_plans
-        const { data: userPlanData } = await supabase
-          .from('user_plans')
-          .select('plan_name')
-          .eq('user_id', data.user.id)
-          .single();
-
-        if (userPlanData?.plan_name) {
-          planCode = userPlanData.plan_name;
+        try {
+          planCode = await getUserPlan(supabase, data.user.id);
+        } catch (e) {
+          console.warn('Falha ao obter plano via getUserPlan, usando fallback.', e);
         }
-
-        console.log('HeroSection - Plano encontrado:', planCode);
-        const planRoute = getPlanAdminRoute(planCode);
-        console.log('HeroSection - Redirecionando para:', planRoute);
+ 
+         console.log('HeroSection - Plano encontrado:', planCode);
+         const planRoute = getPlanAdminRoute(planCode);
+         console.log('HeroSection - Redirecionando para:', planRoute);
         
         toast({
           title: "Login realizado com sucesso!",

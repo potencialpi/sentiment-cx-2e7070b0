@@ -1,0 +1,16 @@
+{
+  "timestamp": "2025-08-15T16:55:10.972Z",
+  "test_email": "test-manual-1755276910972@example.com",
+  "steps": [
+    {
+      "step": "auth_signup",
+      "success": false,
+      "error": "Database error saving new user"
+    }
+  ],
+  "success": false,
+  "errors": [
+    "Auth signup failed: Database error saving new user",
+    "General error: Database error saving new user"
+  ]
+}

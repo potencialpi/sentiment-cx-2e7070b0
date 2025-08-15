@@ -1,0 +1,11 @@
+{
+  "timestamp": "2025-08-15T16:51:15.036Z",
+  "steps": [],
+  "success": false,
+  "errors": [
+    "Função profile: Could not find the function public.exec_sql(sql) in the schema cache",
+    "Função company: Could not find the function public.exec_sql(sql) in the schema cache",
+    "Criar triggers: Could not find the function public.exec_sql(sql) in the schema cache",
+    "Teste criação: Database error saving new user"
+  ]
+}

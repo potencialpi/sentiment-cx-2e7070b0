@@ -1,0 +1,27 @@
+{
+  "timestamp": "2025-08-15T16:49:47.374Z",
+  "investigation": {
+    "total_users": 3,
+    "last_user_created": "2025-08-08T16:37:14.869144Z",
+    "signup_basic_working": false,
+    "signup_admin_working": false,
+    "auth_config_accessible": true,
+    "tables_accessible": true
+  },
+  "errors": {
+    "signup_basic": {
+      "message": "Database error saving new user",
+      "status": 500,
+      "code": "unexpected_failure"
+    },
+    "signup_admin": {
+      "message": "Database error creating new user",
+      "status": 500,
+      "code": "unexpected_failure"
+    }
+  },
+  "recommendations": [
+    "Problema crítico: Ambos os métodos de criação falharam",
+    "Verificar configurações do projeto Supabase no dashboard"
+  ]
+}

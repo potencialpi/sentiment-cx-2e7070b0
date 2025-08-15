@@ -6,9 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Check } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+// import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
-import { getPlanAdminRoute } from '@/lib/planUtils';
+- import { getPlanAdminRoute } from '@/lib/planUtils';
++ // import { getPlanAdminRoute } from '@/lib/planUtils';
 
 const plans = [
   {
@@ -68,93 +69,103 @@ const PricingSection = () => {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!email || !password || !selectedPlan) {
-      toast({
-        title: "Erro no cadastro",
-        description: "Por favor, preencha todos os campos e selecione um plano.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (password.length < 8) {
-      toast({
-        title: "Erro na senha",
-        description: "A senha deve ter pelo menos 8 caracteres.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setLoading(true);
-    try {
-      // Configurar redirect URL para autenticação
-      const redirectUrl = `${window.location.origin}/create-survey-start`;
-      
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: redirectUrl,
-          data: {
-            plan: selectedPlan,
-            billing: isYearly ? 'yearly' : 'monthly'
-          }
-        }
-      });
-
-      if (error) {
-        console.error('Signup error:', error);
-        toast({
-          title: "Erro no cadastro",
-          description: error.message,
-          variant: "destructive",
-        });
-        return;
-      }
-
-      if (data.user) {
-        // Criar perfil do usuário
-        const { error: profileError } = await supabase
-          .from('user_plans')
-          .insert({
-            user_id: data.user.id,
-            plan_name: selectedPlan,
-            status: 'active'
-          });
-
-        if (profileError) {
-          console.error('Profile creation error:', profileError);
-        }
-
-        const planRoute = getPlanAdminRoute(selectedPlan);
-        
-        toast({
-          title: "Cadastro realizado com sucesso!",
-          description: `Plano ${plans.find(p => p.id === selectedPlan)?.name} selecionado. Verifique seu e-mail para confirmar a conta.`,
-        });
-
-        // Limpar formulário
-        setEmail('');
-        setPassword('');
-        setSelectedPlan('');
-        
-        // Aguardar um momento e redirecionar
-        setTimeout(() => {
-          navigate(planRoute);
-        }, 2000);
-      }
-    } catch (error) {
-      console.error('Unexpected error:', error);
-      toast({
-        title: "Erro inesperado",
-        description: "Tente novamente em alguns momentos.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+-    if (!email || !password || !selectedPlan) {
++    if (!selectedPlan) {
+       toast({
+         title: "Erro no cadastro",
+-        description: "Por favor, preencha todos os campos e selecione um plano.",
++        description: "Por favor, selecione um plano para continuar.",
+         variant: "destructive",
+       });
+       return;
+     }
+-
+-    if (password.length < 8) {
+-      toast({
+-        title: "Erro na senha",
+-        description: "A senha deve ter pelo menos 8 caracteres.",
+-        variant: "destructive",
+-      });
+-      return;
+-    }
+-
+-    setLoading(true);
+-    try {
+-      // Configurar redirect URL para autenticação
+-      const redirectUrl = `${window.location.origin}/create-survey-start`;
+-      
+-      const { data, error } = await supabase.auth.signUp({
+-        email,
+-        password,
+-        options: {
+-          emailRedirectTo: redirectUrl,
+-          data: {
+-            plan: selectedPlan,
+-            billing: isYearly ? 'yearly' : 'monthly'
+-          }
+-        }
+-      });
+-
+-      if (error) {
+-        console.error('Signup error:', error);
+-        toast({
+-          title: "Erro no cadastro",
+-          description: error.message,
+-          variant: "destructive",
+-        });
+-        return;
+-      }
+-
+-      if (data.user) {
+-        // Criar perfil do usuário
+-        const { error: profileError } = await supabase
+-          .from('user_plans')
+-          .insert({
+-            user_id: data.user.id,
+-            plan_name: selectedPlan,
+-            status: 'active'
+-          });
+-
+-        if (profileError) {
+-          console.error('Profile creation error:', profileError);
+-        }
+-
+-        const planRoute = getPlanAdminRoute(selectedPlan);
+-        
+-        toast({
+-          title: "Cadastro realizado com sucesso!",
+-          description: `Plano ${plans.find(p => p.id === selectedPlan)?.name} selecionado. Verifique seu e-mail para confirmar a conta.`,
+-        });
+-
+-        // Limpar formulário
+-        setEmail('');
+-        setPassword('');
+-        setSelectedPlan('');
+-        
+-        // Aguardar um momento e redirecionar
+-        setTimeout(() => {
+-          navigate(planRoute);
+-        }, 2000);
+-      }
+-    } catch (error) {
+-      console.error('Unexpected error:', error);
+-      toast({
+-        title: "Erro inesperado",
+-        description: "Tente novamente em alguns momentos.",
+-        variant: "destructive",
+-      });
+-    } finally {
+-      setLoading(false);
+-    }
++    // Em vez de criar a conta aqui, redirecionar para a página de criação de conta
++    const plan = plans.find(p => p.id === selectedPlan);
++    navigate('/create-account', {
++      state: {
++        selectedPlan: plan,
++        billingType: isYearly ? 'yearly' : 'monthly'
++      }
++    });
+   };
 
   return (
     <section id="plans" className="bg-section-light py-20 px-6">
@@ -168,28 +179,37 @@ const PricingSection = () => {
             Flexibilidade para startups, médias e grandes empresas
           </p>
           
-          {/* Toggle de Preços */}
-          <div className="flex items-center justify-center mt-8 space-x-4">
-            <span className={`text-body ${!isYearly ? 'text-brand-dark-gray font-semibold' : 'text-brand-dark-gray/60'}`}>
-              Mensal
-            </span>
-            <button
-              onClick={() => setIsYearly(!isYearly)}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                isYearly ? 'bg-primary' : 'bg-gray-300'
-              }`}
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                  isYearly ? 'translate-x-6' : 'translate-x-1'
+          {/* Botões de Preços */}
+          <div className="flex items-center justify-center mt-8">
+            <div className="bg-gray-100 p-1 rounded-lg flex">
+              <button
+                onClick={() => setIsYearly(false)}
+                className={`px-6 py-2 rounded-md font-semibold transition-all duration-200 ${
+                  !isYearly 
+                    ? 'bg-white text-brand-dark-gray shadow-sm' 
+                    : 'text-brand-dark-gray/60 hover:text-brand-dark-gray'
                 }`}
-              />
-            </button>
-            <span className={`text-body ${isYearly ? 'text-brand-dark-gray font-semibold' : 'text-brand-dark-gray/60'}`}>
-              Anual <span className="text-primary">(economize até 15%)</span>
-            </span>
+              >
+                Mensal
+              </button>
+              <button
+                onClick={() => setIsYearly(true)}
+                className={`px-6 py-2 rounded-md font-semibold transition-all duration-200 ${
+                  isYearly 
+                    ? 'bg-white text-brand-dark-gray shadow-sm' 
+                    : 'text-brand-dark-gray/60 hover:text-brand-dark-gray'
+                }`}
+              >
+                Anual
+                <span className="ml-1 text-xs text-primary font-normal">
+                  (até 15% off)
+                </span>
+              </button>
+            </div>
           </div>
         </div>
+
+
 
         {/* Cards de Planos */}
         <div className="grid md:grid-cols-3 gap-6 mb-12">

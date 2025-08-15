@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { getUserPlan, getPlanCreateSurveyRoute } from '@/lib/planUtils';
 
 const CreateSurveyRedirect = () => {
   const navigate = useNavigate();
@@ -16,35 +17,15 @@ const CreateSurveyRedirect = () => {
           return;
         }
 
-        // Buscar plano do usuário na tabela user_plans
-        const { data: userPlan, error } = await supabase
-          .from('user_plans')
-          .select('plan_name')
-          .eq('user_id', user.id)
-          .single();
-
-        if (error) {
-          console.error('Error fetching user plan:', error);
-          // Default para start se não encontrar
-          navigate('/create-survey-start');
-          return;
-        }
-
-        // Redirecionar baseado no plano
-        switch (userPlan.plan_name) {
-          case 'start-quantico':
-            navigate('/create-survey-start');
-            break;
-          case 'vortex-neural':
-            navigate('/create-survey-vortex');
-            break;
-          case 'nexus-infinito':
-            navigate('/create-survey-nexus');
-            break;
-          default:
-            navigate('/create-survey-start');
-            break;
-        }
+        // Usar a função getUserPlan que busca nas tabelas corretas (companies e profiles)
+        const planCode = await getUserPlan(supabase, user.id);
+        
+        console.log('CreateSurveyRedirect - Plano encontrado:', planCode);
+        
+        // Redireciona para a página de criação de pesquisa correta baseada no plano
+        const createSurveyRoute = getPlanCreateSurveyRoute(planCode);
+        console.log('CreateSurveyRedirect - Redirecionando para:', createSurveyRoute);
+        navigate(createSurveyRoute);
       } catch (error) {
         console.error('Error in redirect:', error);
         toast({

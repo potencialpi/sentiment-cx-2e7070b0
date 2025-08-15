@@ -1,0 +1,11 @@
+{
+  "timestamp": "2025-08-15T16:53:07.023Z",
+  "steps": [],
+  "success": false,
+  "errors": [
+    "Função profile: HTTP 404: {\"code\":\"PGRST202\",\"details\":\"Searched for the function public.exec with parameter sql or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.\",\"hint\":null,\"message\":\"Could not find the function public.exec(sql) in the schema cache\"}",
+    "Função company: HTTP 404: {\"code\":\"PGRST202\",\"details\":\"Searched for the function public.exec with parameter sql or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.\",\"hint\":null,\"message\":\"Could not find the function public.exec(sql) in the schema cache\"}",
+    "Criar triggers: HTTP 404: {\"code\":\"PGRST202\",\"details\":\"Searched for the function public.exec with parameter sql or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.\",\"hint\":null,\"message\":\"Could not find the function public.exec(sql) in the schema cache\"}",
+    "SignUp: Database error saving new user"
+  ]
+}

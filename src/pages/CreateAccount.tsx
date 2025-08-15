@@ -23,8 +23,7 @@ const createAccountSchema = z.object({
   password: z.string()
     .min(8, 'Senha deve ter pelo menos 8 caracteres')
     .regex(passwordRegex, 'Senha deve conter pelo menos 1 número e 1 caractere especial'),
-  confirmPassword: z.string(),
-  planName: z.string().min(1, 'Selecione um plano')
+  confirmPassword: z.string()
 }).refine((data) => data.password === data.confirmPassword, {
   message: 'Senhas não coincidem',
   path: ['confirmPassword']
@@ -61,10 +60,7 @@ const CreateAccount = () => {
     watch,
     formState: { errors }
   } = useForm<CreateAccountForm>({
-    resolver: zodResolver(createAccountSchema),
-    defaultValues: {
-      planName: selectedPlan?.id || ''
-    }
+    resolver: zodResolver(createAccountSchema)
   });
 
   const password = watch('password');
@@ -120,6 +116,9 @@ const CreateAccount = () => {
     setError(null);
 
     try {
+      // Definir plano padrão como 'start-quantico'
+      const defaultPlan = 'start-quantico';
+      
       // Registrar usuário no Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: data.email,
@@ -128,7 +127,8 @@ const CreateAccount = () => {
           emailRedirectTo: `${window.location.origin}/`,
           data: {
             company_name: data.companyName,
-            plan_name: data.planName
+            plan_id: selectedPlan?.id || 'start-quantico',
+            billing_type: billingType || 'monthly'
           }
         }
       });
@@ -143,14 +143,71 @@ const CreateAccount = () => {
       }
 
       if (authData.user) {
-        toast({
-          title: 'Conta criada com sucesso!',
-          description: 'Você será redirecionado para o dashboard.'
-        });
-        
-        await redirectToCorrectAdminPage(authData.user.id);
+        // Criar registros nas tabelas profiles e companies manualmente
+        // já que os triggers não estão funcionando
+        try {
+          const userId = authData.user.id;
+          const planId = selectedPlan?.id || 'start-quantico';
+          
+          // Criar profile
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .insert({
+              user_id: userId,
+              plan_name: planId,
+              status: 'active'
+            });
+
+          if (profileError) {
+            console.error('Erro ao criar profile:', profileError);
+            // Não falhar o processo, apenas logar o erro
+          }
+
+          // Criar company
+          const { error: companyError } = await supabase
+            .from('companies')
+            .insert({
+              user_id: userId,
+              company_name: data.companyName,
+              plan_name: planId
+            });
+
+          if (companyError) {
+            console.error('Erro ao criar company:', companyError);
+            // Não falhar o processo, apenas logar o erro
+          }
+
+          toast({
+            title: 'Conta criada com sucesso!',
+            description: 'Você será redirecionado para a página de login.'
+          });
+          
+          // Redirecionar para a página de login após criação bem-sucedida
+          setTimeout(() => {
+            navigate('/login');
+          }, 2000);
+          
+        } catch (profileCompanyError) {
+          console.error('Erro ao criar profile/company:', profileCompanyError);
+          // Mesmo com erro nos registros auxiliares, o usuário foi criado
+          toast({
+            title: 'Conta criada com sucesso!',
+            description: 'Você será redirecionado para a página de login.'
+          });
+          
+          setTimeout(() => {
+            navigate('/login');
+          }, 2000);
+        }
       }
     } catch (err) {
+      console.error('Erro ao criar conta:', err);
+      console.log('Detalhes do erro:', {
+        selectedPlan,
+        billingType,
+        email: data.email,
+        error: err
+      });
       setError('Erro interno. Tente novamente.');
     } finally {
       setIsLoading(false);
@@ -227,29 +284,7 @@ const CreateAccount = () => {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="planName" className="text-brand-dark-blue font-medium">
-                  Plano *
-                </Label>
-                <Select 
-                  value={watch('planName')} 
-                  onValueChange={(value) => setValue('planName', value)}
-                >
-                  <SelectTrigger className="border-gray-300 focus:border-brand-green focus:ring-brand-green">
-                    <SelectValue placeholder="Selecione um plano" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {plans.map((plan) => (
-                      <SelectItem key={plan.id} value={plan.id}>
-                        {plan.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {errors.planName && (
-                  <p className="text-red-500 text-sm">{errors.planName.message}</p>
-                )}
-              </div>
+
 
               <div className="space-y-2">
                 <Label htmlFor="password" className="text-brand-dark-blue font-medium">

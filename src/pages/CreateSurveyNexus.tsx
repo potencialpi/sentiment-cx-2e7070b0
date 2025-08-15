@@ -451,6 +451,7 @@ const CreateSurveyNexus = () => {
                                   variant="outline"
                                   onClick={() => removeOption(index)}
                                   disabled={newOptions.length <= 1}
+                                  className="border-red-300 text-red-600 hover:bg-red-50 hover:border-red-400"
                                 >
                                   <Minus className="h-4 w-4" />
                                 </Button>
@@ -460,7 +461,7 @@ const CreateSurveyNexus = () => {
                               size="sm"
                               variant="outline"
                               onClick={addOption}
-                              className="mt-2"
+                              className="mt-2 border-brand-green text-brand-green hover:bg-brand-green/10 hover:border-brand-green"
                             >
                               <Plus className="h-4 w-4 mr-2" />
                               Adicionar Opção

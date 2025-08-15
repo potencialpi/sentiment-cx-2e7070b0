@@ -32,7 +32,7 @@ export function getPlanAdminRoute(planCode: string): string {
   
   switch (normalizedCode) {
     case 'start-quantico':
-      return '/admin/start';
+      return '/admin/questionarios';
     case 'vortex-neural':
       return '/admin/vortex';
     case 'nexus-infinito':

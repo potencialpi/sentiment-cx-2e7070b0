@@ -1,0 +1,15 @@
+{
+  "timestamp": "2025-08-15T16:56:00.582Z",
+  "test_email": "test-simple-1755276960582@example.com",
+  "tests": [
+    {
+      "test": "basic_signup",
+      "success": false,
+      "error": "Database error saving new user"
+    }
+  ],
+  "success": false,
+  "errors": [
+    "Basic signup failed: Database error saving new user"
+  ]
+}

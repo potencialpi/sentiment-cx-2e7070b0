@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Eye, Trash2, LogOut, ArrowLeft, Plus } from 'lucide-react';
-import { getPlanAdminRoute, getPlanCreateSurveyRoute } from '@/lib/planUtils';
+import { getPlanAdminRoute, getPlanCreateSurveyRoute, getUserPlan } from '@/lib/planUtils';
 
 interface Question {
   id: string;
@@ -46,15 +46,13 @@ const CreateSurvey = () => {
           return;
         }
 
-        // Buscar plano do usuário
-        const { data: userPlan } = await supabase
-          .from('user_plans')
-          .select('plan_name')
-          .eq('user_id', user.id)
-          .single();
-
-        if (userPlan) {
-          setUserPlan(userPlan.plan_name);
+        // Buscar plano do usuário usando utilitário que consulta companies/profiles
+        try {
+          const planCode = await getUserPlan(supabase, user.id);
+          setUserPlan(planCode);
+        } catch (e) {
+          console.warn('Não foi possível obter plano do usuário, usando fallback start-quantico.', e);
+          setUserPlan('start-quantico');
         }
 
         await fetchSurveys();
