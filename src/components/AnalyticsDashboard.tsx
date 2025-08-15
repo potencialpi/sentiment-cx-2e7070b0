@@ -175,7 +175,7 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ surveyId }) => 
             }
           } else if (question.question_type === 'text') {
             // Processar análise de sentimento real
-            const textResponses = qResponses.filter(r => r.response_value && typeof r.response_value === 'string' && r.response_value.trim().length > 0);
+            const textResponses = qResponses.filter(r => r.responses && typeof r.responses === 'object');
             
             if (textResponses.length > 0) {
               const texts = textResponses.map(r => {

@@ -177,15 +177,15 @@ const SurveyResponse = () => {
       const respondentId = crypto.randomUUID();
 
       // Inserir cada resposta individualmente
-      const responseInserts = Object.entries(responses).map(([questionId, value]) => ({
+      const responseData = {
         survey_id: survey.id,
-        question_id: questionId,
-        response_value: Array.isArray(value) ? value : [value]
-      }));
+        responses: responses,
+        respondent_id: crypto.randomUUID()
+      };
 
       const { error: responseError } = await supabase
         .from('responses')
-        .insert(responseInserts);
+        .insert(responseData);
 
       if (responseError) {
         console.error('Response error:', responseError);

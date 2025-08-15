@@ -207,7 +207,7 @@ const AdminQuestionarios = () => {
       const { data: responses, error: responsesError } = await supabase
         .from('responses')
         .select('*')
-        .in('question_id', questionIds);
+        .eq('survey_id', surveys[0].id);
 
       if (responsesError) throw responsesError;
 
@@ -219,9 +219,7 @@ const AdminQuestionarios = () => {
         total_responses: responses.length,
         surveys: surveys.map(survey => {
           const surveyQuestions = questions.filter(q => q.survey_id === survey.id);
-          const surveyResponses = responses.filter(r => 
-            surveyQuestions.some(q => q.id === r.question_id)
-          );
+          const surveyResponses = responses.filter(r => r.survey_id === survey.id);
           
           return {
             id: survey.id,
@@ -232,7 +230,10 @@ const AdminQuestionarios = () => {
             current_responses: survey.current_responses,
             max_responses: survey.max_responses,
             questions: surveyQuestions.map(question => {
-              const questionResponses = responses.filter(r => r.question_id === question.id);
+              const questionResponses = responses.filter(r => {
+                const responseData = r.responses as any;
+                return responseData && responseData[question.id];
+              });
               return {
                 ...question,
                 responses: questionResponses,
@@ -251,7 +252,7 @@ const AdminQuestionarios = () => {
             survey.questions.flatMap(question => 
               question.responses.length > 0 
                 ? question.responses.map(response => 
-                    `"${survey.id}","${survey.title}","${survey.description || ''}","${survey.status}","${survey.created_at}","${question.id}","${question.question_text}","${question.question_type}","${response.id}","${typeof response.response_value === 'string' ? response.response_value : JSON.stringify(response.response_value || '')}","","${Array.isArray(response.response_value) ? JSON.stringify(response.response_value) : ''}","${response.created_at}","",""`
+                    `"${survey.id}","${survey.title}","${survey.description || ''}","${survey.status}","${survey.created_at}","${question.id}","${question.question_text}","${question.question_type}","${response.id}","${(response.responses as any)?.[question.id] || ''}","","","${response.created_at}","",""`
                   )
                 : [`"${survey.id}","${survey.title}","${survey.description || ''}","${survey.status}","${survey.created_at}","${question.id}","${question.question_text}","${question.question_type}","","","","","","",""`]
             )
