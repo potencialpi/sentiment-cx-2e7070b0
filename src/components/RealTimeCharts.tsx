@@ -87,14 +87,14 @@ const RealTimeCharts: React.FC<RealTimeChartsProps> = ({ className }) => {
       const { data: responses, error: responsesError } = await supabase
         .from('responses')
         .select('*')
-        .in('question_id', questions.map(q => q.id));
+        .eq('survey_id', surveyId);
 
       if (responsesError) throw responsesError;
 
       // Processar dados para gráficos
-      processChartData(questions, responses);
-      processSentimentData(responses);
-      processResponsesByDate(responses);
+      processChartData(questions || [], responses || []);
+      processSentimentData(responses || []);
+      processResponsesByDate(responses || []);
 
     } catch (error) {
       console.error('Erro ao buscar dados da pesquisa:', error);
@@ -115,24 +115,32 @@ const RealTimeCharts: React.FC<RealTimeChartsProps> = ({ className }) => {
     }
   }, [selectedSurvey, fetchSurveyData]);
 
-  const processChartData = (questions: { id: string; question_type: string; question_text: string; options: Json | null }[], responses: { id: string; question_id: string; response_value: Json; survey_id: string; created_at: string; updated_at: string }[]) => {
+  const processChartData = (questions: any[], responses: any[]) => {
     // Agrupar respostas por tipo de questão
     const questionTypes = questions.reduce((acc, question) => {
-      const questionResponses = responses.filter(r => r.question_id === question.id);
+      const questionResponses = responses.filter(r => {
+        if (r.responses && typeof r.responses === 'object') {
+          const responsesData = r.responses as Record<string, any>;
+          return Object.keys(responsesData).includes(question.id);
+        }
+        return false;
+      });
       
       if (question.question_type === 'single_choice' || question.question_type === 'multiple_choice') {
         // Contar escolhas
         const choiceCounts: { [key: string]: number } = {};
         questionResponses.forEach(response => {
-          if (response.response_value) {
-            const choices = Array.isArray(response.response_value) 
-              ? response.response_value 
-              : [response.response_value];
-            choices.forEach(choice => {
-              if (typeof choice === 'string') {
-                choiceCounts[choice] = (choiceCounts[choice] || 0) + 1;
-              }
-            });
+          if (response.responses && typeof response.responses === 'object') {
+            const responsesData = response.responses as Record<string, any>;
+            const responseValue = responsesData[question.id];
+            if (responseValue) {
+              const choices = Array.isArray(responseValue) ? responseValue : [responseValue];
+              choices.forEach(choice => {
+                if (typeof choice === 'string') {
+                  choiceCounts[choice] = (choiceCounts[choice] || 0) + 1;
+                }
+              });
+            }
           }
         });
         
@@ -143,9 +151,13 @@ const RealTimeCharts: React.FC<RealTimeChartsProps> = ({ className }) => {
         // Contar avaliações por estrelas
         const ratingCounts: { [key: string]: number } = {};
         questionResponses.forEach(response => {
-          if (response.response_value && typeof response.response_value === 'number') {
-            const rating = `${response.response_value} estrela${response.response_value > 1 ? 's' : ''}`;
-            ratingCounts[rating] = (ratingCounts[rating] || 0) + 1;
+          if (response.responses && typeof response.responses === 'object') {
+            const responsesData = response.responses as Record<string, any>;
+            const responseValue = responsesData[question.id];
+            if (responseValue && typeof responseValue === 'number') {
+              const rating = `${responseValue} estrela${responseValue > 1 ? 's' : ''}`;
+              ratingCounts[rating] = (ratingCounts[rating] || 0) + 1;
+            }
           }
         });
         
@@ -160,13 +172,19 @@ const RealTimeCharts: React.FC<RealTimeChartsProps> = ({ className }) => {
     setChartData(questionTypes);
   };
 
-  const processSentimentData = (responses: { id: string; question_id: string; response_value: Json; survey_id: string; created_at: string; updated_at: string }[]) => {
+  const processSentimentData = (responses: any[]) => {
     // Filtrar respostas de texto
-    const textResponses = responses.filter(r => 
-      r.response_value && 
-      typeof r.response_value === 'string' && 
-      r.response_value.trim().length > 0
-    );
+    const textResponses: string[] = [];
+    responses.forEach(r => {
+      if (r.responses && typeof r.responses === 'object') {
+        const responsesData = r.responses as Record<string, any>;
+        Object.values(responsesData).forEach(value => {
+          if (typeof value === 'string' && value.trim().length > 0) {
+            textResponses.push(value);
+          }
+        });
+      }
+    });
     
     if (textResponses.length === 0) {
       setSentimentData([]);
@@ -174,8 +192,7 @@ const RealTimeCharts: React.FC<RealTimeChartsProps> = ({ className }) => {
     }
 
     // Analisar sentimento
-    const texts = textResponses.map(r => r.response_value as string);
-    const analysis = analyzeBatchSentiment(texts);
+    const analysis = analyzeBatchSentiment(textResponses);
     
     const sentimentChartData = [
       { name: 'Positivo', value: analysis.summary.positive, color: '#10B981' },
