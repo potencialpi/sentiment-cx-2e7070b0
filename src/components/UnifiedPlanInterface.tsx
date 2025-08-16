@@ -28,6 +28,7 @@ import {
   LogOut 
 } from "lucide-react";
 import { useNavigate } from 'react-router-dom';
+import AnalyticsDashboard from './AnalyticsDashboard';
 
 interface Question {
   id: string;
@@ -86,6 +87,7 @@ const UnifiedPlanInterface: React.FC<UnifiedPlanInterfaceProps> = ({ config }) =
   const [isLoading, setIsLoading] = useState(false);
   const [surveysLoading, setSurveysLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("create");
+  const [selectedSurveyForAnalysis, setSelectedSurveyForAnalysis] = useState('');
 
   const fetchActiveSurveys = useCallback(async () => {
     setSurveysLoading(true);
@@ -623,81 +625,83 @@ const UnifiedPlanInterface: React.FC<UnifiedPlanInterfaceProps> = ({ config }) =
                     Análises Avançadas
                   </CardTitle>
                   <CardDescription className="text-brand-dark-gray/70">
-                    {config.features.analytics.basic.join(', ')}
+                    Análises detalhadas das suas pesquisas ativas com respostas
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="px-4 sm:px-6">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
-                    <Card className="bg-brand-dark-blue text-brand-white shadow-sm">
-                      <CardContent className="pt-4 sm:pt-6 px-4 sm:px-6">
-                        <div className="text-center">
-                          <BarChart3 className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 mx-auto mb-2 text-brand-green" />
-                          <h3 className="font-semibold mb-2 text-sm sm:text-base">Análise Estatística</h3>
-                          <ul className="text-xs sm:text-sm space-y-1">
-                            {config.features.statistics.basic.map((stat, index) => (
-                              <li key={index}>• {stat}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="bg-brand-dark-blue text-brand-white shadow-sm">
-                      <CardContent className="pt-4 sm:pt-6 px-4 sm:px-6">
-                        <div className="text-center">
-                          <Activity className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 mx-auto mb-2 text-brand-green" />
-                          <h3 className="font-semibold mb-2 text-sm sm:text-base">Sentimento</h3>
-                          <ul className="text-xs sm:text-sm space-y-1">
-                            {config.features.sentiment.levels.map((level, index) => (
-                              <li key={index}>• {level}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="bg-brand-dark-blue text-brand-white shadow-sm sm:col-span-2 lg:col-span-1">
-                      <CardContent className="pt-4 sm:pt-6 px-4 sm:px-6">
-                        <div className="text-center">
-                          <PieChart className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 mx-auto mb-2 text-brand-green" />
-                          <h3 className="font-semibold mb-2 text-sm sm:text-base">Gráficos</h3>
-                          <ul className="text-xs sm:text-sm space-y-1">
-                            {config.features.analytics.charts.map((chart, index) => (
-                              <li key={index}>• {chart}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-
-                  {config.features.analytics.export.length > 0 && (
-                    <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-4 justify-center mt-4 sm:mt-6">
-                      {config.features.analytics.export.map((format) => (
-                        <Button 
-                          key={format}
-                          variant="outline" 
-                          onClick={() => exportData(format.toLowerCase() as 'csv' | 'json' | 'parquet')}
-                          className="flex items-center gap-2 text-xs sm:text-sm px-3 sm:px-4 py-2 min-h-[44px] touch-manipulation w-full sm:w-auto"
+                  {/* Seletor de pesquisa para análise */}
+                  {activeSurveys.filter(survey => survey.current_responses > 0).length > 0 ? (
+                    <div className="space-y-6">
+                      <div className="flex flex-col space-y-4">
+                        <label className="text-sm font-medium text-brand-dark-gray">
+                          Selecione uma pesquisa para análise:
+                        </label>
+                        <select
+                          value={selectedSurveyForAnalysis}
+                          onChange={(e) => setSelectedSurveyForAnalysis(e.target.value)}
+                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-green focus:border-transparent"
                         >
-                          <Download className="h-3 h-3 sm:h-4 sm:w-4" />
-                          Exportar {format.toUpperCase()}
-                        </Button>
-                      ))}
+                          <option value="">Escolha uma pesquisa...</option>
+                          {activeSurveys
+                            .filter(survey => survey.current_responses > 0)
+                            .map((survey) => (
+                              <option key={survey.id} value={survey.id}>
+                                {survey.title} ({survey.current_responses} respostas)
+                              </option>
+                            ))}
+                        </select>
+                      </div>
+
+                      {/* Dashboard de análise */}
+                      {selectedSurveyForAnalysis && (
+                        <div className="mt-6">
+                          <AnalyticsDashboard surveyId={selectedSurveyForAnalysis} />
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-center py-12">
+                      <TrendingUp className="w-16 h-16 mx-auto text-gray-400 mb-4" />
+                      <h3 className="text-lg font-semibold text-gray-600 mb-2">
+                        Nenhuma pesquisa com respostas
+                      </h3>
+                      <p className="text-gray-500 mb-6 max-w-md mx-auto">
+                        Para ver análises avançadas, você precisa ter pelo menos uma pesquisa ativa que tenha recebido respostas.
+                      </p>
+                      <div className="bg-gray-50 rounded-lg p-6">
+                        <h4 className="font-semibold mb-4">Recursos disponíveis no {config.planName}:</h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                          <div className="text-center">
+                            <BarChart3 className="w-8 h-8 mx-auto mb-2 text-brand-green" />
+                            <h5 className="font-medium text-sm mb-1">Estatísticas</h5>
+                            <ul className="text-xs text-gray-600 space-y-1">
+                              {config.features.statistics.basic.slice(0, 3).map((stat, index) => (
+                                <li key={index}>• {stat}</li>
+                              ))}
+                            </ul>
+                          </div>
+                          <div className="text-center">
+                            <Activity className="w-8 h-8 mx-auto mb-2 text-brand-green" />
+                            <h5 className="font-medium text-sm mb-1">Sentimentos</h5>
+                            <ul className="text-xs text-gray-600 space-y-1">
+                              {config.features.sentiment.levels.slice(0, 3).map((level, index) => (
+                                <li key={index}>• {level}</li>
+                              ))}
+                            </ul>
+                          </div>
+                          <div className="text-center">
+                            <PieChart className="w-8 h-8 mx-auto mb-2 text-brand-green" />
+                            <h5 className="font-medium text-sm mb-1">Gráficos</h5>
+                            <ul className="text-xs text-gray-600 space-y-1">
+                              {config.features.analytics.charts.slice(0, 3).map((chart, index) => (
+                                <li key={index}>• {chart}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   )}
-
-                  <div className="mt-8 p-6 bg-gray-50 rounded-lg">
-                    <h3 className="font-semibold mb-4">Recursos do {config.planName}:</h3>
-                    <ul className="space-y-2 text-sm text-gray-700">
-                      <li>• Até {config.maxQuestions === 999999 ? 'questões ilimitadas' : `${config.maxQuestions} questões`} por pesquisa</li>
-                      <li>• {config.maxResponses === 999999 ? 'Respostas ilimitadas' : `Máximo ${config.maxResponses} respostas`} por pesquisa</li>
-                      <li>• Até {config.maxSurveysPerMonth} pesquisas por mês</li>
-                      {config.features.analytics.advanced.map((feature, index) => (
-                        <li key={index}>• {feature}</li>
-                      ))}
-                    </ul>
-                  </div>
                 </CardContent>
               </Card>
             </TabsContent>
