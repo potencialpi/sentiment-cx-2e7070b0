@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { stripePromise, getStripePriceId, createCheckoutSession } from '@/lib/stripe';
+import { supabase } from '@/integrations/supabase/client';
 import { Loader2 } from 'lucide-react';
 
 interface StripeCheckoutProps {
@@ -27,39 +27,32 @@ const StripeCheckout: React.FC<StripeCheckoutProps> = ({
   const { toast } = useToast();
 
   const handleCheckout = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      
-      // Obter o Stripe
-      const stripe = await stripePromise;
-      if (!stripe) {
-        throw new Error('Stripe não foi carregado corretamente');
-      }
-
-      // Obter o price_id correto
-      const priceId = getStripePriceId(planId, billingType);
-      
-      // Criar sessão de checkout
-      const sessionId = await createCheckoutSession(priceId, customerEmail);
-      
-      // Redirecionar para o checkout do Stripe
-      const { error } = await stripe.redirectToCheckout({
-        sessionId,
+      const { data, error } = await supabase.functions.invoke('create-checkout', {
+        body: { planId, billingType }
       });
 
       if (error) {
-        console.error('Erro no checkout:', error);
+        throw new Error(error.message);
+      }
+
+      if (data?.url) {
+        // Open Stripe checkout in a new tab
+        window.open(data.url, '_blank');
+        
         toast({
-          title: "Erro no pagamento",
-          description: error.message || "Ocorreu um erro ao processar o pagamento",
-          variant: "destructive",
+          title: "Redirecionando...",
+          description: "Uma nova aba foi aberta para o checkout do Stripe",
         });
+      } else {
+        throw new Error('URL de checkout não recebida');
       }
     } catch (error) {
-      console.error('Erro ao iniciar checkout:', error);
+      console.error('Checkout error:', error);
       toast({
-        title: "Erro no pagamento",
-        description: "Não foi possível iniciar o processo de pagamento. Tente novamente.",
+        title: "Erro no checkout",
+        description: error instanceof Error ? error.message : "Não foi possível criar a sessão de pagamento",
         variant: "destructive",
       });
     } finally {

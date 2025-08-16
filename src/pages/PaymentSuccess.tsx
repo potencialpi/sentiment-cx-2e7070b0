@@ -28,38 +28,22 @@ const PaymentSuccess = () => {
       }
 
       try {
-        // Verificar o pagamento com o backend
-        const response = await fetch('/api/verify-payment', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ sessionId }),
+        const { data, error } = await supabase.functions.invoke('verify-payment', {
+          body: { sessionId }
         });
-
-        if (response.ok) {
-          const data = await response.json();
-          setPaymentVerified(true);
-          
-          // Atualizar o status do usuário no Supabase
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user) {
-            await supabase
-              .from('profiles')
-              .update({ 
-                status: 'active',
-                plan_name: data.planId,
-                updated_at: new Date().toISOString()
-              })
-              .eq('user_id', user.id);
-          }
-
+        
+        if (error) {
+          throw new Error(error.message);
+        }
+        
+        if (data?.success) {
           toast({
             title: "Pagamento confirmado!",
-            description: "Sua assinatura foi ativada com sucesso.",
+            description: `Seu plano ${data.subscriptionTier} foi ativado com sucesso`,
           });
+          setPaymentVerified(true);
         } else {
-          throw new Error('Falha na verificação do pagamento');
+          throw new Error(data?.error || 'Pagamento não confirmado');
         }
       } catch (error) {
         console.error('Erro ao verificar pagamento:', error);
