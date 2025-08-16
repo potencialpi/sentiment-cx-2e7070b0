@@ -32,10 +32,10 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
-    const { email, companyName, password, planId, billingType } = await req.json();
-    logStep("Request data received", { email, companyName, planId, billingType });
+    const { email, companyName, phoneNumber, password, planId, billingType } = await req.json();
+    logStep("Request data received", { email, companyName, phoneNumber, planId, billingType });
 
-    if (!email || !companyName || !password || !planId || !billingType) {
+    if (!email || !companyName || !phoneNumber || !password || !planId || !billingType) {
       throw new Error("Missing required fields");
     }
 
@@ -58,6 +58,9 @@ serve(async (req) => {
     // Create Stripe checkout session
     const session = await stripe.checkout.sessions.create({
       customer_email: email,
+      phone_number_collection: {
+        enabled: true,
+      },
       line_items: [
         {
           price_data: {
@@ -92,6 +95,7 @@ serve(async (req) => {
         stripe_session_id: session.id,
         email,
         company_name: companyName,
+        phone_number: phoneNumber,
         password_hash: passwordHash,
         plan_id: planId,
         billing_type: billingType,

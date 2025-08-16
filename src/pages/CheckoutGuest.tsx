@@ -18,6 +18,9 @@ const passwordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*])/;
 const checkoutSchema = z.object({
   email: z.string().email('E-mail inválido'),
   companyName: z.string().min(2, 'Nome da empresa deve ter pelo menos 2 caracteres'),
+  phoneNumber: z.string()
+    .min(10, 'Número de telefone deve ter pelo menos 10 dígitos')
+    .regex(/^\(\d{2}\)\s\d{4,5}-\d{4}$/, 'Formato inválido. Use: (xx) xxxxx-xxxx'),
   password: z.string()
     .min(8, 'Senha deve ter pelo menos 8 caracteres')
     .regex(passwordRegex, 'Senha deve conter pelo menos 1 número e 1 caractere especial'),
@@ -51,14 +54,31 @@ const CheckoutGuest = () => {
     hasSpecial: false
   });
 
+  const formatPhoneNumber = (value: string) => {
+    // Remove all non-numeric characters
+    const numbers = value.replace(/\D/g, '');
+    
+    // Format as (xx) xxxxx-xxxx or (xx) xxxx-xxxx
+    if (numbers.length <= 2) return `(${numbers}`;
+    if (numbers.length <= 6) return `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`;
+    if (numbers.length <= 10) return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 6)}-${numbers.slice(6)}`;
+    return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`;
+  };
+
   const {
     register,
     handleSubmit,
     watch,
+    setValue,
     formState: { errors }
   } = useForm<CheckoutForm>({
     resolver: zodResolver(checkoutSchema)
   });
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatPhoneNumber(e.target.value);
+    setValue('phoneNumber', formatted);
+  };
 
   const password = watch('password');
   const confirmPassword = watch('confirmPassword');
@@ -89,6 +109,7 @@ const CheckoutGuest = () => {
         body: {
           email: data.email,
           companyName: data.companyName,
+          phoneNumber: data.phoneNumber.replace(/\D/g, ''), // Send only numbers
           password: data.password,
           planId: selectedPlan?.id || 'start-quantico',
           billingType: billingType || 'monthly'
@@ -203,6 +224,29 @@ const CheckoutGuest = () => {
                     <p className="text-red-500 text-sm">{errors.companyName.message}</p>
                   )}
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="phoneNumber" className="text-brand-dark-blue font-medium">
+                  Telefone Celular *
+                </Label>
+                <Input
+                  id="phoneNumber"
+                  placeholder="(11) 99999-9999"
+                  {...register('phoneNumber')}
+                  onChange={handlePhoneChange}
+                  className="border-gray-300 focus:border-brand-green focus:ring-brand-green"
+                  maxLength={15}
+                />
+                <p className="text-xs text-brand-dark-blue/70">
+                  Número usado para verificação SMS do pagamento
+                </p>
+                {errors.phoneNumber && (
+                  <p className="text-red-500 text-sm">{errors.phoneNumber.message}</p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               </div>
 
               <div className="space-y-2">

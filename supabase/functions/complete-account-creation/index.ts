@@ -53,6 +53,7 @@ serve(async (req) => {
 
     logStep("Checkout session found", { 
       email: checkoutData.email, 
+      phoneNumber: checkoutData.phone_number,
       planId: checkoutData.plan_id,
       billingType: checkoutData.billing_type 
     });

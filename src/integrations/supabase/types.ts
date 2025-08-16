@@ -25,6 +25,7 @@ export type Database = {
           expires_at: string
           id: string
           password_hash: string
+          phone_number: string
           plan_id: string
           status: string | null
           stripe_session_id: string
@@ -40,6 +41,7 @@ export type Database = {
           expires_at?: string
           id?: string
           password_hash: string
+          phone_number: string
           plan_id: string
           status?: string | null
           stripe_session_id: string
@@ -55,6 +57,7 @@ export type Database = {
           expires_at?: string
           id?: string
           password_hash?: string
+          phone_number?: string
           plan_id?: string
           status?: string | null
           stripe_session_id?: string
