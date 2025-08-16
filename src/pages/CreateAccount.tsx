@@ -14,6 +14,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { Eye, EyeOff, Check, X } from 'lucide-react';
 import { getPlanAdminRoute, getUserPlan } from '@/lib/planUtils';
+import StripeCheckout from '@/components/StripeCheckout';
 
 const passwordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*])/;
 
@@ -32,9 +33,9 @@ const createAccountSchema = z.object({
 type CreateAccountForm = z.infer<typeof createAccountSchema>;
 
 const plans = [
-  { id: 'start-quantico', name: 'Start Quântico', monthlyPrice: 'R$ 349/mês', yearlyPrice: 'R$ 3.499/ano' },
-  { id: 'vortex-neural', name: 'Vortex Neural', monthlyPrice: 'R$ 649/mês', yearlyPrice: 'R$ 6.199/ano' },
-  { id: 'nexus-infinito', name: 'Nexus Infinito', monthlyPrice: 'R$ 1.249/mês', yearlyPrice: 'R$ 11.899/ano' }
+  { id: 'start-quantico', name: 'Start Quântico', monthlyPrice: 349, yearlyPrice: 3499, monthlyDisplay: 'R$ 349/mês', yearlyDisplay: 'R$ 3.499/ano' },
+  { id: 'vortex-neural', name: 'Vortex Neural', monthlyPrice: 649, yearlyPrice: 6199, monthlyDisplay: 'R$ 649/mês', yearlyDisplay: 'R$ 6.199/ano' },
+  { id: 'nexus-infinito', name: 'Nexus Infinito', monthlyPrice: 1249, yearlyPrice: 11899, monthlyDisplay: 'R$ 1.249/mês', yearlyDisplay: 'R$ 11.899/ano' }
 ];
 
 const CreateAccount = () => {
@@ -47,6 +48,8 @@ const CreateAccount = () => {
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showPayment, setShowPayment] = useState(false);
+  const [userEmail, setUserEmail] = useState<string>('');
   const [passwordValidation, setPasswordValidation] = useState({
     minLength: false,
     hasNumber: false,
@@ -179,25 +182,24 @@ const CreateAccount = () => {
 
           toast({
             title: 'Conta criada com sucesso!',
-            description: 'Você será redirecionado para a página de login.'
+            description: 'Agora você pode prosseguir com o pagamento.'
           });
           
-          // Redirecionar para a página de login após criação bem-sucedida
-          setTimeout(() => {
-            navigate('/login');
-          }, 2000);
+          // Mostrar o componente de pagamento
+          setUserEmail(data.email);
+          setShowPayment(true);
           
         } catch (profileCompanyError) {
           console.error('Erro ao criar profile/company:', profileCompanyError);
           // Mesmo com erro nos registros auxiliares, o usuário foi criado
           toast({
             title: 'Conta criada com sucesso!',
-            description: 'Você será redirecionado para a página de login.'
+            description: 'Agora você pode prosseguir com o pagamento.'
           });
           
-          setTimeout(() => {
-            navigate('/login');
-          }, 2000);
+          // Mostrar o componente de pagamento
+          setUserEmail(data.email);
+          setShowPayment(true);
         }
       }
     } catch (err) {
@@ -232,7 +234,7 @@ const CreateAccount = () => {
                   Plano Selecionado: {selectedPlanData.name}
                 </h3>
                 <p className="text-lg text-brand-green font-bold">
-                  {billingType === 'yearly' ? selectedPlanData.yearlyPrice : selectedPlanData.monthlyPrice}
+                  {billingType === 'yearly' ? selectedPlanData.yearlyDisplay : selectedPlanData.monthlyDisplay}
                 </p>
                 <p className="text-sm text-brand-dark-blue/70">
                   {billingType === 'yearly' ? 'Pagamento à vista' : 'Pagamento mensal'}
@@ -242,6 +244,36 @@ const CreateAccount = () => {
           </CardHeader>
           
           <CardContent>
+            {showPayment ? (
+              <div className="space-y-6">
+                <StripeCheckout
+                  planId={selectedPlan?.id || 'start-quantico'}
+                  planName={selectedPlanData?.name || 'Start Quântico'}
+                  billingType={billingType || 'monthly'}
+                  price={billingType === 'yearly' ? (selectedPlanData?.yearlyPrice || 3499) : (selectedPlanData?.monthlyPrice || 349)}
+                  customerEmail={userEmail}
+                  onSuccess={() => {
+                    toast({
+                      title: 'Pagamento realizado com sucesso!',
+                      description: 'Redirecionando para o dashboard...'
+                    });
+                    setTimeout(() => navigate('/dashboard'), 2000);
+                  }}
+                  onCancel={() => {
+                    setShowPayment(false);
+                  }}
+                />
+                <div className="flex justify-center">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowPayment(false)}
+                    className="border-brand-dark-blue text-brand-dark-blue hover:bg-brand-dark-blue hover:text-white"
+                  >
+                    Voltar ao Formulário
+                  </Button>
+                </div>
+              </div>
+            ) : (
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
               {error && (
                 <Alert className="border-red-500 bg-red-50">
@@ -418,6 +450,7 @@ const CreateAccount = () => {
                 </Button>
               </div>
             </form>
+            )}
           </CardContent>
         </Card>
       </div>

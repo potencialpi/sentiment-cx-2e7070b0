@@ -190,7 +190,7 @@ export function WelcomeSection() {
                         ? 'btn-gradient glow-effect'
                         : 'btn-hero'
                     }`}
-                    onClick={() => navigate(`/create-account?plan=${plan.name.toLowerCase().replace(/\s+/g, '-')}`)}
+                    onClick={() => navigate('/choose-plan')}
                   >
                     Comece Agora
                   </Button>
