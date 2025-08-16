@@ -275,11 +275,17 @@ const UnifiedPlanInterface: React.FC<UnifiedPlanInterfaceProps> = ({ config }) =
     } catch (error: any) {
       console.error('Error saving survey:', error);
       
-      // Tratar erro específico de limite de questões
+      // Tratar erros específicos de limites
       if (error.message?.includes("Limite de questões por pesquisa excedido")) {
         toast({
           title: "Limite de questões excedido",
           description: `Seu plano ${config.planName} permite apenas ${config.maxQuestions} questões por pesquisa.`,
+          variant: "destructive"
+        });
+      } else if (error.message?.includes("Limite de pesquisas por mês excedido")) {
+        toast({
+          title: "Limite de pesquisas excedido",
+          description: `Seu plano ${config.planName} permite apenas ${config.maxSurveysPerMonth} pesquisas por mês.`,
           variant: "destructive"
         });
       } else {

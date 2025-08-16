@@ -31,9 +31,9 @@ export const startQuanticoConfig: PlanConfig = {
   planName: "Start Quântico",
   planTitle: "Start Quântico",
   planDescription: "Plano inicial com recursos essenciais para análise de sentimentos e criação de pesquisas básicas.",
-  maxQuestions: 3,
+  maxQuestions: 5,
   maxResponses: 100,
-  maxSurveysPerMonth: 3,
+  maxSurveysPerMonth: 2,
   backRoute: "/dashboard",
   features: {
     analytics: {
@@ -47,8 +47,8 @@ export const startQuanticoConfig: PlanConfig = {
       segmentation: ["Por idade", "Por gênero"]
     },
     statistics: {
-      basic: ["Média", "Mediana", "Moda", "Desvio padrão"],
-      advanced: ["Correlações básicas", "Distribuição de frequências"]
+      basic: ["Média", "Mediana", "Moda", "Desvio padrão", "Percentis"],
+      advanced: ["Gráficos interativos simples (barra, pizza)"]
     }
   }
 };
@@ -58,9 +58,9 @@ export const vortexNeuralConfig: PlanConfig = {
   planName: "Vortex Neural",
   planTitle: "Vortex Neural",
   planDescription: "Plano intermediário com análises avançadas de IA e recursos de machine learning para insights profundos.",
-  maxQuestions: 15,
-  maxResponses: 500,
-  maxSurveysPerMonth: 10,
+  maxQuestions: 10,
+  maxResponses: 250,
+  maxSurveysPerMonth: 4,
   backRoute: "/dashboard",
   features: {
     analytics: {
@@ -74,8 +74,8 @@ export const vortexNeuralConfig: PlanConfig = {
       segmentation: ["Por idade", "Por gênero", "Por localização", "Por comportamento"]
     },
     statistics: {
-      basic: ["Média", "Mediana", "Moda", "Desvio padrão", "Quartis"],
-      advanced: ["Regressão linear", "Análise de variância", "Testes de hipóteses", "Intervalos de confiança"]
+      basic: ["Média", "Mediana", "Moda", "Desvio padrão", "Percentis", "Correlação"],
+      advanced: ["Análise segmentada por temas (atendimento, produto, preço)", "Boxplot para identificar outliers"]
     }
   }
 };
@@ -87,7 +87,7 @@ export const nexusInfinitoConfig: PlanConfig = {
   planDescription: "Plano premium com recursos ilimitados, IA avançada e análises em tempo real para empresas de grande porte.",
   maxQuestions: 999999, // Ilimitado
   maxResponses: 999999, // Ilimitado
-  maxSurveysPerMonth: 999999, // Ilimitado
+  maxSurveysPerMonth: 15,
   backRoute: "/dashboard",
   features: {
     analytics: {

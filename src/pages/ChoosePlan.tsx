@@ -13,10 +13,11 @@ const plans = [
     yearlyPrice: 'R$ 3.499 à vista',
     features: [
       'Até 5 questões por pesquisa',
-      '50 respostas por pesquisa',
-      '3 pesquisas por mês',
-      'Análise estatística básica',
-      'Análise de sentimento simples'
+      '100 respostas por pesquisa',
+      '2 pesquisas por mês',
+      'Análise estatística básica (média, mediana, moda, desvio padrão, percentis)',
+      'Análise de sentimento simples (positivo, neutro, negativo)',
+      'Gráficos interativos simples (barra, pizza)'
     ]
   },
   {
@@ -28,8 +29,9 @@ const plans = [
       'Até 10 questões por pesquisa',
       '250 respostas por pesquisa',
       '4 pesquisas por mês',
-      'Análise estatística intermediária',
-      'Análise de sentimentos segmentada'
+      'Análise estatística intermediária (correlação)',
+      'Análise de sentimentos segmentada por temas',
+      'Boxplot para identificar outliers'
     ]
   },
   {
@@ -40,10 +42,10 @@ const plans = [
     features: [
       'Questões ilimitadas por pesquisa',
       'Respostas ilimitadas por pesquisa',
-      'Pesquisas ilimitadas por mês',
-      'Análise estatística avançada',
-      'Análise de sentimento multicanal',
-      'Modelos preditivos avançados'
+      '15 pesquisas por mês',
+      'Análise estatística avançada completa',
+      'Análise de sentimento multicanal personalizada',
+      'Modelos preditivos, ANOVA, clustering, séries temporais'
     ]
   }
 ];
