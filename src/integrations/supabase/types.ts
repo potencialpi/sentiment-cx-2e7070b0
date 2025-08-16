@@ -43,26 +43,44 @@ export type Database = {
       }
       profiles: {
         Row: {
+          billing_type: string | null
           created_at: string
+          email: string | null
           id: string
           plan_name: string
+          plan_type: string | null
           status: string
+          stripe_customer_id: string | null
+          subscription_id: string | null
+          subscription_status: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          billing_type?: string | null
           created_at?: string
+          email?: string | null
           id?: string
           plan_name?: string
+          plan_type?: string | null
           status?: string
+          stripe_customer_id?: string | null
+          subscription_id?: string | null
+          subscription_status?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          billing_type?: string | null
           created_at?: string
+          email?: string | null
           id?: string
           plan_name?: string
+          plan_type?: string | null
           status?: string
+          stripe_customer_id?: string | null
+          subscription_id?: string | null
+          subscription_status?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -277,6 +295,59 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      transactions: {
+        Row: {
+          amount: number
+          billing_type: string | null
+          created_at: string | null
+          currency: string | null
+          id: string
+          metadata: Json | null
+          plan_type: string | null
+          status: string
+          stripe_payment_intent_id: string | null
+          stripe_session_id: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          amount: number
+          billing_type?: string | null
+          created_at?: string | null
+          currency?: string | null
+          id?: string
+          metadata?: Json | null
+          plan_type?: string | null
+          status: string
+          stripe_payment_intent_id?: string | null
+          stripe_session_id?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          amount?: number
+          billing_type?: string | null
+          created_at?: string | null
+          currency?: string | null
+          id?: string
+          metadata?: Json | null
+          plan_type?: string | null
+          status?: string
+          stripe_payment_intent_id?: string | null
+          stripe_session_id?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
