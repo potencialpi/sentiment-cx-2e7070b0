@@ -1,357 +1,209 @@
-import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Check } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-// import { supabase } from '@/integrations/supabase/client';
-import { useNavigate } from 'react-router-dom';
-- import { getPlanAdminRoute } from '@/lib/planUtils';
-+ // import { getPlanAdminRoute } from '@/lib/planUtils';
 
-const plans = [
-  {
-    id: 'start-quantico',
-    name: 'Start Quântico',
-    monthlyPrice: 349,
-    yearlyPrice: 3499,
-    features: [
-      'Até 5 questões por pesquisa',
-      '50 respostas por pesquisa',
-      '3 pesquisas por mês',
-      'Análise estatística básica',
-      'Análise de sentimento simples'
-    ],
-    recommended: false
-  },
-  {
-    id: 'vortex-neural',
-    name: 'Vortex Neural',
-    monthlyPrice: 649,
-    yearlyPrice: 6199,
-    features: [
-      'Até 10 questões por pesquisa',
-      '250 respostas por pesquisa',
-      '4 pesquisas por mês',
-      'Análise estatística intermediária',
-      'Análise de sentimentos segmentada'
-    ],
-    recommended: true
-  },
-  {
-    id: 'nexus-infinito',
-    name: 'Nexus Infinito',
-    monthlyPrice: 1249,
-    yearlyPrice: 11899,
-    features: [
-      'Questões ilimitadas por pesquisa',
-      'Respostas ilimitadas por pesquisa',
-      'Pesquisas ilimitadas por mês',
-      'Análise estatística avançada',
-      'Análise de sentimento multicanal',
-      'Modelos preditivos avançados'
-    ],
-    recommended: false
-  }
-];
+import React, { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Check, Zap, Brain, Infinity } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const PricingSection = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [selectedPlan, setSelectedPlan] = useState('');
-  const [isYearly, setIsYearly] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const { toast } = useToast();
+  const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
   const navigate = useNavigate();
 
-  const handleSignup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
--    if (!email || !password || !selectedPlan) {
-+    if (!selectedPlan) {
-       toast({
-         title: "Erro no cadastro",
--        description: "Por favor, preencha todos os campos e selecione um plano.",
-+        description: "Por favor, selecione um plano para continuar.",
-         variant: "destructive",
-       });
-       return;
-     }
--
--    if (password.length < 8) {
--      toast({
--        title: "Erro na senha",
--        description: "A senha deve ter pelo menos 8 caracteres.",
--        variant: "destructive",
--      });
--      return;
--    }
--
--    setLoading(true);
--    try {
--      // Configurar redirect URL para autenticação
--      const redirectUrl = `${window.location.origin}/create-survey-start`;
--      
--      const { data, error } = await supabase.auth.signUp({
--        email,
--        password,
--        options: {
--          emailRedirectTo: redirectUrl,
--          data: {
--            plan: selectedPlan,
--            billing: isYearly ? 'yearly' : 'monthly'
--          }
--        }
--      });
--
--      if (error) {
--        console.error('Signup error:', error);
--        toast({
--          title: "Erro no cadastro",
--          description: error.message,
--          variant: "destructive",
--        });
--        return;
--      }
--
--      if (data.user) {
--        // Criar perfil do usuário
--        const { error: profileError } = await supabase
--          .from('user_plans')
--          .insert({
--            user_id: data.user.id,
--            plan_name: selectedPlan,
--            status: 'active'
--          });
--
--        if (profileError) {
--          console.error('Profile creation error:', profileError);
--        }
--
--        const planRoute = getPlanAdminRoute(selectedPlan);
--        
--        toast({
--          title: "Cadastro realizado com sucesso!",
--          description: `Plano ${plans.find(p => p.id === selectedPlan)?.name} selecionado. Verifique seu e-mail para confirmar a conta.`,
--        });
--
--        // Limpar formulário
--        setEmail('');
--        setPassword('');
--        setSelectedPlan('');
--        
--        // Aguardar um momento e redirecionar
--        setTimeout(() => {
--          navigate(planRoute);
--        }, 2000);
--      }
--    } catch (error) {
--      console.error('Unexpected error:', error);
--      toast({
--        title: "Erro inesperado",
--        description: "Tente novamente em alguns momentos.",
--        variant: "destructive",
--      });
--    } finally {
--      setLoading(false);
--    }
-+    // Em vez de criar a conta aqui, redirecionar para a página de criação de conta
-+    const plan = plans.find(p => p.id === selectedPlan);
-+    navigate('/create-account', {
-+      state: {
-+        selectedPlan: plan,
-+        billingType: isYearly ? 'yearly' : 'monthly'
-+      }
-+    });
-   };
+  const handleSignup = (planId: string) => {
+    navigate("/create-account", { 
+      state: { 
+        selectedPlan: planId, 
+        billingType: billingCycle 
+      } 
+    });
+  };
+
+  const plans = [
+    {
+      id: "start-quantico",
+      name: "Pulso Quântico",
+      icon: <Zap className="h-6 w-6" />,
+      description: "Para startups e pequenas empresas que querem começar com análise de sentimento avançada",
+      monthlyPrice: 97,
+      yearlyPrice: 970,
+      savings: billingCycle === "yearly" ? "2 meses grátis" : null,
+      features: [
+        "Até 1.000 análises/mês",
+        "Dashboard básico em tempo real",
+        "3 canais de coleta (email, chat, forms)",
+        "Relatórios semanais automatizados",
+        "Suporte por email",
+        "Integração com 5 ferramentas",
+        "Retenção de dados: 6 meses"
+      ],
+      recommended: false,
+      color: "from-blue-500 to-purple-600"
+    },
+    {
+      id: "vortex-neural",
+      name: "Vórtex Neural",
+      icon: <Brain className="h-6 w-6" />,
+      description: "Para empresas em crescimento que precisam de análise preditiva e insights avançados",
+      monthlyPrice: 297,
+      yearlyPrice: 2970,
+      savings: billingCycle === "yearly" ? "2 meses grátis" : null,
+      features: [
+        "Até 10.000 análises/mês",
+        "Dashboard avançado + predições neurais",
+        "10 canais de coleta ilimitados",
+        "Relatórios diários + alertas inteligentes",
+        "Suporte prioritário + chat ao vivo",
+        "Integração com 25 ferramentas + API",
+        "Análise de tendências preditivas (30 dias)",
+        "Segmentação avançada de clientes",
+        "Retenção de dados: 2 anos"
+      ],
+      recommended: true,
+      color: "from-purple-600 to-pink-600"
+    },
+    {
+      id: "nexus-infinito",
+      name: "Nexus Infinito",
+      icon: <Infinity className="h-6 w-6" />,
+      description: "Para grandes empresas que necessitam de análise multidimensional e insights profundos",
+      monthlyPrice: 597,
+      yearlyPrice: 5970,
+      savings: billingCycle === "yearly" ? "2 meses grátis" : null,
+      features: [
+        "Análises ilimitadas",
+        "Dashboard multidimensional + IA quântica",
+        "Canais de coleta ilimitados + APIs personalizadas",
+        "Relatórios em tempo real + alertas personalizados",
+        "Gerente de conta dedicado + suporte 24/7",
+        "Integrações ilimitadas + webhooks",
+        "Análise preditiva multivariável (90 dias)",
+        "Análise comportamental profunda",
+        "Benchmarking competitivo",
+        "White-label disponível",
+        "Retenção de dados: ilimitada"
+      ],
+      recommended: false,
+      color: "from-pink-600 to-orange-500"
+    }
+  ];
 
   return (
-    <section id="plans" className="bg-section-light py-20 px-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header da Seção */}
+    <section className="py-20 px-4 bg-gradient-to-br from-background via-secondary/5 to-primary/5">
+      <div className="container mx-auto max-w-7xl">
         <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-brand-dark-gray mb-4">
-            Escolha o Plano Ideal para Sua Empresa
+          <h2 className="text-4xl lg:text-5xl font-bold text-primary mb-6">
+            Escolha Seu Plano de Transformação
           </h2>
-          <p className="text-subtitle text-brand-dark-gray/80 max-w-3xl mx-auto">
-            Flexibilidade para startups, médias e grandes empresas
+          <p className="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto">
+            Cada plano foi cuidadosamente desenvolvido para maximizar o potencial da sua análise de sentimento
           </p>
           
-          {/* Botões de Preços */}
-          <div className="flex items-center justify-center mt-8">
-            <div className="bg-gray-100 p-1 rounded-lg flex">
-              <button
-                onClick={() => setIsYearly(false)}
-                className={`px-6 py-2 rounded-md font-semibold transition-all duration-200 ${
-                  !isYearly 
-                    ? 'bg-white text-brand-dark-gray shadow-sm' 
-                    : 'text-brand-dark-gray/60 hover:text-brand-dark-gray'
-                }`}
-              >
-                Mensal
-              </button>
-              <button
-                onClick={() => setIsYearly(true)}
-                className={`px-6 py-2 rounded-md font-semibold transition-all duration-200 ${
-                  isYearly 
-                    ? 'bg-white text-brand-dark-gray shadow-sm' 
-                    : 'text-brand-dark-gray/60 hover:text-brand-dark-gray'
-                }`}
-              >
-                Anual
-                <span className="ml-1 text-xs text-primary font-normal">
-                  (até 15% off)
-                </span>
-              </button>
-            </div>
+          <div className="flex items-center justify-center space-x-4 mb-8">
+            <Button
+              variant={billingCycle === "monthly" ? "default" : "outline"}
+              onClick={() => setBillingCycle("monthly")}
+              className="px-6 py-2"
+            >
+              Mensal
+            </Button>
+            <Button
+              variant={billingCycle === "yearly" ? "default" : "outline"}
+              onClick={() => setBillingCycle("yearly")}
+              className="px-6 py-2"
+            >
+              Anual
+              <Badge variant="secondary" className="ml-2">
+                -17%
+              </Badge>
+            </Button>
           </div>
         </div>
 
-
-
-        {/* Cards de Planos */}
-        <div className="grid md:grid-cols-3 gap-6 mb-12">
-          {plans.map((plan) => (
-            <Card 
-              key={plan.id} 
-              className={`card-pricing relative bg-white ${
-                plan.recommended ? 'ring-2 ring-brand-green shadow-xl scale-105' : 'shadow-lg'
-              }`}
-            >
-              {plan.recommended && (
-                <>
-                  <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                    <span className="bg-brand-green text-brand-white px-4 py-1 text-sm font-bold rounded-full">
-                      MAIS POPULAR
-                    </span>
-                  </div>
-                  {isYearly && (
-                    <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2">
-                      <span className="bg-gray-600 text-white px-3 py-1 text-xs font-semibold rounded">
-                        valor anual
+        <div className="grid lg:grid-cols-3 gap-8 mb-16">
+          {plans.map((plan, index) => {
+            const price = billingCycle === "monthly" ? plan.monthlyPrice : plan.yearlyPrice;
+            const monthlyEquivalent = billingCycle === "yearly" ? Math.round(plan.yearlyPrice / 12) : price;
+            
+            return (
+              <Card 
+                key={plan.id} 
+                className={`relative overflow-hidden transition-all duration-300 hover:scale-105 ${
+                  plan.recommended 
+                    ? "ring-2 ring-primary shadow-2xl shadow-primary/25" 
+                    : "hover:shadow-xl"
+                }`}
+              >
+                {plan.recommended && (
+                  <div className="absolute top-0 left-0 right-0">
+                    <div className={`bg-gradient-to-r ${plan.color} px-4 py-2 text-center`}>
+                      <span className="text-white font-semibold text-sm">
+                        🚀 MAIS POPULAR
                       </span>
                     </div>
-                  )}
-                </>
-              )}
-              
-              <CardHeader className="text-center pb-6">
-                <CardTitle className="text-xl font-bold text-brand-dark-gray mb-4">
-                  {plan.name}
-                </CardTitle>
-                <div className="mb-2">
-                  <span className="text-4xl font-bold text-brand-dark-gray">
-                    R$ {isYearly ? plan.yearlyPrice.toLocaleString() : plan.monthlyPrice.toLocaleString()}
-                  </span>
-                </div>
-                <span className="text-brand-dark-gray/60 text-sm">
-                  {isYearly ? 'à vista' : '/mês'}
-                </span>
-              </CardHeader>
-              
-              <CardContent className="px-6">
-                <ul className="space-y-3 mb-8">
-                  {plan.features.map((feature, index) => (
-                    <li key={index} className="flex items-center space-x-3">
-                      <Check className="w-4 h-4 text-brand-green flex-shrink-0" />
-                      <span className="text-sm text-brand-dark-gray">{feature}</span>
-                    </li>
-                  ))}
-                </ul>
+                  </div>
+                )}
                 
-                 <Button 
-                  onClick={() => setSelectedPlan(plan.id)}
-                  className="w-full py-3 font-semibold bg-brand-green hover:bg-brand-green/90 text-brand-white border-0"
-                >
-                  {selectedPlan === plan.id ? 'Selecionado' : 'Escolher Plano'}
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
+                <CardHeader className={`text-center ${plan.recommended ? "pt-12" : "pt-6"}`}>
+                  <div className={`w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-r ${plan.color} flex items-center justify-center text-white`}>
+                    {plan.icon}
+                  </div>
+                  <CardTitle className="text-2xl font-bold text-primary">
+                    {plan.name}
+                  </CardTitle>
+                  <CardDescription className="text-muted-foreground px-2">
+                    {plan.description}
+                  </CardDescription>
+                  
+                  <div className="py-6">
+                    <div className="text-4xl font-bold text-primary">
+                      R$ {price.toLocaleString()}
+                      <span className="text-lg font-normal text-muted-foreground">
+                        /{billingCycle === "monthly" ? "mês" : "ano"}
+                      </span>
+                    </div>
+                    {billingCycle === "yearly" && (
+                      <div className="text-sm text-muted-foreground mt-2">
+                        R$ {monthlyEquivalent}/mês • {plan.savings}
+                      </div>
+                    )}
+                  </div>
+                </CardHeader>
+
+                <CardContent className="px-6 pb-8">
+                  <Button 
+                    className={`w-full mb-6 text-lg py-6 bg-gradient-to-r ${plan.color} hover:opacity-90 transition-opacity text-white border-0`}
+                    onClick={() => handleSignup(plan.id)}
+                  >
+                    Começar Agora
+                  </Button>
+                  
+                  <ul className="space-y-3">
+                    {plan.features.map((feature, featureIndex) => (
+                      <li key={featureIndex} className="flex items-start space-x-3">
+                        <Check className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
+                        <span className="text-sm text-muted-foreground leading-relaxed">
+                          {feature}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
 
-        {/* Formulário de Cadastro */}
-        <div className="max-w-md mx-auto">
-          <Card className="shadow-xl">
-            <CardHeader>
-              <CardTitle className="text-2xl font-bold text-brand-dark-gray text-center">
-                Criar Conta
-              </CardTitle>
-              <p className="text-center text-brand-dark-gray/60">
-                Comece sua jornada com insights poderosos
-              </p>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSignup} className="space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="signup-email" className="text-brand-dark-gray">
-                    E-mail Profissional
-                  </Label>
-                  <Input
-                    id="signup-email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="seu@empresa.com"
-                    className="py-3"
-                    required
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="signup-password" className="text-brand-dark-gray">
-                    Senha
-                  </Label>
-                  <Input
-                    id="signup-password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Mínimo 8 caracteres"
-                    className="py-3"
-                    required
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="plan-select" className="text-brand-dark-gray">
-                    Escolha seu Plano
-                  </Label>
-                  <Select value={selectedPlan} onValueChange={setSelectedPlan} required>
-                    <SelectTrigger className="py-3">
-                      <SelectValue placeholder="Selecione um plano" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {plans.map((plan) => (
-                        <SelectItem key={plan.id} value={plan.id}>
-                          {plan.name} - R$ {isYearly ? plan.yearlyPrice.toLocaleString() : plan.monthlyPrice.toLocaleString()}{isYearly ? '/ano' : '/mês'}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <Button 
-                  type="submit" 
-                  variant="hero"
-                  className="w-full py-3 text-lg font-semibold"
-                  disabled={loading}
-                >
-                  {loading ? 'Criando conta...' : 'Criar Conta e Começar'}
-                </Button>
-                
-                <p className="text-xs text-brand-dark-gray/60 text-center leading-relaxed">
-                  Ao criar uma conta, você concorda com nossos{' '}
-                  <a href="#" className="text-primary hover:underline">Termos de Uso</a>{' '}
-                  e{' '}
-                  <a href="#" className="text-primary hover:underline">Política de Privacidade</a>{' '}
-                  em conformidade com a LGPD.
-                </p>
-              </form>
-            </CardContent>
-          </Card>
+        <div className="text-center">
+          <p className="text-muted-foreground mb-4">
+            Todos os planos incluem garantia de 30 dias • Sem taxas de setup • Cancele a qualquer momento
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Precisa de algo personalizado? 
+            <Button variant="link" className="p-0 h-auto ml-1 text-primary">
+              Entre em contato conosco
+            </Button>
+          </p>
         </div>
       </div>
     </section>

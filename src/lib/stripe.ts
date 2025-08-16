@@ -1,13 +1,11 @@
+
 import { loadStripe } from '@stripe/stripe-js';
 
-// Inicializar Stripe com a chave pública
+// Inicializar Stripe com a chave pública (opcional)
 const stripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
 
-if (!stripePublishableKey) {
-  throw new Error('VITE_STRIPE_PUBLISHABLE_KEY não está definida nas variáveis de ambiente');
-}
-
-export const stripePromise = loadStripe(stripePublishableKey);
+// Apenas criar a promise do Stripe se a chave existir
+export const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null;
 
 // Product IDs fornecidos:
 // Pulso Quântico (start-quantico) = prod_SgbjCddEEPS89f
@@ -48,6 +46,12 @@ export const getStripePriceId = (planId: string, billingType: 'monthly' | 'yearl
 // Função para criar sessão de checkout
 export async function createCheckoutSession(priceId: string, customerEmail?: string): Promise<string> {
   try {
+    // Verificar se o Stripe está disponível
+    if (!stripePromise) {
+      console.warn('Stripe não está configurado - VITE_STRIPE_PUBLISHABLE_KEY não definida');
+      throw new Error('Stripe não está configurado');
+    }
+
     // Para desenvolvimento, vamos simular a criação da sessão
     // Em produção, isso deve ser feito no backend
     const sessionData = {
