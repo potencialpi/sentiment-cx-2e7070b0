@@ -23,7 +23,7 @@ const PaymentSuccess = () => {
           description: "Sessão de pagamento não encontrada",
           variant: "destructive",
         });
-        navigate('/choose-plan');
+        navigate('/');
         return;
       }
 
@@ -111,7 +111,7 @@ const PaymentSuccess = () => {
                 Houve um problema na verificação do pagamento. Entre em contato com nosso suporte.
               </p>
               <Button 
-                onClick={() => navigate('/choose-plan')}
+                onClick={() => navigate('/')}
                 variant="outline"
                 className="w-full"
                 size="lg"

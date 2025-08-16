@@ -8,7 +8,7 @@ const PaymentCancel = () => {
   const navigate = useNavigate();
 
   const handleBackToPlans = () => {
-    navigate('/choose-plan');
+    navigate('/');
   };
 
   const handleTryAgain = () => {

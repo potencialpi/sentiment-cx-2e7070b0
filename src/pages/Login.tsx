@@ -161,7 +161,7 @@ const Login = () => {
               <p className="text-sm text-brand-dark-blue/70">
                 Não tem uma conta?{' '}
                 <Link 
-                  to="/choose-plan" 
+                  to="/" 
                   className="text-brand-green hover:underline font-medium"
                 >
                   Criar conta
