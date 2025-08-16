@@ -14,6 +14,54 @@ export type Database = {
   }
   public: {
     Tables: {
+      checkout_sessions: {
+        Row: {
+          amount: number
+          billing_type: string
+          company_name: string
+          created_at: string
+          currency: string | null
+          email: string
+          expires_at: string
+          id: string
+          password_hash: string
+          plan_id: string
+          status: string | null
+          stripe_session_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          billing_type: string
+          company_name: string
+          created_at?: string
+          currency?: string | null
+          email: string
+          expires_at?: string
+          id?: string
+          password_hash: string
+          plan_id: string
+          status?: string | null
+          stripe_session_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          billing_type?: string
+          company_name?: string
+          created_at?: string
+          currency?: string | null
+          email?: string
+          expires_at?: string
+          id?: string
+          password_hash?: string
+          plan_id?: string
+          status?: string | null
+          stripe_session_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       companies: {
         Row: {
           company_name: string
@@ -416,6 +464,10 @@ export type Database = {
       can_receive_responses: {
         Args: { _survey_id: string }
         Returns: boolean
+      }
+      cleanup_expired_checkout_sessions: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       generate_survey_link: {
         Args: { _survey_id: string }
