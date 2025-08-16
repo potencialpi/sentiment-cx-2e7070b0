@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
@@ -9,6 +10,7 @@ export function WelcomeSection() {
   // Definição dos planos com preços mensais e anuais
   const plans = [
     {
+      id: 'start-quantico',
       name: 'Start Quântico',
       monthlyPrice: 349,
       yearlyPrice: 3499, // 15% desconto
@@ -23,6 +25,7 @@ export function WelcomeSection() {
       ]
     },
     {
+      id: 'vortex-neural',
       name: 'Vortex Neural',
       monthlyPrice: 649,
       yearlyPrice: 6199, // 15% desconto
@@ -39,6 +42,7 @@ export function WelcomeSection() {
       ]
     },
     {
+      id: 'nexus-infinito',
       name: 'Nexus Infinito',
       monthlyPrice: 1249,
       yearlyPrice: 11899, // 15% desconto
@@ -68,6 +72,20 @@ export function WelcomeSection() {
     const savings = yearlyMonthly - yearlyPrice;
     const percentage = Math.round((savings / yearlyMonthly) * 100);
     return { savings, percentage };
+  };
+
+  const handlePlanSelection = (plan: typeof plans[0]) => {
+    navigate('/create-account', {
+      state: {
+        selectedPlan: {
+          id: plan.id,
+          name: plan.name,
+          monthlyPrice: plan.monthlyPrice,
+          yearlyPrice: plan.yearlyPrice
+        },
+        billingType: isYearly ? 'yearly' : 'monthly'
+      }
+    });
   };
 
   return (
@@ -190,7 +208,7 @@ export function WelcomeSection() {
                         ? 'btn-gradient glow-effect'
                         : 'btn-hero'
                     }`}
-                    onClick={() => navigate('/choose-plan')}
+                    onClick={() => handlePlanSelection(plan)}
                   >
                     Comece Agora
                   </Button>
