@@ -136,7 +136,7 @@ const UnifiedPlanInterface: React.FC<UnifiedPlanInterfaceProps> = ({ config }) =
       type: 'text', // Valor inicial válido para o Select funcionar
       options: []
     };
-    setQuestions([...questions, newQuestion]);
+    setQuestions(prev => [...prev, newQuestion]);
   };
 
   const removeQuestion = (id: string) => {
@@ -144,9 +144,11 @@ const UnifiedPlanInterface: React.FC<UnifiedPlanInterfaceProps> = ({ config }) =
   };
 
   const updateQuestion = (id: string, field: keyof Question, value: string | string[]) => {
-    setQuestions(questions.map(q => 
-      q.id === id ? { ...q, [field]: value } : q
-    ));
+    setQuestions(prev => 
+      prev.map(q => 
+        q.id === id ? { ...q, [field]: value } : q
+      )
+    );
   };
 
   const addOption = (questionId: string) => {
@@ -467,7 +469,7 @@ const UnifiedPlanInterface: React.FC<UnifiedPlanInterfaceProps> = ({ config }) =
                                   <SelectTrigger className="mt-1 min-h-[44px] touch-manipulation text-sm sm:text-base">
                                     <SelectValue placeholder="Escolha o tipo de resposta" />
                                   </SelectTrigger>
-                                  <SelectContent className="z-50 bg-white border border-gray-200 shadow-lg">
+                                  <SelectContent className="z-[9999] bg-white border border-gray-200 shadow-lg">
                                     <SelectItem value="text">Texto Aberto</SelectItem>
                                     <SelectItem value="rating">Avaliação 1-5 Estrelas</SelectItem>
                                     <SelectItem value="single_choice">Escolha Única</SelectItem>

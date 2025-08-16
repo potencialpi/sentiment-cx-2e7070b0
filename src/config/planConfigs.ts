@@ -31,7 +31,7 @@ export const startQuanticoConfig: PlanConfig = {
   planName: "Start Quântico",
   planTitle: "Start Quântico",
   planDescription: "Plano inicial com recursos essenciais para análise de sentimentos e criação de pesquisas básicas.",
-  maxQuestions: 5,
+  maxQuestions: 3,
   maxResponses: 100,
   maxSurveysPerMonth: 3,
   backRoute: "/dashboard",

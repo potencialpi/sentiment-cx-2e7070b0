@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste Select Component</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #333;
+        }
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            background-color: white;
+            cursor: pointer;
+        }
+        select:focus {
+            outline: none;
+            border-color: #10b981;
+            box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+        }
+        .result {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f0f9ff;
+            border: 1px solid #0ea5e9;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h2>Teste de Funcionalidade do Select</h2>
+        <p>Este é um teste simples para verificar se o problema está no componente Select ou em conflitos específicos.</p>
+        
+        <div class="form-group">
+            <label for="questionType">Tipo de Resposta:</label>
+            <select id="questionType" onchange="handleSelectChange(this.value)">
+                <option value="">Escolha o tipo de resposta</option>
+                <option value="text">Texto Aberto</option>
+                <option value="rating">Avaliação 1-5 Estrelas</option>
+                <option value="single_choice">Escolha Única</option>
+                <option value="multiple_choice">Múltipla Escolha</option>
+            </select>
+        </div>
+        
+        <div id="result" class="result" style="display: none;">
+            <strong>Selecionado:</strong> <span id="selectedValue"></span>
+        </div>
+    </div>
+
+    <script>
+        function handleSelectChange(value) {
+            const resultDiv = document.getElementById('result');
+            const selectedValueSpan = document.getElementById('selectedValue');
+            
+            if (value) {
+                selectedValueSpan.textContent = value;
+                resultDiv.style.display = 'block';
+                console.log('Valor selecionado:', value);
+            } else {
+                resultDiv.style.display = 'none';
+            }
+        }
+        
+        // Log para debug
+        console.log('Teste Select carregado com sucesso');
+    </script>
+</body>
+</html>

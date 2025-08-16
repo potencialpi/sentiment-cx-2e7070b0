@@ -39,7 +39,7 @@ interface Survey {
 
 const PLAN_CONFIG = {
   name: 'Start Quântico',
-  maxQuestions: 5,
+  maxQuestions: 3,
   maxResponses: 50,
   maxSurveysPerMonth: 3,
   features: {

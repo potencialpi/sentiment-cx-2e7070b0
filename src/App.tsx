@@ -27,6 +27,8 @@ import CreateSurveyNexus from "./pages/CreateSurveyNexus";
 import SurveyResponse from "./pages/SurveyResponse";
 import Reports from "./pages/Reports";
 import NotFound from "./pages/NotFound";
+import TestSelect from './components/TestSelect';
+import DebugSelect from './components/DebugSelect';
 
 const queryClient = new QueryClient();
 
@@ -62,6 +64,8 @@ const App = () => (
           <Route path="/manage-surveys" element={<CreateSurvey />} />
           <Route path="/survey/:surveyId" element={<SurveyResponse />} />
           <Route path="/reports" element={<Reports />} />
+          <Route path="/test-select" element={<TestSelect />} />
+            <Route path="/debug-select" element={<DebugSelect />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

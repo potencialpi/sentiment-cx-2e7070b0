@@ -25,6 +25,16 @@ supabase/.env.production
 .env.test.local
 .env.production.local
 
+# Sensitive configuration files
+*.key
+*.pem
+*.p12
+*.pfx
+
+# IDE and system files
+.vscode/settings.json
+Thumbs.db
+
 # Database
 *.db
 *.sqlite
