@@ -467,7 +467,7 @@ const UnifiedPlanInterface: React.FC<UnifiedPlanInterfaceProps> = ({ config }) =
                                   <SelectTrigger className="mt-1 min-h-[44px] touch-manipulation text-sm sm:text-base">
                                     <SelectValue placeholder="Escolha o tipo de resposta" />
                                   </SelectTrigger>
-                                  <SelectContent className="bg-popover border shadow-md">
+                                  <SelectContent className="z-50 bg-white border border-gray-200 shadow-lg">
                                     <SelectItem value="text">Texto Aberto</SelectItem>
                                     <SelectItem value="rating">Avaliação 1-5 Estrelas</SelectItem>
                                     <SelectItem value="single_choice">Escolha Única</SelectItem>
