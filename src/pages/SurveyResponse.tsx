@@ -9,6 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { CheckCircle, AlertTriangle, FileText } from 'lucide-react';
+import { StarRating } from '@/components/ui/star-rating';
 import SurveyResponseFallback from '@/components/SurveyResponseFallback';
 
 interface Question {
@@ -180,12 +181,14 @@ const SurveyResponse = () => {
       const responseData = {
         survey_id: survey.id,
         responses: responses,
-        respondent_id: crypto.randomUUID()
+        respondent_id: respondentId
       };
 
-      const { error: responseError } = await supabase
+      const { data: responseRecord, error: responseError } = await supabase
         .from('responses')
-        .insert(responseData);
+        .insert(responseData)
+        .select('id')
+        .single();
 
       if (responseError) {
         console.error('Response error:', responseError);
@@ -195,6 +198,36 @@ const SurveyResponse = () => {
           variant: "destructive",
         });
         return;
+      }
+
+      // Coletar respostas de texto para análise de sentimento
+      const textResponses: string[] = [];
+      questions.forEach(question => {
+        if (question.question_type === 'text' && responses[question.id]) {
+          const textResponse = responses[question.id] as string;
+          if (textResponse.trim()) {
+            textResponses.push(textResponse);
+          }
+        }
+      });
+
+      // Executar análise de sentimento se houver respostas de texto
+      if (textResponses.length > 0 && responseRecord?.id) {
+        try {
+          await fetch('/functions/v1/analyze-sentiment', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              responseId: responseRecord.id,
+              texts: textResponses
+            })
+          });
+        } catch (sentimentError) {
+          console.error('Sentiment analysis error:', sentimentError);
+          // Não bloquear o envio da resposta se a análise falhar
+        }
       }
 
       // Atualizar contador de respostas da pesquisa
@@ -318,6 +351,26 @@ const SurveyResponse = () => {
             <p className="text-xs text-brand-dark-gray/60">
               Máximo 1000 caracteres
             </p>
+          </div>
+        );
+
+      case 'rating':
+        return (
+          <div key={id} className="space-y-4">
+            <Label 
+              htmlFor={id}
+              className="text-brand-dark-gray font-medium text-base"
+            >
+              {question_text}
+            </Label>
+            <p className="text-sm text-brand-dark-gray/60">
+              Avalie de 1 a 5 estrelas:
+            </p>
+            <StarRating
+              value={parseInt(responses[id] as string) || 0}
+              onChange={(rating) => handleResponseChange(id, rating.toString())}
+              className="justify-start"
+            />
           </div>
         );
 
