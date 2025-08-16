@@ -272,13 +272,23 @@ const UnifiedPlanInterface: React.FC<UnifiedPlanInterfaceProps> = ({ config }) =
       fetchActiveSurveys();
       setActiveTab('active');
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving survey:', error);
-      toast({
-        title: "Erro",
-        description: "Falha ao criar pesquisa",
-        variant: "destructive"
-      });
+      
+      // Tratar erro específico de limite de questões
+      if (error.message?.includes("Limite de questões por pesquisa excedido")) {
+        toast({
+          title: "Limite de questões excedido",
+          description: `Seu plano ${config.planName} permite apenas ${config.maxQuestions} questões por pesquisa.`,
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Erro",
+          description: error.message || "Falha ao criar pesquisa",
+          variant: "destructive"
+        });
+      }
     } finally {
       setIsLoading(false);
     }
