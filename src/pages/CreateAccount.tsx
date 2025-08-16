@@ -316,8 +316,6 @@ const CreateAccount = () => {
                 </div>
               </div>
 
-
-
               <div className="space-y-2">
                 <Label htmlFor="password" className="text-brand-dark-blue font-medium">
                   Senha *
@@ -426,7 +424,7 @@ const CreateAccount = () => {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => navigate('/choose-plan')}
+                  onClick={() => navigate('/')}
                   className="border-brand-dark-blue text-brand-dark-blue hover:bg-brand-dark-blue hover:text-white"
                 >
                   Voltar
