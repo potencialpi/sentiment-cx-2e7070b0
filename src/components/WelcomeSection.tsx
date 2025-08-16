@@ -75,7 +75,7 @@ export function WelcomeSection() {
   };
 
   const handlePlanSelection = (plan: typeof plans[0]) => {
-    navigate('/create-account', {
+    navigate('/checkout-guest', {
       state: {
         selectedPlan: {
           id: plan.id,

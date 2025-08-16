@@ -42,32 +42,12 @@ const CreateAccount = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { selectedPlan, billingType } = location.state || {};
+  const searchParams = new URLSearchParams(location.search);
+  const sessionId = searchParams.get('session_id');
   
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [showPayment, setShowPayment] = useState(false);
-  const [userEmail, setUserEmail] = useState<string>('');
-  const [passwordValidation, setPasswordValidation] = useState({
-    minLength: false,
-    hasNumber: false,
-    hasSpecial: false
-  });
-
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    watch,
-    formState: { errors }
-  } = useForm<CreateAccountForm>({
-    resolver: zodResolver(createAccountSchema)
-  });
-
-  const password = watch('password');
-  const confirmPassword = watch('confirmPassword');
+  const [accountCreated, setAccountCreated] = useState(false);
+  const [userCredentials, setUserCredentials] = useState<{email: string; planId: string} | null>(null);
 
   const redirectToCorrectAdminPage = async (userId: string) => {
     try {
@@ -88,367 +68,127 @@ const CreateAccount = () => {
   };
 
   useEffect(() => {
-    // Verificar se usuário já está logado
-    const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        await redirectToCorrectAdminPage(session.user.id);
-      }
-    };
-    checkUser();
-  }, [navigate]);
-
-  useEffect(() => {
-    if (password) {
-      setPasswordValidation({
-        minLength: password.length >= 8,
-        hasNumber: /[0-9]/.test(password),
-        hasSpecial: /[!@#$%^&*]/.test(password)
-      });
+    if (sessionId) {
+      // Se há session_id, completar a criação da conta
+      completeAccountCreation();
     } else {
-      setPasswordValidation({
-        minLength: false,
-        hasNumber: false,
-        hasSpecial: false
-      });
+      // Se não há session_id, redirecionar para checkout
+      navigate('/checkout-guest');
     }
-  }, [password]);
+  }, [sessionId, navigate]);
 
-  const onSubmit = async (data: CreateAccountForm) => {
+  const completeAccountCreation = async () => {
+    if (!sessionId) return;
+    
     setIsLoading(true);
-    setError(null);
-
     try {
-      // Definir plano padrão como 'start-quantico'
-      const defaultPlan = 'start-quantico';
-      
-      // Registrar usuário no Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: data.email,
-        password: data.password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/`,
-          data: {
-            company_name: data.companyName,
-            plan_id: selectedPlan?.id || 'start-quantico',
-            billing_type: billingType || 'monthly'
-          }
-        }
+      const { data, error } = await supabase.functions.invoke('complete-account-creation', {
+        body: { sessionId }
       });
 
-      if (authError) {
-        if (authError.message.includes('already registered')) {
-          setError('Este e-mail já está cadastrado. Tente fazer login.');
-        } else {
-          setError('Erro ao criar conta. Tente novamente.');
-        }
-        return;
+      if (error) {
+        throw new Error(error.message);
       }
 
-      if (authData.user) {
-        // Criar registros nas tabelas profiles e companies manualmente
-        // já que os triggers não estão funcionando
-        try {
-          const userId = authData.user.id;
-          const planId = selectedPlan?.id || 'start-quantico';
-          
-          // Criar profile
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .insert({
-              user_id: userId,
-              plan_name: planId,
-              status: 'active'
-            });
-
-          if (profileError) {
-            console.error('Erro ao criar profile:', profileError);
-            // Não falhar o processo, apenas logar o erro
-          }
-
-          // Criar company
-          const { error: companyError } = await supabase
-            .from('companies')
-            .insert({
-              user_id: userId,
-              company_name: data.companyName,
-              plan_name: planId
-            });
-
-          if (companyError) {
-            console.error('Erro ao criar company:', companyError);
-            // Não falhar o processo, apenas logar o erro
-          }
-
-          toast({
-            title: 'Conta criada com sucesso!',
-            description: 'Agora você pode prosseguir com o pagamento.'
-          });
-          
-          // Mostrar o componente de pagamento
-          setUserEmail(data.email);
-          setShowPayment(true);
-          
-        } catch (profileCompanyError) {
-          console.error('Erro ao criar profile/company:', profileCompanyError);
-          // Mesmo com erro nos registros auxiliares, o usuário foi criado
-          toast({
-            title: 'Conta criada com sucesso!',
-            description: 'Agora você pode prosseguir com o pagamento.'
-          });
-          
-          // Mostrar o componente de pagamento
-          setUserEmail(data.email);
-          setShowPayment(true);
-        }
+      if (data?.success) {
+        setUserCredentials({
+          email: data.email,
+          planId: data.planId
+        });
+        setAccountCreated(true);
+        
+        toast({
+          title: 'Conta criada com sucesso!',
+          description: 'Você já pode fazer login e acessar sua conta.'
+        });
+      } else {
+        throw new Error(data?.error || 'Erro ao criar conta');
       }
-    } catch (err) {
-      console.error('Erro ao criar conta:', err);
-      console.log('Detalhes do erro:', {
-        selectedPlan,
-        billingType,
-        email: data.email,
-        error: err
+    } catch (error) {
+      console.error('Erro ao completar criação da conta:', error);
+      toast({
+        title: 'Erro na criação da conta',
+        description: 'Não foi possível completar a criação da conta. Entre em contato com o suporte.',
+        variant: 'destructive'
       });
-      setError('Erro interno. Tente novamente.');
+      navigate('/');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const selectedPlanData = plans.find(plan => plan.id === selectedPlan?.id);
+  const handleGoToLogin = () => {
+    navigate('/login');
+  };
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-brand-bg-gray">
+        <Header />
+        <div className="flex items-center justify-center py-12 px-6">
+          <Card className="w-full max-w-md">
+            <CardContent className="text-center p-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-green mx-auto mb-4"></div>
+              <h2 className="text-xl font-semibold mb-2">Criando sua conta...</h2>
+              <p className="text-gray-600">
+                Aguarde enquanto finalizamos o processo de criação da sua conta.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  if (accountCreated && userCredentials) {
+    return (
+      <div className="min-h-screen bg-brand-bg-gray">
+        <Header />
+        <div className="flex items-center justify-center py-12 px-6">
+          <Card className="w-full max-w-md">
+            <CardHeader className="text-center">
+              <div className="mx-auto mb-4 w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+                <svg className="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <CardTitle className="text-2xl font-bold text-brand-dark-blue">
+                Conta Criada com Sucesso!
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="text-center space-y-4">
+              <div className="bg-muted p-4 rounded-lg">
+                <p className="text-sm text-gray-600 mb-2">Detalhes da conta:</p>
+                <p className="font-medium">{userCredentials.email}</p>
+                <p className="text-sm text-gray-600">Plano: {userCredentials.planId}</p>
+              </div>
+              
+              <p className="text-gray-600">
+                Sua conta foi criada e o pagamento foi confirmado. Agora você pode fazer login e começar a usar a plataforma.
+              </p>
+              
+              <Button 
+                onClick={handleGoToLogin}
+                className="w-full bg-brand-green hover:bg-brand-green/90"
+                size="lg"
+              >
+                Fazer Login
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  // Fallback - redirecionar para checkout se chegou aqui sem session_id
   return (
     <div className="min-h-screen bg-brand-bg-gray">
       <Header />
       <div className="flex items-center justify-center py-12 px-6">
-        <Card className="w-full max-w-2xl bg-brand-white shadow-sm">
-          <CardHeader className="text-center">
-            <CardTitle className="text-3xl font-bold text-brand-dark-blue mb-4">
-              Criar Conta
-            </CardTitle>
-            
-            {selectedPlanData && (
-              <div className="bg-muted p-4 rounded-lg mb-6">
-                <h3 className="text-lg font-semibold text-brand-dark-blue mb-2">
-                  Plano Selecionado: {selectedPlanData.name}
-                </h3>
-                <p className="text-lg text-brand-green font-bold">
-                  {billingType === 'yearly' ? selectedPlanData.yearlyDisplay : selectedPlanData.monthlyDisplay}
-                </p>
-                <p className="text-sm text-brand-dark-blue/70">
-                  {billingType === 'yearly' ? 'Pagamento à vista' : 'Pagamento mensal'}
-                </p>
-              </div>
-            )}
-          </CardHeader>
-          
-          <CardContent>
-            {showPayment ? (
-              <div className="space-y-6">
-                <StripeCheckout
-                  planId={selectedPlan?.id || 'start-quantico'}
-                  planName={selectedPlanData?.name || 'Start Quântico'}
-                  billingType={billingType || 'monthly'}
-                  price={billingType === 'yearly' ? (selectedPlanData?.yearlyPrice || 3499) : (selectedPlanData?.monthlyPrice || 349)}
-                  customerEmail={userEmail}
-                  onSuccess={() => {
-                    toast({
-                      title: 'Pagamento realizado com sucesso!',
-                      description: 'Redirecionando para o dashboard...'
-                    });
-                    setTimeout(() => navigate('/dashboard'), 2000);
-                  }}
-                  onCancel={() => {
-                    setShowPayment(false);
-                  }}
-                />
-                <div className="flex justify-center">
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowPayment(false)}
-                    className="border-brand-dark-blue text-brand-dark-blue hover:bg-brand-dark-blue hover:text-white"
-                  >
-                    Voltar ao Formulário
-                  </Button>
-                </div>
-              </div>
-            ) : (
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-              {error && (
-                <Alert className="border-red-500 bg-red-50">
-                  <AlertDescription className="text-red-600">
-                    {error}
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="email" className="text-brand-dark-blue font-medium">
-                    E-mail profissional *
-                  </Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="seu@email.com"
-                    {...register('email')}
-                    className="border-gray-300 focus:border-brand-green focus:ring-brand-green"
-                  />
-                  {errors.email && (
-                    <p className="text-red-500 text-sm">{errors.email.message}</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="companyName" className="text-brand-dark-blue font-medium">
-                    Nome da empresa/responsável *
-                  </Label>
-                  <Input
-                    id="companyName"
-                    placeholder="Nome da sua empresa"
-                    {...register('companyName')}
-                    className="border-gray-300 focus:border-brand-green focus:ring-brand-green"
-                  />
-                  {errors.companyName && (
-                    <p className="text-red-500 text-sm">{errors.companyName.message}</p>
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="password" className="text-brand-dark-blue font-medium">
-                  Senha *
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    placeholder="Digite sua senha"
-                    {...register('password')}
-                    className="border-gray-300 focus:border-brand-green focus:ring-brand-green pr-12"
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </Button>
-                </div>
-                
-                {password && (
-                  <div className="mt-2 space-y-1">
-                    <div className="flex items-center space-x-2">
-                      {passwordValidation.minLength ? (
-                        <Check size={16} className="text-green-500" />
-                      ) : (
-                        <X size={16} className="text-red-500" />
-                      )}
-                      <span className={`text-sm ${passwordValidation.minLength ? 'text-green-500' : 'text-red-500'}`}>
-                        Mínimo 8 caracteres
-                      </span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      {passwordValidation.hasNumber ? (
-                        <Check size={16} className="text-green-500" />
-                      ) : (
-                        <X size={16} className="text-red-500" />
-                      )}
-                      <span className={`text-sm ${passwordValidation.hasNumber ? 'text-green-500' : 'text-red-500'}`}>
-                        Pelo menos 1 número
-                      </span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      {passwordValidation.hasSpecial ? (
-                        <Check size={16} className="text-green-500" />
-                      ) : (
-                        <X size={16} className="text-red-500" />
-                      )}
-                      <span className={`text-sm ${passwordValidation.hasSpecial ? 'text-green-500' : 'text-red-500'}`}>
-                        Pelo menos 1 caractere especial (!@#$%^&*)
-                      </span>
-                    </div>
-                  </div>
-                )}
-                
-                {errors.password && (
-                  <p className="text-red-500 text-sm">{errors.password.message}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword" className="text-brand-dark-blue font-medium">
-                  Repetir senha *
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="confirmPassword"
-                    type={showConfirmPassword ? 'text' : 'password'}
-                    placeholder="Confirme sua senha"
-                    {...register('confirmPassword')}
-                    className="border-gray-300 focus:border-brand-green focus:ring-brand-green pr-12"
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  >
-                    {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </Button>
-                </div>
-                
-                {confirmPassword && password && (
-                  <div className="flex items-center space-x-2 mt-2">
-                    {confirmPassword === password ? (
-                      <Check size={16} className="text-green-500" />
-                    ) : (
-                      <X size={16} className="text-red-500" />
-                    )}
-                    <span className={`text-sm ${confirmPassword === password ? 'text-green-500' : 'text-red-500'}`}>
-                      {confirmPassword === password ? 'Senhas coincidem' : 'Senhas não coincidem'}
-                    </span>
-                  </div>
-                )}
-                
-                {errors.confirmPassword && (
-                  <p className="text-red-500 text-sm">{errors.confirmPassword.message}</p>
-                )}
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-4 pt-6">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => navigate('/')}
-                  className="border-brand-dark-blue text-brand-dark-blue hover:bg-brand-dark-blue hover:text-white"
-                >
-                  Voltar
-                </Button>
-                
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => navigate('/')}
-                  className="text-brand-green hover:bg-brand-green/10"
-                >
-                  Sair
-                </Button>
-                
-                <Button
-                  type="submit"
-                  disabled={isLoading}
-                  className="bg-brand-green hover:bg-brand-green/90 text-white flex-1"
-                >
-                  {isLoading ? 'Criando conta...' : 'Criar Conta e Começar'}
-                </Button>
-              </div>
-            </form>
-            )}
+        <Card className="w-full max-w-md">
+          <CardContent className="text-center p-8">
+            <p>Redirecionando para o checkout...</p>
           </CardContent>
         </Card>
       </div>
