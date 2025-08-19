@@ -68,23 +68,25 @@ const Login = () => {
     setError(null);
 
     try {
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: data.email,
-        password: data.password
-      });
+      // Usar login seguro com isolamento melhorado
+      const { signInSecurely } = await import('@/lib/authUtils');
+      const { data: authData, error: authError } = await signInSecurely(data.email, data.password);
 
       if (authError) {
         setError('E-mail ou senha incorretos');
         return;
       }
 
-      if (authData.user) {
+      if (authData?.user) {
         toast({
           title: 'Login realizado com sucesso!',
           description: 'Redirecionando para o painel...'
         });
         
-        await redirectToCorrectAdminPage(authData.user.id);
+        // Force refresh da página para garantir estado limpo
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 500);
       }
     } catch (err) {
       setError('Erro interno. Tente novamente.');
