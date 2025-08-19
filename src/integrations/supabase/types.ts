@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_log: {
+        Row: {
+          created_at: string | null
+          details: Json | null
+          event_type: string
+          id: string
+          record_id: string | null
+          table_name: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          details?: Json | null
+          event_type: string
+          id?: string
+          record_id?: string | null
+          table_name: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          details?: Json | null
+          event_type?: string
+          id?: string
+          record_id?: string | null
+          table_name?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       checkout_sessions: {
         Row: {
           amount: number
@@ -224,13 +254,6 @@ export type Database = {
             foreignKeyName: "questions_survey_id_fkey"
             columns: ["survey_id"]
             isOneToOne: false
-            referencedRelation: "public_surveys"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "questions_survey_id_fkey"
-            columns: ["survey_id"]
-            isOneToOne: false
             referencedRelation: "surveys"
             referencedColumns: ["id"]
           },
@@ -292,13 +315,6 @@ export type Database = {
           survey_id?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "responses_survey_id_fkey"
-            columns: ["survey_id"]
-            isOneToOne: false
-            referencedRelation: "public_surveys"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "responses_survey_id_fkey"
             columns: ["survey_id"]
@@ -438,30 +454,7 @@ export type Database = {
       }
     }
     Views: {
-      public_surveys: {
-        Row: {
-          description: string | null
-          id: string | null
-          status: string | null
-          title: string | null
-          unique_link: string | null
-        }
-        Insert: {
-          description?: string | null
-          id?: string | null
-          status?: string | null
-          title?: string | null
-          unique_link?: string | null
-        }
-        Update: {
-          description?: string | null
-          id?: string | null
-          status?: string | null
-          title?: string | null
-          unique_link?: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       can_receive_responses: {
@@ -483,6 +476,14 @@ export type Database = {
       is_survey_owner: {
         Args: { _survey_id: string; _user_id: string }
         Returns: boolean
+      }
+      test_user_data_isolation: {
+        Args: { _user_id: string }
+        Returns: {
+          details: string
+          result: boolean
+          test_name: string
+        }[]
       }
     }
     Enums: {
