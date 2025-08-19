@@ -477,12 +477,27 @@ export type Database = {
         Args: { _survey_id: string; _user_id: string }
         Returns: boolean
       }
+      test_anonymous_response_insertion: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          message: string
+          test_result: boolean
+        }[]
+      }
       test_user_data_isolation: {
         Args: { _user_id: string }
         Returns: {
           details: string
           result: boolean
           test_name: string
+        }[]
+      }
+      validate_response_policies: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          description: string
+          is_active: boolean
+          policy_name: string
         }[]
       }
     }
