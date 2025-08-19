@@ -17,7 +17,11 @@ import {
   PieChart as RechartsPieChart,
   Pie,
   Cell,
-  ResponsiveContainer
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  AreaChart,
+  Area
 } from 'recharts';
 
 interface SurveyAnalytics {
@@ -64,6 +68,7 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ surveyId }) => 
   const [analytics, setAnalytics] = useState<SurveyAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedQuestion, setSelectedQuestion] = useState<string>('');
+  const [chartType, setChartType] = useState<'bar' | 'pie' | 'line' | 'area' | 'histogram'>('bar');
 
   const fetchAnalytics = useCallback(async () => {
     setLoading(true);
@@ -625,35 +630,102 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ surveyId }) => 
               </TabsList>
 
               <TabsContent value="chart" className="space-y-4">
+                {/* Seletor de tipo de gráfico */}
+                <div className="mb-4">
+                  <select
+                    value={chartType}
+                    onChange={(e) => setChartType(e.target.value as 'bar' | 'pie' | 'line' | 'area' | 'histogram')}
+                    className="p-2 border border-gray-300 rounded-md"
+                  >
+                    <option value="bar">Gráfico de Barras</option>
+                    <option value="pie">Gráfico de Pizza</option>
+                    <option value="line">Gráfico de Linha</option>
+                    <option value="area">Gráfico de Área</option>
+                    <option value="histogram">Histograma</option>
+                  </select>
+                </div>
+
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Gráfico de Barras */}
+                  {/* Gráfico Principal */}
                   <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center">
                         <BarChart3 className="h-5 w-5 mr-2" />
-                        Distribuição de Respostas
+                        {chartType === 'bar' && 'Distribuição de Respostas'}
+                        {chartType === 'pie' && 'Proporção de Respostas'}
+                        {chartType === 'line' && 'Tendência de Respostas'}
+                        {chartType === 'area' && 'Área de Respostas'}
+                        {chartType === 'histogram' && 'Histograma de Distribuição'}
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
                       <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={selectedQuestionData.data}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="name" />
-                          <YAxis />
-                          <Tooltip />
-                          <Legend />
-                          <Bar dataKey="value" fill="#3B82F6" />
-                        </BarChart>
+                        {chartType === 'bar' ? (
+                          <BarChart data={selectedQuestionData.data}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="label" />
+                            <YAxis />
+                            <Tooltip />
+                            <Legend />
+                            <Bar dataKey="value" fill="#3B82F6" />
+                          </BarChart>
+                        ) : chartType === 'pie' ? (
+                          <RechartsPieChart>
+                            <Tooltip />
+                            <Legend />
+                            <Pie
+                              data={selectedQuestionData.data}
+                              cx="50%"
+                              cy="50%"
+                              labelLine={false}
+                              label={({ label, value }) => `${label}: ${value}`}
+                              outerRadius={80}
+                              fill="#8884d8"
+                              dataKey="value"
+                            >
+                              {selectedQuestionData.data.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                              ))}
+                            </Pie>
+                          </RechartsPieChart>
+                        ) : chartType === 'line' ? (
+                          <LineChart data={selectedQuestionData.data}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="label" />
+                            <YAxis />
+                            <Tooltip />
+                            <Legend />
+                            <Line type="monotone" dataKey="value" stroke="#3B82F6" strokeWidth={2} />
+                          </LineChart>
+                        ) : chartType === 'area' ? (
+                          <AreaChart data={selectedQuestionData.data}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="label" />
+                            <YAxis />
+                            <Tooltip />
+                            <Legend />
+                            <Area type="monotone" dataKey="value" stroke="#3B82F6" fill="#3B82F6" fillOpacity={0.6} />
+                          </AreaChart>
+                        ) : (
+                          <BarChart data={selectedQuestionData.data}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="label" />
+                            <YAxis />
+                            <Tooltip />
+                            <Legend />
+                            <Bar dataKey="value" fill="#10B981" />
+                          </BarChart>
+                        )}
                       </ResponsiveContainer>
                     </CardContent>
                   </Card>
 
-                  {/* Gráfico de Pizza */}
+                  {/* Gráfico Secundário - Sempre pizza para comparação */}
                   <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center">
                         <PieChart className="h-5 w-5 mr-2" />
-                        Proporção de Respostas
+                        Proporção Geral
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
