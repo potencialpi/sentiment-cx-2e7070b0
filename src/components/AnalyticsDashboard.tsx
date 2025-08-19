@@ -410,11 +410,197 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ surveyId }) => 
         </Card>
       </div>
 
-      {/* Seleção de questão */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Análise por Questão</CardTitle>
-        </CardHeader>
+      {/* Análises Avançadas */}
+      <div className="space-y-6">
+        <h3 className="text-xl font-semibold text-primary">Análises Avançadas</h3>
+        
+        {/* Dashboard de Análise Geral */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5" />
+              Dashboard de Análise Geral
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Tabs defaultValue="overview" className="w-full">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="overview">Visão Geral</TabsTrigger>
+                <TabsTrigger value="sentiment">Sentimentos</TabsTrigger>
+                <TabsTrigger value="trends">Tendências</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="overview" className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="p-4 bg-secondary rounded-lg">
+                    <p className="text-sm text-muted-foreground">Total de Questões</p>
+                    <p className="text-2xl font-bold">{analytics.questions.length}</p>
+                  </div>
+                  <div className="p-4 bg-secondary rounded-lg">
+                    <p className="text-sm text-muted-foreground">Tipos de Questão</p>
+                    <p className="text-2xl font-bold">
+                      {new Set(analytics.questions.map(q => q.type)).size}
+                    </p>
+                  </div>
+                  <div className="p-4 bg-secondary rounded-lg">
+                    <p className="text-sm text-muted-foreground">Taxa de Resposta</p>
+                    <p className="text-2xl font-bold">
+                      {analytics.totalResponses > 0 ? '100%' : '0%'}
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={analytics.questions.map(q => ({
+                      name: q.text.substring(0, 20) + '...',
+                      respostas: q.totalResponses
+                    }))}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis />
+                      <Tooltip />
+                      <Bar dataKey="respostas" fill="hsl(var(--primary))" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="sentiment" className="space-y-4">
+                {(() => {
+                  const allSentiments = analytics.questions
+                    .filter(q => q.sentimentData)
+                    .flatMap(q => q.sentimentData ? [q.sentimentData] : []);
+                  
+                  const sentimentCounts = {
+                    positive: allSentiments.reduce((sum, s) => sum + s.positive, 0),
+                    neutral: allSentiments.reduce((sum, s) => sum + s.neutral, 0),
+                    negative: allSentiments.reduce((sum, s) => sum + s.negative, 0)
+                  };
+                  
+                  const avgScore = allSentiments.length > 0 
+                    ? allSentiments.reduce((sum, s) => sum + s.avgScore, 0) / allSentiments.length 
+                    : 0;
+                    
+                  return (
+                    <>
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div className="p-4 bg-secondary rounded-lg">
+                          <p className="text-sm text-muted-foreground">Positivos</p>
+                          <p className="text-2xl font-bold text-green-600">
+                            {sentimentCounts.positive}
+                          </p>
+                        </div>
+                        <div className="p-4 bg-secondary rounded-lg">
+                          <p className="text-sm text-muted-foreground">Neutros</p>
+                          <p className="text-2xl font-bold text-yellow-600">
+                            {sentimentCounts.neutral}
+                          </p>
+                        </div>
+                        <div className="p-4 bg-secondary rounded-lg">
+                          <p className="text-sm text-muted-foreground">Negativos</p>
+                          <p className="text-2xl font-bold text-red-600">
+                            {sentimentCounts.negative}
+                          </p>
+                        </div>
+                        <div className="p-4 bg-secondary rounded-lg">
+                          <p className="text-sm text-muted-foreground">Score Médio</p>
+                          <p className="text-2xl font-bold">
+                            {avgScore.toFixed(2)}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {Object.values(sentimentCounts).some(v => v > 0) && (
+                        <div className="h-64">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <RechartsPieChart>
+                              <Pie
+                                data={[
+                                  { name: 'Positivo', value: sentimentCounts.positive, fill: '#22c55e' },
+                                  { name: 'Neutro', value: sentimentCounts.neutral, fill: '#eab308' },
+                                  { name: 'Negativo', value: sentimentCounts.negative, fill: '#ef4444' }
+                                ].filter(item => item.value > 0)}
+                                cx="50%"
+                                cy="50%"
+                                outerRadius={80}
+                                dataKey="value"
+                                label
+                              />
+                              <Tooltip />
+                              <Legend />
+                            </RechartsPieChart>
+                          </ResponsiveContainer>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
+              </TabsContent>
+              
+              <TabsContent value="trends" className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="p-4 bg-secondary rounded-lg">
+                    <p className="text-sm text-muted-foreground">Questão Mais Respondida</p>
+                    <p className="font-semibold">
+                      {analytics.questions.length > 0 
+                        ? analytics.questions.reduce((max, q) => 
+                            q.totalResponses > max.totalResponses ? q : max
+                          ).text.substring(0, 50) + '...'
+                        : 'N/A'
+                      }
+                    </p>
+                  </div>
+                  <div className="p-4 bg-secondary rounded-lg">
+                    <p className="text-sm text-muted-foreground">Tipo Mais Comum</p>
+                    <p className="font-semibold">
+                      {analytics.questions.length > 0 
+                        ? Object.entries(
+                            analytics.questions.reduce((acc, q) => {
+                              acc[q.type] = (acc[q.type] || 0) + 1;
+                              return acc;
+                            }, {} as Record<string, number>)
+                          ).reduce((max, [type, count]) => 
+                            count > max.count ? { type, count } : max, 
+                            { type: 'N/A', count: 0 }
+                          ).type
+                        : 'N/A'
+                      }
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="p-4 bg-secondary rounded-lg">
+                  <p className="text-sm text-muted-foreground mb-2">Distribuição por Tipo de Questão</p>
+                  <div className="h-48">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={
+                        Object.entries(
+                          analytics.questions.reduce((acc, q) => {
+                            acc[q.type] = (acc[q.type] || 0) + 1;
+                            return acc;
+                          }, {} as Record<string, number>)
+                        ).map(([type, count]) => ({ type, count }))
+                      }>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="type" />
+                        <YAxis />
+                        <Tooltip />
+                        <Bar dataKey="count" fill="hsl(var(--primary))" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
+        
+        {/* Análise por Questão */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Análise por Questão</CardTitle>
+          </CardHeader>
         <CardContent>
           <div className="mb-4">
             <select
@@ -638,7 +824,8 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ surveyId }) => 
             </Tabs>
           )}
         </CardContent>
-      </Card>
+        </Card>
+      </div>
     </div>
   );
 };

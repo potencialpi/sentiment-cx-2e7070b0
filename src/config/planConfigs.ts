@@ -38,7 +38,7 @@ export const startQuanticoConfig: PlanConfig = {
   features: {
     analytics: {
       basic: ["Análise básica de sentimentos", "Relatórios simples", "Estatísticas descritivas"],
-      advanced: ["Análise de tendências básicas", "Segmentação por demografia"],
+      advanced: ["Dashboard de visão geral", "Análise de tendências básicas", "Segmentação por demografia"],
       charts: ["Gráficos de barras", "Gráficos de pizza", "Histogramas"],
       export: ["CSV", "JSON"]
     },
@@ -65,7 +65,7 @@ export const vortexNeuralConfig: PlanConfig = {
   features: {
     analytics: {
       basic: ["Análise avançada de sentimentos", "Relatórios detalhados", "Estatísticas inferenciais"],
-      advanced: ["Machine Learning", "Análise preditiva", "Clustering automático", "Detecção de anomalias"],
+      advanced: ["Dashboard de análise geral com insights detalhados", "Machine Learning", "Análise preditiva", "Clustering automático", "Detecção de anomalias"],
       charts: ["Gráficos de barras", "Gráficos de pizza", "Histogramas", "Scatter plots", "Heatmaps"],
       export: ["CSV", "JSON", "Parquet"]
     },
@@ -93,6 +93,7 @@ export const nexusInfinitoConfig: PlanConfig = {
     analytics: {
       basic: ["Análise de sentimentos em tempo real", "Relatórios executivos", "Estatísticas avançadas"],
       advanced: [
+        "Dashboard executivo completo com análises em tempo real",
         "Deep Learning", 
         "Análise preditiva avançada", 
         "Processamento de linguagem natural", 
