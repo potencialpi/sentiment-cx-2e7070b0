@@ -361,69 +361,98 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ surveyId }) => 
 
   return (
     <div className="space-y-6">
-      {/* Header com estatísticas gerais */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center">
-              <Users className="h-8 w-8 text-blue-600" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total de Respostas</p>
-                <p className="text-2xl font-bold text-gray-900">{analytics.totalResponses}</p>
+      {/* Header com estatísticas gerais - Design Moderno */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        {/* Card Total de Respostas - Gradient Purple */}
+        <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-purple-500 to-purple-700 p-6 text-white shadow-lg hover:shadow-xl transition-all duration-300">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-purple-100 text-sm font-medium mb-1">Total de Respostas</p>
+              <p className="text-3xl font-bold">{analytics.totalResponses}</p>
+            </div>
+            <div className="bg-white/20 rounded-lg p-3">
+              <Users className="h-8 w-8" />
+            </div>
+          </div>
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-white/10 rounded-full"></div>
+        </div>
+
+        {/* Card Questões - Gradient Blue */}
+        <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 p-6 text-white shadow-lg hover:shadow-xl transition-all duration-300">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-blue-100 text-sm font-medium mb-1">Questões</p>
+              <p className="text-3xl font-bold">{analytics.questions.length}</p>
+            </div>
+            <div className="bg-white/20 rounded-lg p-3">
+              <MessageSquare className="h-8 w-8" />
+            </div>
+          </div>
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-white/10 rounded-full"></div>
+        </div>
+
+        {/* Card Sentimento Positivo - Gradient Green */}
+        <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 p-6 text-white shadow-lg hover:shadow-xl transition-all duration-300">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-emerald-100 text-sm font-medium mb-1">Sentimento Positivo</p>
+              <p className="text-3xl font-bold">{analytics.sentimentOverview.positive}</p>
+            </div>
+            <div className="bg-white/20 rounded-lg p-3">
+              <TrendingUp className="h-8 w-8" />
+            </div>
+          </div>
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-white/10 rounded-full"></div>
+        </div>
+
+        {/* Card Exportar - Gradient Orange */}
+        <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-orange-500 to-orange-700 p-6 text-white shadow-lg hover:shadow-xl transition-all duration-300">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-orange-100 text-sm font-medium mb-1">Exportar Dados</p>
+              <div className="flex items-center space-x-2 mt-2">
+                <Button 
+                  onClick={() => exportData('csv')} 
+                  variant="ghost" 
+                  size="sm"
+                  className="text-white hover:bg-white/20 border-white/30 border h-8 px-3"
+                >
+                  <Download className="h-3 w-3 mr-1" />
+                  CSV
+                </Button>
+                <Button 
+                  onClick={() => exportData('json')} 
+                  variant="ghost" 
+                  size="sm"
+                  className="text-white hover:bg-white/20 border-white/30 border h-8 px-3"
+                >
+                  <Download className="h-3 w-3 mr-1" />
+                  JSON
+                </Button>
               </div>
             </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center">
-              <MessageSquare className="h-8 w-8 text-green-600" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Questões</p>
-                <p className="text-2xl font-bold text-gray-900">{analytics.questions.length}</p>
-              </div>
+            <div className="bg-white/20 rounded-lg p-3">
+              <Download className="h-8 w-8" />
             </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center">
-              <TrendingUp className="h-8 w-8 text-purple-600" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Sentimento Positivo</p>
-                <p className="text-2xl font-bold text-gray-900">{analytics.sentimentOverview.positive}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center space-x-2">
-              <Button onClick={() => exportData('csv')} variant="outline" size="sm">
-                <Download className="h-4 w-4 mr-2" />
-                CSV
-              </Button>
-              <Button onClick={() => exportData('json')} variant="outline" size="sm">
-                <Download className="h-4 w-4 mr-2" />
-                JSON
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+          </div>
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-white/10 rounded-full"></div>
+        </div>
       </div>
 
       {/* Análises Avançadas */}
-      <div className="space-y-6">
-        <h3 className="text-xl font-semibold text-primary">Análises Avançadas</h3>
+      <div className="space-y-8">
+        <div className="flex items-center gap-3">
+          <div className="w-1 h-8 bg-gradient-to-b from-primary to-primary/50 rounded-full"></div>
+          <h3 className="text-2xl font-bold text-foreground">Análises Avançadas</h3>
+        </div>
         
         {/* Dashboard de Análise Geral */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5" />
+        <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-gray-50/50 dark:from-gray-900 dark:to-gray-800/50">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-3 text-xl">
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <BarChart3 className="h-6 w-6 text-primary" />
+              </div>
               Dashboard de Análise Geral
             </CardTitle>
           </CardHeader>
@@ -435,39 +464,95 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ surveyId }) => 
                 <TabsTrigger value="trends">Tendências</TabsTrigger>
               </TabsList>
               
-              <TabsContent value="overview" className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="p-4 bg-secondary rounded-lg">
-                    <p className="text-sm text-muted-foreground">Total de Questões</p>
-                    <p className="text-2xl font-bold">{analytics.questions.length}</p>
+              <TabsContent value="overview" className="space-y-6 mt-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="relative p-6 bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-950/30 dark:to-blue-900/20 rounded-xl border border-blue-200/50 dark:border-blue-800/30">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-blue-700 dark:text-blue-300 mb-1">Total de Questões</p>
+                        <p className="text-3xl font-bold text-blue-900 dark:text-blue-100">{analytics.questions.length}</p>
+                      </div>
+                      <div className="p-3 bg-blue-500/10 rounded-lg">
+                        <MessageSquare className="h-6 w-6 text-blue-600" />
+                      </div>
+                    </div>
                   </div>
-                  <div className="p-4 bg-secondary rounded-lg">
-                    <p className="text-sm text-muted-foreground">Tipos de Questão</p>
-                    <p className="text-2xl font-bold">
-                      {new Set(analytics.questions.map(q => q.type)).size}
-                    </p>
+                  
+                  <div className="relative p-6 bg-gradient-to-br from-purple-50 to-purple-100/50 dark:from-purple-950/30 dark:to-purple-900/20 rounded-xl border border-purple-200/50 dark:border-purple-800/30">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-purple-700 dark:text-purple-300 mb-1">Tipos de Questão</p>
+                        <p className="text-3xl font-bold text-purple-900 dark:text-purple-100">
+                          {new Set(analytics.questions.map(q => q.type)).size}
+                        </p>
+                      </div>
+                      <div className="p-3 bg-purple-500/10 rounded-lg">
+                        <Brain className="h-6 w-6 text-purple-600" />
+                      </div>
+                    </div>
                   </div>
-                  <div className="p-4 bg-secondary rounded-lg">
-                    <p className="text-sm text-muted-foreground">Taxa de Resposta</p>
-                    <p className="text-2xl font-bold">
-                      {analytics.totalResponses > 0 ? '100%' : '0%'}
-                    </p>
+                  
+                  <div className="relative p-6 bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-950/30 dark:to-emerald-900/20 rounded-xl border border-emerald-200/50 dark:border-emerald-800/30">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300 mb-1">Taxa de Resposta</p>
+                        <p className="text-3xl font-bold text-emerald-900 dark:text-emerald-100">
+                          {analytics.totalResponses > 0 ? '100%' : '0%'}
+                        </p>
+                      </div>
+                      <div className="p-3 bg-emerald-500/10 rounded-lg">
+                        <TrendingUp className="h-6 w-6 text-emerald-600" />
+                      </div>
+                    </div>
                   </div>
                 </div>
                 
-                <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={analytics.questions.map(q => ({
-                      name: q.text.substring(0, 20) + '...',
-                      respostas: q.totalResponses
-                    }))}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis />
-                      <Tooltip />
-                      <Bar dataKey="respostas" fill="hsl(var(--primary))" />
-                    </BarChart>
-                  </ResponsiveContainer>
+                <div className="bg-white dark:bg-gray-900 rounded-xl p-6 shadow-sm border border-gray-200/50 dark:border-gray-700/50">
+                  <h4 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+                    <BarChart3 className="h-5 w-5 text-primary" />
+                    Respostas por Questão
+                  </h4>
+                  <div className="h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart 
+                        data={analytics.questions.map(q => ({
+                          name: q.text.substring(0, 20) + '...',
+                          respostas: q.totalResponses
+                        }))}
+                        margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted-foreground) / 0.2)" />
+                        <XAxis 
+                          dataKey="name" 
+                          tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
+                          tickLine={{ stroke: 'hsl(var(--muted-foreground) / 0.3)' }}
+                        />
+                        <YAxis 
+                          tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
+                          tickLine={{ stroke: 'hsl(var(--muted-foreground) / 0.3)' }}
+                        />
+                        <Tooltip 
+                          contentStyle={{
+                            backgroundColor: 'hsl(var(--background))',
+                            border: '1px solid hsl(var(--border))',
+                            borderRadius: '8px',
+                            color: 'hsl(var(--foreground))'
+                          }}
+                        />
+                        <Bar 
+                          dataKey="respostas" 
+                          fill="url(#barGradient)"
+                          radius={[4, 4, 0, 0]}
+                        />
+                        <defs>
+                          <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="hsl(var(--primary))" />
+                            <stop offset="100%" stopColor="hsl(var(--primary) / 0.6)" />
+                          </linearGradient>
+                        </defs>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
                 </div>
               </TabsContent>
               
