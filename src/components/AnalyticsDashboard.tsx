@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { analyzeBatchSentiment, getSentimentInsights } from '@/lib/sentimentAnalysis';
-import { BarChart3, PieChart, TrendingUp, Download, Users, MessageSquare, Star, Brain } from 'lucide-react';
+import { BarChart3, PieChart, TrendingUp, Download, Users, MessageSquare, Star, Brain, TrendingDown } from 'lucide-react';
 import {
   BarChart,
   Bar,
@@ -362,7 +362,7 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ surveyId }) => 
   return (
     <div className="space-y-6">
       {/* Header com estatísticas gerais - Design Moderno */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* Card Total de Respostas - Gradient Purple */}
         <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-purple-500 to-purple-700 p-6 text-white shadow-lg hover:shadow-xl transition-all duration-300">
           <div className="flex items-center justify-between">
@@ -405,39 +405,71 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ surveyId }) => 
           <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-white/10 rounded-full"></div>
         </div>
 
-        {/* Card Exportar - Gradient Orange */}
-        <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-orange-500 to-orange-700 p-6 text-white shadow-lg hover:shadow-xl transition-all duration-300">
+        {/* Card Sentimento Negativo - Gradient Red */}
+        <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-red-500 to-red-700 p-6 text-white shadow-lg hover:shadow-xl transition-all duration-300">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-orange-100 text-sm font-medium mb-1">Exportar Dados</p>
-              <div className="flex items-center space-x-2 mt-2">
-                <Button 
-                  onClick={() => exportData('csv')} 
-                  variant="ghost" 
-                  size="sm"
-                  className="text-white hover:bg-white/20 border-white/30 border h-8 px-3"
-                >
-                  <Download className="h-3 w-3 mr-1" />
-                  CSV
-                </Button>
-                <Button 
-                  onClick={() => exportData('json')} 
-                  variant="ghost" 
-                  size="sm"
-                  className="text-white hover:bg-white/20 border-white/30 border h-8 px-3"
-                >
-                  <Download className="h-3 w-3 mr-1" />
-                  JSON
-                </Button>
-              </div>
+              <p className="text-red-100 text-sm font-medium mb-1">Sentimento Negativo</p>
+              <p className="text-3xl font-bold">{analytics.sentimentOverview.negative}</p>
             </div>
             <div className="bg-white/20 rounded-lg p-3">
-              <Download className="h-8 w-8" />
+              <TrendingDown className="h-8 w-8" />
             </div>
           </div>
           <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-white/10 rounded-full"></div>
         </div>
       </div>
+
+      {/* Adicionar um card adicional para sentimentos neutros se houver dados */}
+      {analytics.sentimentOverview.neutral > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-yellow-500 to-yellow-700 p-6 text-white shadow-lg hover:shadow-xl transition-all duration-300">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-yellow-100 text-sm font-medium mb-1">Sentimento Neutro</p>
+                <p className="text-3xl font-bold">{analytics.sentimentOverview.neutral}</p>
+              </div>
+              <div className="bg-white/20 rounded-lg p-3">
+                <Brain className="h-8 w-8" />
+              </div>
+            </div>
+            <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-white/10 rounded-full"></div>
+          </div>
+
+          {/* Card de Exportar - Movido para aqui */}
+          <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-orange-500 to-orange-700 p-6 text-white shadow-lg hover:shadow-xl transition-all duration-300">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-orange-100 text-sm font-medium mb-1">Exportar Dados</p>
+                <div className="flex items-center space-x-2 mt-2">
+                  <Button 
+                    onClick={() => exportData('csv')} 
+                    variant="ghost" 
+                    size="sm"
+                    className="text-white hover:bg-white/20 border-white/30 border h-8 px-3"
+                  >
+                    <Download className="h-3 w-3 mr-1" />
+                    CSV
+                  </Button>
+                  <Button 
+                    onClick={() => exportData('json')} 
+                    variant="ghost" 
+                    size="sm"
+                    className="text-white hover:bg-white/20 border-white/30 border h-8 px-3"
+                  >
+                    <Download className="h-3 w-3 mr-1" />
+                    JSON
+                  </Button>
+                </div>
+              </div>
+              <div className="bg-white/20 rounded-lg p-3">
+                <Download className="h-8 w-8" />
+              </div>
+            </div>
+            <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-white/10 rounded-full"></div>
+          </div>
+        </div>
+      )}
 
       {/* Análises Avançadas */}
       <div className="space-y-8">
