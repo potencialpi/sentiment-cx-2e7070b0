@@ -362,114 +362,98 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ surveyId }) => 
   return (
     <div className="space-y-6">
       {/* Header com estatísticas gerais - Design Moderno */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         {/* Card Total de Respostas - Gradient Purple */}
-        <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-purple-500 to-purple-700 p-6 text-white shadow-lg hover:shadow-xl transition-all duration-300">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-purple-100 text-sm font-medium mb-1">Total de Respostas</p>
-              <p className="text-3xl font-bold">{analytics.totalResponses}</p>
+        <div className="relative overflow-hidden rounded-lg bg-gradient-to-br from-purple-500 to-purple-700 p-4 text-white shadow-lg hover:shadow-xl transition-all duration-300">
+          <div className="flex flex-col items-center text-center">
+            <div className="bg-white/20 rounded-lg p-2 mb-2">
+              <Users className="h-5 w-5" />
             </div>
-            <div className="bg-white/20 rounded-lg p-3">
-              <Users className="h-8 w-8" />
-            </div>
+            <p className="text-purple-100 text-xs font-medium mb-1">Total de Respostas</p>
+            <p className="text-2xl font-bold">{analytics.totalResponses}</p>
           </div>
-          <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-white/10 rounded-full"></div>
+          <div className="absolute -right-2 -bottom-2 w-12 h-12 bg-white/10 rounded-full"></div>
         </div>
 
         {/* Card Questões - Gradient Blue */}
-        <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 p-6 text-white shadow-lg hover:shadow-xl transition-all duration-300">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-blue-100 text-sm font-medium mb-1">Questões</p>
-              <p className="text-3xl font-bold">{analytics.questions.length}</p>
+        <div className="relative overflow-hidden rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 p-4 text-white shadow-lg hover:shadow-xl transition-all duration-300">
+          <div className="flex flex-col items-center text-center">
+            <div className="bg-white/20 rounded-lg p-2 mb-2">
+              <MessageSquare className="h-5 w-5" />
             </div>
-            <div className="bg-white/20 rounded-lg p-3">
-              <MessageSquare className="h-8 w-8" />
-            </div>
+            <p className="text-blue-100 text-xs font-medium mb-1">Questões</p>
+            <p className="text-2xl font-bold">{analytics.questions.length}</p>
           </div>
-          <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-white/10 rounded-full"></div>
+          <div className="absolute -right-2 -bottom-2 w-12 h-12 bg-white/10 rounded-full"></div>
         </div>
 
         {/* Card Sentimento Positivo - Gradient Green */}
-        <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 p-6 text-white shadow-lg hover:shadow-xl transition-all duration-300">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-emerald-100 text-sm font-medium mb-1">Sentimento Positivo</p>
-              <p className="text-3xl font-bold">{analytics.sentimentOverview.positive}</p>
+        <div className="relative overflow-hidden rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-700 p-4 text-white shadow-lg hover:shadow-xl transition-all duration-300">
+          <div className="flex flex-col items-center text-center">
+            <div className="bg-white/20 rounded-lg p-2 mb-2">
+              <TrendingUp className="h-5 w-5" />
             </div>
-            <div className="bg-white/20 rounded-lg p-3">
-              <TrendingUp className="h-8 w-8" />
-            </div>
+            <p className="text-emerald-100 text-xs font-medium mb-1">Sentimento Positivo</p>
+            <p className="text-2xl font-bold">{analytics.sentimentOverview.positive}</p>
           </div>
-          <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-white/10 rounded-full"></div>
+          <div className="absolute -right-2 -bottom-2 w-12 h-12 bg-white/10 rounded-full"></div>
         </div>
 
         {/* Card Sentimento Negativo - Gradient Red */}
-        <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-red-500 to-red-700 p-6 text-white shadow-lg hover:shadow-xl transition-all duration-300">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-red-100 text-sm font-medium mb-1">Sentimento Negativo</p>
-              <p className="text-3xl font-bold">{analytics.sentimentOverview.negative}</p>
+        <div className="relative overflow-hidden rounded-lg bg-gradient-to-br from-red-500 to-red-700 p-4 text-white shadow-lg hover:shadow-xl transition-all duration-300">
+          <div className="flex flex-col items-center text-center">
+            <div className="bg-white/20 rounded-lg p-2 mb-2">
+              <TrendingDown className="h-5 w-5" />
             </div>
-            <div className="bg-white/20 rounded-lg p-3">
-              <TrendingDown className="h-8 w-8" />
+            <p className="text-red-100 text-xs font-medium mb-1">Sentimento Negativo</p>
+            <p className="text-2xl font-bold">{analytics.sentimentOverview.negative}</p>
+          </div>
+          <div className="absolute -right-2 -bottom-2 w-12 h-12 bg-white/10 rounded-full"></div>
+        </div>
+
+        {/* Card Sentimento Neutro - Gradient Yellow */}
+        {analytics.sentimentOverview.neutral > 0 && (
+          <div className="relative overflow-hidden rounded-lg bg-gradient-to-br from-yellow-500 to-yellow-700 p-4 text-white shadow-lg hover:shadow-xl transition-all duration-300">
+            <div className="flex flex-col items-center text-center">
+              <div className="bg-white/20 rounded-lg p-2 mb-2">
+                <Brain className="h-5 w-5" />
+              </div>
+              <p className="text-yellow-100 text-xs font-medium mb-1">Sentimento Neutro</p>
+              <p className="text-2xl font-bold">{analytics.sentimentOverview.neutral}</p>
+            </div>
+            <div className="absolute -right-2 -bottom-2 w-12 h-12 bg-white/10 rounded-full"></div>
+          </div>
+        )}
+
+        {/* Card de Exportar */}
+        <div className="relative overflow-hidden rounded-lg bg-gradient-to-br from-orange-500 to-orange-700 p-4 text-white shadow-lg hover:shadow-xl transition-all duration-300">
+          <div className="flex flex-col items-center text-center">
+            <div className="bg-white/20 rounded-lg p-2 mb-2">
+              <Download className="h-5 w-5" />
+            </div>
+            <p className="text-orange-100 text-xs font-medium mb-1">Exportar</p>
+            <div className="flex flex-col space-y-1">
+              <Button 
+                onClick={() => exportData('csv')} 
+                variant="ghost" 
+                size="sm"
+                className="text-white hover:bg-white/20 border-white/30 border h-6 px-2 text-xs"
+              >
+                CSV
+              </Button>
+              <Button 
+                onClick={() => exportData('json')} 
+                variant="ghost" 
+                size="sm"
+                className="text-white hover:bg-white/20 border-white/30 border h-6 px-2 text-xs"
+              >
+                JSON
+              </Button>
             </div>
           </div>
-          <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-white/10 rounded-full"></div>
+          <div className="absolute -right-2 -bottom-2 w-12 h-12 bg-white/10 rounded-full"></div>
         </div>
       </div>
-
-      {/* Adicionar um card adicional para sentimentos neutros se houver dados */}
-      {analytics.sentimentOverview.neutral > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-yellow-500 to-yellow-700 p-6 text-white shadow-lg hover:shadow-xl transition-all duration-300">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-yellow-100 text-sm font-medium mb-1">Sentimento Neutro</p>
-                <p className="text-3xl font-bold">{analytics.sentimentOverview.neutral}</p>
-              </div>
-              <div className="bg-white/20 rounded-lg p-3">
-                <Brain className="h-8 w-8" />
-              </div>
-            </div>
-            <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-white/10 rounded-full"></div>
-          </div>
-
-          {/* Card de Exportar - Movido para aqui */}
-          <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-orange-500 to-orange-700 p-6 text-white shadow-lg hover:shadow-xl transition-all duration-300">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-orange-100 text-sm font-medium mb-1">Exportar Dados</p>
-                <div className="flex items-center space-x-2 mt-2">
-                  <Button 
-                    onClick={() => exportData('csv')} 
-                    variant="ghost" 
-                    size="sm"
-                    className="text-white hover:bg-white/20 border-white/30 border h-8 px-3"
-                  >
-                    <Download className="h-3 w-3 mr-1" />
-                    CSV
-                  </Button>
-                  <Button 
-                    onClick={() => exportData('json')} 
-                    variant="ghost" 
-                    size="sm"
-                    className="text-white hover:bg-white/20 border-white/30 border h-8 px-3"
-                  >
-                    <Download className="h-3 w-3 mr-1" />
-                    JSON
-                  </Button>
-                </div>
-              </div>
-              <div className="bg-white/20 rounded-lg p-3">
-                <Download className="h-8 w-8" />
-              </div>
-            </div>
-            <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-white/10 rounded-full"></div>
-          </div>
-        </div>
-      )}
 
       {/* Análises Avançadas */}
       <div className="space-y-8">
