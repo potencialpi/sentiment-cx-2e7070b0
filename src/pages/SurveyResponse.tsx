@@ -213,21 +213,31 @@ const SurveyResponse = () => {
 
       // Executar análise de sentimento se houver respostas de texto
       if (textResponses.length > 0 && responseRecord?.id) {
+        console.log('🔍 Iniciando análise de sentimento:', {
+          responseId: responseRecord.id,
+          textResponsesCount: textResponses.length,
+          texts: textResponses
+        });
+        
         try {
-          await fetch('/functions/v1/analyze-sentiment', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
+          const { data: sentimentData, error: sentimentError } = await supabase.functions.invoke('analyze-sentiment', {
+            body: {
               responseId: responseRecord.id,
               texts: textResponses
-            })
+            }
           });
+
+          if (sentimentError) {
+            console.error('❌ Erro na análise de sentimento:', sentimentError);
+          } else {
+            console.log('✅ Análise de sentimento executada com sucesso:', sentimentData);
+          }
         } catch (sentimentError) {
-          console.error('Sentiment analysis error:', sentimentError);
+          console.error('❌ Erro na chamada da função de análise de sentimento:', sentimentError);
           // Não bloquear o envio da resposta se a análise falhar
         }
+      } else {
+        console.log('⏭️ Pulando análise de sentimento - sem respostas de texto ou ID de resposta inválido');
       }
 
       // Atualizar contador de respostas da pesquisa
