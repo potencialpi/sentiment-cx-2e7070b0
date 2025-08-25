@@ -324,6 +324,54 @@ export type Database = {
           },
         ]
       }
+      sentiment_analysis: {
+        Row: {
+          created_at: string | null
+          id: string
+          response_id: string
+          sentiment_results: Json
+          summary_stats: Json | null
+          survey_id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          response_id: string
+          sentiment_results: Json
+          summary_stats?: Json | null
+          survey_id: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          response_id?: string
+          sentiment_results?: Json
+          summary_stats?: Json | null
+          survey_id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_sentiment_analysis_response_id"
+            columns: ["response_id"]
+            isOneToOne: false
+            referencedRelation: "responses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_sentiment_analysis_survey_id"
+            columns: ["survey_id"]
+            isOneToOne: false
+            referencedRelation: "surveys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subscribers: {
         Row: {
           created_at: string
