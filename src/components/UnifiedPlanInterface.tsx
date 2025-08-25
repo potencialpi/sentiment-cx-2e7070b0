@@ -390,7 +390,7 @@ const UnifiedPlanInterface: React.FC<UnifiedPlanInterfaceProps> = ({ config }) =
                     Criar Nova Pesquisa
                   </CardTitle>
                   <CardDescription className="text-brand-dark-gray/70">
-                    Crie pesquisas com até {config.maxQuestions} questões e {config.maxResponses === 999999 ? 'respostas ilimitadas' : `${config.maxResponses} respostas`}
+                    Crie pesquisas com questões e respostas ilimitadas
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4 sm:space-y-6 px-4 sm:px-6">
