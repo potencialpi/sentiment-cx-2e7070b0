@@ -23,6 +23,13 @@ export interface PlanConfig {
       basic: string[];
       advanced: string[];
     };
+    aiFeatures?: {
+      sentiment?: string;
+      predictive?: string;
+      clustering?: string;
+      brandIndex?: string;
+      trendAnalysis?: string;
+    };
   };
 }
 
@@ -143,17 +150,32 @@ export const nexusInfinitoConfig: PlanConfig = {
         "Desvio padrão", 
         "Quartis", 
         "Percentis", 
+        "Correlação",
         "Coeficiente de variação"
       ],
       advanced: [
+        "Testes de hipóteses",
+        "ANOVA com comparação de múltiplos grupos",
+        "Análise de conjoint para trade-offs de preferências",
+        "Clustering com segmentação avançada K-Means",
+        "Previsão de tendências e demanda futura com séries temporais",
+        "Testes não paramétricos",
+        "Análise de confiabilidade",
+        "Modelos preditivos para probabilidade de recomendação",
+        "Índice de percepção de marca",
         "Regressão múltipla", 
         "Análise de variância multivariada", 
-        "Testes estatísticos avançados", 
-        "Análise de séries temporais", 
-        "Modelagem preditiva", 
+        "Modelagem preditiva avançada", 
         "Análise de sobrevivência",
         "Análise de componentes principais"
       ]
+    },
+    aiFeatures: {
+      sentiment: "Análise de sentimento multicanal personalizada",
+      predictive: "Modelos preditivos para recomendação",
+      clustering: "Segmentação automática com K-Means",
+      brandIndex: "Índice de percepção de marca automático",
+      trendAnalysis: "Análise de tendências e previsão de demanda"
     }
   }
 };

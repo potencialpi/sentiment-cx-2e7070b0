@@ -71,6 +71,9 @@ interface PlanConfig {
       basic: string[];
       advanced: string[];
     };
+    aiFeatures?: {
+      [key: string]: string;
+    };
   };
 }
 
@@ -647,36 +650,67 @@ const UnifiedPlanInterface: React.FC<UnifiedPlanInterfaceProps> = ({ config }) =
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="px-4 sm:px-6">
-                  {/* Seletor de pesquisa para análise */}
-                  {activeSurveys.filter(survey => survey.current_responses > 0).length > 0 ? (
-                    <div className="space-y-6">
-                      <div className="flex flex-col space-y-4">
-                        <label className="text-sm font-medium text-brand-dark-gray">
-                          Selecione uma pesquisa para análise:
-                        </label>
-                        <select
-                          value={selectedSurveyForAnalysis}
-                          onChange={(e) => setSelectedSurveyForAnalysis(e.target.value)}
-                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-green focus:border-transparent"
-                        >
-                          <option value="">Escolha uma pesquisa...</option>
-                          {activeSurveys
-                            .filter(survey => survey.current_responses > 0)
-                            .map((survey) => (
-                              <option key={survey.id} value={survey.id}>
-                                {survey.title} ({survey.current_responses} respostas)
-                              </option>
-                            ))}
-                        </select>
-                      </div>
+                   {/* Seletor de pesquisa para análise */}
+                   {activeSurveys.filter(survey => survey.current_responses > 0).length > 0 ? (
+                     <div className="space-y-6">
+                       <div className="flex flex-col space-y-4">
+                         <label className="text-sm font-medium text-brand-dark-gray">
+                           Selecione uma pesquisa para análise:
+                         </label>
+                         <select
+                           value={selectedSurveyForAnalysis}
+                           onChange={(e) => setSelectedSurveyForAnalysis(e.target.value)}
+                           className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-green focus:border-transparent"
+                         >
+                           <option value="">Escolha uma pesquisa...</option>
+                           {activeSurveys
+                             .filter(survey => survey.current_responses > 0)
+                             .map((survey) => (
+                               <option key={survey.id} value={survey.id}>
+                                 {survey.title} ({survey.current_responses} respostas)
+                               </option>
+                             ))}
+                         </select>
+                       </div>
 
-                      {/* Dashboard de análise */}
-                      {selectedSurveyForAnalysis && (
-                        <div className="mt-6">
-                          <AnalyticsDashboard surveyId={selectedSurveyForAnalysis} />
-                        </div>
-                      )}
-                    </div>
+                       {/* Dashboard de análise */}
+                       {selectedSurveyForAnalysis && (
+                         <div className="space-y-6">
+                           <AnalyticsDashboard surveyId={selectedSurveyForAnalysis} />
+                           
+                           {config.features.aiFeatures && (
+                             <Card>
+                               <CardHeader>
+                                 <CardTitle className="text-brand-purple">
+                                   Análises Avançadas - {config.planTitle}
+                                 </CardTitle>
+                                 <CardDescription>
+                                   Recursos exclusivos de IA e machine learning para insights profundos
+                                 </CardDescription>
+                               </CardHeader>
+                               <CardContent className="grid gap-4 md:grid-cols-2">
+                                 {Object.entries(config.features.aiFeatures).map(([key, feature]) => (
+                                   <div key={key} className="p-4 border border-brand-light-purple/20 rounded-lg bg-brand-light-purple/5">
+                                     <div className="flex items-center space-x-2 mb-2">
+                                       <div className="w-3 h-3 bg-gradient-to-r from-brand-purple to-brand-light-purple rounded-full"></div>
+                                       <span className="font-medium text-brand-dark-gray">{feature}</span>
+                                     </div>
+                                     <Button 
+                                       variant="outline" 
+                                       size="sm"
+                                       className="w-full mt-2"
+                                       onClick={() => {/* TODO: Implementar análise específica */}}
+                                     >
+                                       Executar Análise
+                                     </Button>
+                                   </div>
+                                 ))}
+                               </CardContent>
+                             </Card>
+                           )}
+                         </div>
+                       )}
+                     </div>
                   ) : (
                     <div className="text-center py-12">
                       <TrendingUp className="w-16 h-16 mx-auto text-gray-400 mb-4" />
@@ -686,38 +720,70 @@ const UnifiedPlanInterface: React.FC<UnifiedPlanInterfaceProps> = ({ config }) =
                       <p className="text-gray-500 mb-6 max-w-md mx-auto">
                         Para ver análises avançadas, você precisa ter pelo menos uma pesquisa ativa que tenha recebido respostas.
                       </p>
-                      <div className="bg-gray-50 rounded-lg p-6">
-                        <h4 className="font-semibold mb-4">Recursos disponíveis no {config.planName}:</h4>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                          <div className="text-center">
-                            <BarChart3 className="w-8 h-8 mx-auto mb-2 text-brand-green" />
-                            <h5 className="font-medium text-sm mb-1">Estatísticas</h5>
-                            <ul className="text-xs text-gray-600 space-y-1">
-                              {config.features.statistics.basic.slice(0, 3).map((stat, index) => (
-                                <li key={index}>• {stat}</li>
-                              ))}
-                            </ul>
-                          </div>
-                          <div className="text-center">
-                            <Activity className="w-8 h-8 mx-auto mb-2 text-brand-green" />
-                            <h5 className="font-medium text-sm mb-1">Sentimentos</h5>
-                            <ul className="text-xs text-gray-600 space-y-1">
-                              {config.features.sentiment.levels.slice(0, 3).map((level, index) => (
-                                <li key={index}>• {level}</li>
-                              ))}
-                            </ul>
-                          </div>
-                          <div className="text-center">
-                            <PieChart className="w-8 h-8 mx-auto mb-2 text-brand-green" />
-                            <h5 className="font-medium text-sm mb-1">Gráficos</h5>
-                            <ul className="text-xs text-gray-600 space-y-1">
-                              {config.features.analytics.charts.slice(0, 3).map((chart, index) => (
-                                <li key={index}>• {chart}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        </div>
-                      </div>
+                       <div className="bg-gray-50 rounded-lg p-6 space-y-6">
+                         <div>
+                           <h4 className="font-semibold mb-4">Recursos disponíveis no {config.planName}:</h4>
+                           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                             <div className="text-center">
+                               <BarChart3 className="w-8 h-8 mx-auto mb-2 text-brand-green" />
+                               <h5 className="font-medium text-sm mb-1">Estatísticas</h5>
+                               <ul className="text-xs text-gray-600 space-y-1">
+                                 {config.features.statistics.basic.slice(0, 3).map((stat, index) => (
+                                   <li key={index}>• {stat}</li>
+                                 ))}
+                               </ul>
+                             </div>
+                             <div className="text-center">
+                               <Activity className="w-8 h-8 mx-auto mb-2 text-brand-green" />
+                               <h5 className="font-medium text-sm mb-1">Sentimentos</h5>
+                               <ul className="text-xs text-gray-600 space-y-1">
+                                 {config.features.sentiment.levels.slice(0, 3).map((level, index) => (
+                                   <li key={index}>• {level}</li>
+                                 ))}
+                               </ul>
+                             </div>
+                             <div className="text-center">
+                               <PieChart className="w-8 h-8 mx-auto mb-2 text-brand-green" />
+                               <h5 className="font-medium text-sm mb-1">Gráficos</h5>
+                               <ul className="text-xs text-gray-600 space-y-1">
+                                 {config.features.analytics.charts.slice(0, 3).map((chart, index) => (
+                                   <li key={index}>• {chart}</li>
+                                 ))}
+                               </ul>
+                             </div>
+                           </div>
+                         </div>
+
+                         {config.features.statistics.advanced && config.features.statistics.advanced.length > 0 && (
+                           <div>
+                             <h4 className="font-semibold mb-3">Análises Estatísticas Avançadas:</h4>
+                             <div className="grid gap-2 md:grid-cols-2">
+                               {config.features.statistics.advanced.slice(0, 8).map((feature, index) => (
+                                 <div key={index} className="flex items-center space-x-2">
+                                   <div className="w-2 h-2 bg-gradient-to-r from-brand-purple to-brand-light-purple rounded-full"></div>
+                                   <span className="text-xs text-brand-dark-gray font-medium">{feature}</span>
+                                 </div>
+                               ))}
+                             </div>
+                           </div>
+                         )}
+
+                         {config.features.aiFeatures && (
+                           <div>
+                             <h4 className="font-semibold mb-3">Recursos de IA Exclusivos:</h4>
+                             <div className="grid gap-3 md:grid-cols-2">
+                               {Object.entries(config.features.aiFeatures).map(([key, feature]) => (
+                                 <div key={key} className="p-3 border border-brand-light-purple/20 rounded-lg bg-gradient-to-br from-brand-light-purple/10 to-brand-purple/10">
+                                   <div className="flex items-center space-x-2">
+                                     <div className="w-3 h-3 bg-gradient-to-r from-brand-purple to-brand-light-purple rounded-full"></div>
+                                     <span className="text-xs font-medium text-brand-dark-gray">{feature}</span>
+                                   </div>
+                                 </div>
+                               ))}
+                             </div>
+                           </div>
+                         )}
+                       </div>
                     </div>
                   )}
                 </CardContent>
