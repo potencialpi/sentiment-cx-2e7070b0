@@ -95,8 +95,15 @@ const UnifiedPlanInterface: React.FC<UnifiedPlanInterfaceProps> = ({ config }) =
   const fetchActiveSurveys = useCallback(async () => {
     setSurveysLoading(true);
     try {
+      console.log('[DEBUG] Buscando pesquisas ativas...');
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      
+      if (!user) {
+        console.log('[DEBUG] Usuário não encontrado na sessão');
+        return;
+      }
+      
+      console.log('[DEBUG] Usuário encontrado:', user.id);
 
       const { data, error } = await supabase
         .from('surveys')
@@ -105,7 +112,14 @@ const UnifiedPlanInterface: React.FC<UnifiedPlanInterfaceProps> = ({ config }) =
         .eq('status', 'active')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      console.log('[DEBUG] Resultado da consulta:', { data, error });
+
+      if (error) {
+        console.error('[DEBUG] Erro na consulta:', error);
+        throw error;
+      }
+      
+      console.log('[DEBUG] Pesquisas encontradas:', data?.length || 0);
       setActiveSurveys(data || []);
     } catch (error) {
       console.error('Error fetching surveys:', error);
