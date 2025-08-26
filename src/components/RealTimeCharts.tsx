@@ -20,7 +20,11 @@ interface RealTimeChartsProps {
   className?: string;
 }
 
-const COLORS = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9'];
+// Modern vibrant color palette - highly saturated and impactful  
+const COLORS = [
+  '#FF0080', '#00FFFF', '#FF4000', '#8000FF', '#00FF80',
+  '#FFFF00', '#FF8000', '#0080FF', '#FF0040', '#40FF00'
+];
 
 const RealTimeCharts: React.FC<RealTimeChartsProps> = ({ className }) => {
   const { processChartData: processChartHook, processTreemapData, calculateSentimentData, formatResponsesByDate, COLORS } = useChartData();
@@ -193,9 +197,9 @@ const RealTimeCharts: React.FC<RealTimeChartsProps> = ({ className }) => {
     const analysis = analyzeBatchSentiment(textResponses);
     
     const sentimentChartData = [
-      { name: 'Positivo', value: analysis.summary.positive, color: '#10B981' },
-      { name: 'Neutro', value: analysis.summary.neutral, color: '#6B7280' },
-      { name: 'Negativo', value: analysis.summary.negative, color: '#EF4444' }
+      { name: 'Positivo', value: analysis.summary.positive, color: '#00FF80' }, // Bright green neon
+      { name: 'Neutro', value: analysis.summary.neutral, color: '#00FFFF' }, // Cyan electric  
+      { name: 'Negativo', value: analysis.summary.negative, color: '#FF0040' } // Red neon
     ];
     
     setSentimentData(sentimentChartData);
@@ -254,8 +258,7 @@ const RealTimeCharts: React.FC<RealTimeChartsProps> = ({ className }) => {
               <XAxis dataKey="name" />
               <YAxis />
               <Tooltip />
-              <Bar dataKey="value" fill="#10B981" />
-              <Bar dataKey="value" fill="#10B981" />
+              <Bar dataKey="value" fill="#FF0080" />
             </BarChart>
           </ResponsiveContainer>
         );
@@ -281,8 +284,7 @@ const RealTimeCharts: React.FC<RealTimeChartsProps> = ({ className }) => {
               <XAxis dataKey="name" />
               <YAxis />
               <Tooltip />
-              <Line type="monotone" dataKey="value" stroke="#10B981" strokeWidth={2} />
-              <Line type="monotone" dataKey="value" stroke="#10B981" strokeWidth={2} />
+              <Line type="monotone" dataKey="value" stroke="#FF0080" strokeWidth={2} />
             </LineChart>
           </ResponsiveContainer>
         );

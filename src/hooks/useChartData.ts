@@ -12,9 +12,23 @@ export interface TreemapDataItem {
   fill?: string;
 }
 
+// Modern vibrant color palette - highly saturated and impactful
 const COLORS = [
-  '#10B981', '#3B82F6', '#8B5CF6', '#F59E0B', '#EF4444',
-  '#06B6D4', '#84CC16', '#F97316', '#EC4899', '#6366F1'
+  '#FF0080', // Pink Neon
+  '#00FFFF', // Cyan Electric
+  '#FF4000', // Orange Vibrant
+  '#8000FF', // Purple Electric
+  '#00FF80', // Green Neon
+  '#FFFF00', // Yellow Electric
+  '#FF8000', // Orange Neon
+  '#0080FF', // Blue Electric
+  '#FF0040', // Red Neon
+  '#40FF00', // Lime Green
+  '#FF00C0', // Magenta Neon
+  '#00C0FF', // Azure Electric
+  '#C000FF', // Violet Electric
+  '#FF6000', // Tangerine Neon
+  '#00FF40'  // Spring Green
 ];
 
 export const useChartData = () => {
@@ -40,9 +54,9 @@ export const useChartData = () => {
   const calculateSentimentData = useMemo(() => {
     return (positive: number, neutral: number, negative: number): ChartDataItem[] => {
       return [
-        { name: 'Positivo', value: positive, color: '#10B981' },
-        { name: 'Neutro', value: neutral, color: '#6B7280' },
-        { name: 'Negativo', value: negative, color: '#EF4444' }
+        { name: 'Positivo', value: positive, color: '#00FF80' }, // Bright green neon
+        { name: 'Neutro', value: neutral, color: '#00FFFF' }, // Cyan electric
+        { name: 'Negativo', value: negative, color: '#FF0040' } // Red neon
       ].filter(item => item.value > 0);
     };
   }, []);

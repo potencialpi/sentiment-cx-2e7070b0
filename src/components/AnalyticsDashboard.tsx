@@ -17,8 +17,7 @@ import {
   Line,
   AreaChart,
   Area,
-  PieChart as RechartsPieChart,
-  Pie,
+  Treemap,
   Cell
 } from 'recharts';
 
@@ -26,7 +25,11 @@ interface AnalyticsDashboardProps {
   surveyId: string;
 }
 
-const COLORS = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9'];
+// Modern vibrant color palette - highly saturated and impactful
+const COLORS = [
+  '#FF0080', '#00FFFF', '#FF4000', '#8000FF', '#00FF80',
+  '#FFFF00', '#FF8000', '#0080FF', '#FF0040', '#40FF00'
+];
 
 const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ surveyId }) => {
   const { analytics, loading, error, refreshAnalytics } = useSurveyAnalytics(surveyId);
@@ -99,11 +102,11 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ surveyId }) => 
   }, [analytics?.questions, selectedQuestion]);
 
   const sentimentOverviewData = useMemo(() => {
-    if (!analytics) return [] as Array<{ name: string; value: number; color: string }>;
+    if (!analytics) return [] as Array<{ name: string; value: number; fill: string }>;
     return [
-      { name: 'Positivo', value: analytics.sentimentOverview.positive, color: '#10B981' },
-      { name: 'Neutro', value: analytics.sentimentOverview.neutral, color: '#6B7280' },
-      { name: 'Negativo', value: analytics.sentimentOverview.negative, color: '#EF4444' }
+      { name: 'Positivo', value: analytics.sentimentOverview.positive, fill: '#00FF80' }, // Bright green neon
+      { name: 'Neutro', value: analytics.sentimentOverview.neutral, fill: '#00FFFF' }, // Cyan electric
+      { name: 'Negativo', value: analytics.sentimentOverview.negative, fill: '#FF0040' } // Red neon
     ].filter(item => item.value > 0);
   }, [analytics?.sentimentOverview]);
 
@@ -364,23 +367,16 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ surveyId }) => 
                   {sentimentOverviewData.length > 0 ? (
                     <div className="h-64">
                       <ResponsiveContainer width="100%" height="100%">
-                        <RechartsPieChart>
-                          <Pie
-                            data={sentimentOverviewData}
-                            cx="50%"
-                            cy="50%"
-                            labelLine={false}
-                            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                            outerRadius={80}
-                            fill="#8884d8"
-                            dataKey="value"
-                          >
-                            {sentimentOverviewData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.color} />
-                            ))}
-                          </Pie>
-                          <Tooltip />
-                        </RechartsPieChart>
+                        <Treemap
+                          data={sentimentOverviewData}
+                          dataKey="value"
+                          aspectRatio={4/3}
+                          stroke="#fff"
+                        >
+                          {sentimentOverviewData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.fill} />
+                          ))}
+                        </Treemap>
                       </ResponsiveContainer>
                     </div>
                   ) : (

@@ -15,9 +15,11 @@ export interface TreemapConfig {
   animationDuration?: number;
 }
 
+// Modern vibrant treemap color palette - highly saturated and impactful
 const DEFAULT_COLORS = [
-  '#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#00ff00',
-  '#0088fe', '#00c49f', '#ffbb28', '#ff8042', '#8dd1e1'
+  '#FF0080', '#00FFFF', '#FF4000', '#8000FF', '#00FF80',
+  '#FFFF00', '#FF8000', '#0080FF', '#FF0040', '#40FF00',
+  '#FF00C0', '#00C0FF', '#C000FF', '#FF6000', '#00FF40'
 ];
 
 export const useTreemapData = () => {
