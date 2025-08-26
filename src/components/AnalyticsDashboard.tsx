@@ -371,7 +371,7 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ surveyId }) => 
                           data={sentimentOverviewData}
                           dataKey="value"
                           aspectRatio={4/3}
-                          stroke="#fff"
+                          stroke="#000"
                         >
                           {sentimentOverviewData.map((entry, index) => (
                             <Cell key={`cell-${index}`} fill={entry.fill} />
