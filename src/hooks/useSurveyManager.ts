@@ -153,10 +153,10 @@ export const useSurveyManager = (): UseSurveyManagerReturn => {
       }
 
       // Obter informações do plano
-      const userPlan = await getUserPlan(user.id);
-      const planName = userPlan?.plan_name || 'Gratuito';
-      const maxQuestions = userPlan?.max_questions_per_survey || 3;
-      const maxSurveysPerMonth = userPlan?.max_surveys_per_month || 2;
+      const userPlan = await getUserPlan(user.id, 'start-quantico');
+      const planName = userPlan || 'start-quantico';
+      const maxQuestions = 5; // Default para start quantico
+      const maxSurveysPerMonth = 2; // Default para start quantico
 
       // Verificar limite de questões
       if (questions.length > maxQuestions) {
@@ -216,10 +216,10 @@ export const useSurveyManager = (): UseSurveyManagerReturn => {
       
     } catch (error: any) {
       console.error('Erro ao salvar pesquisa:', error);
-      const userPlan = await getUserPlan((await supabase.auth.getUser()).data.user?.id || '');
-      const planName = userPlan?.plan_name || 'Gratuito';
-      const maxQuestions = userPlan?.max_questions_per_survey || 3;
-      const maxSurveysPerMonth = userPlan?.max_surveys_per_month || 2;
+      const userPlan = await getUserPlan((await supabase.auth.getUser()).data.user?.id || '', 'start-quantico');
+      const planName = userPlan || 'start-quantico';
+      const maxQuestions = 5; // Default para start quantico
+      const maxSurveysPerMonth = 2; // Default para start quantico
       
       const config = { planName, maxQuestions, maxSurveysPerMonth };
       handlePlanLimitError(error, config, toast);

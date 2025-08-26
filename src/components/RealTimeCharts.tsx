@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Treemap, Cell, LineChart, Line } from 'recharts';
 import { RefreshCw, BarChart3, TrendingUp } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { analyzeBatchSentiment } from '@/lib/sentimentAnalysis';
 import { useChartData, ChartDataItem } from '../hooks/useChartData';
@@ -23,7 +23,7 @@ interface RealTimeChartsProps {
 const COLORS = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9'];
 
 const RealTimeCharts: React.FC<RealTimeChartsProps> = ({ className }) => {
-  const { processChartData, processTreemapData, calculateSentimentData, formatResponsesByDate, COLORS } = useChartData();
+  const { processChartData: processChartHook, processTreemapData, calculateSentimentData, formatResponsesByDate, COLORS } = useChartData();
   const { processTreemapData: processAdvancedTreemap, calculateTreemapMetrics, sortTreemapData } = useTreemapData();
   const [surveys, setSurveys] = useState<SurveyData[]>([]);
   const [selectedSurvey, setSelectedSurvey] = useState<string>('');
@@ -90,7 +90,7 @@ const RealTimeCharts: React.FC<RealTimeChartsProps> = ({ className }) => {
       if (responsesError) throw responsesError;
 
       // Processar dados para gráficos
-      processChartData(questions || [], responses || []);
+      processLocalChartData(questions || [], responses || []);
       processSentimentData(responses || []);
       processResponsesByDate(responses || []);
 
@@ -113,7 +113,7 @@ const RealTimeCharts: React.FC<RealTimeChartsProps> = ({ className }) => {
     }
   }, [selectedSurvey, fetchSurveyData]);
 
-  const processChartData = (questions: any[], responses: any[]) => {
+  const processLocalChartData = (questions: any[], responses: any[]) => {
     // Agrupar respostas por tipo de questão
     const questionTypes = questions.reduce((acc, question) => {
       const questionResponses = responses.filter(r => {
@@ -165,7 +165,7 @@ const RealTimeCharts: React.FC<RealTimeChartsProps> = ({ className }) => {
       }
       
       return acc;
-    }, [] as ChartData[]);
+    }, [] as any[]);
 
     setChartData(questionTypes);
   };
@@ -225,9 +225,9 @@ const RealTimeCharts: React.FC<RealTimeChartsProps> = ({ className }) => {
     }
   };
 
-  const processedChartData = useMemo(() => processChartData(chartData), [chartData, processChartData]);
-  const processedSentimentData = useMemo(() => processChartData(sentimentData), [sentimentData, processChartData]);
-  const processedResponsesByDate = useMemo(() => processChartData(responsesByDate), [responsesByDate, processChartData]);
+  const processedChartData = useMemo(() => processChartHook(chartData), [chartData, processChartHook]);
+  const processedSentimentData = useMemo(() => processChartHook(sentimentData), [sentimentData, processChartHook]);
+  const processedResponsesByDate = useMemo(() => processChartHook(responsesByDate), [responsesByDate, processChartHook]);
   const treemapData = useMemo(() => {
     const processed = processAdvancedTreemap(chartData);
     return sortTreemapData(processed, 'value', 'desc');
@@ -254,7 +254,7 @@ const RealTimeCharts: React.FC<RealTimeChartsProps> = ({ className }) => {
               <XAxis dataKey="name" />
               <YAxis />
               <Tooltip />
-              <Legend />
+              <Bar dataKey="value" fill="#10B981" />
               <Bar dataKey="value" fill="#10B981" />
             </BarChart>
           </ResponsiveContainer>
@@ -269,7 +269,6 @@ const RealTimeCharts: React.FC<RealTimeChartsProps> = ({ className }) => {
                 dataKey="value"
                 aspectRatio={4/3}
                 stroke="#fff"
-                strokeWidth={2}
               />
             </ResponsiveContainer>
           );
@@ -282,7 +281,7 @@ const RealTimeCharts: React.FC<RealTimeChartsProps> = ({ className }) => {
               <XAxis dataKey="name" />
               <YAxis />
               <Tooltip />
-              <Legend />
+              <Line type="monotone" dataKey="value" stroke="#10B981" strokeWidth={2} />
               <Line type="monotone" dataKey="value" stroke="#10B981" strokeWidth={2} />
             </LineChart>
           </ResponsiveContainer>

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { analyzeBatchSentiment } from '@/lib/sentimentAnalysis';
 
 export interface SurveyAnalytics {
   totalResponses: number;
@@ -64,27 +65,26 @@ export const useSurveyAnalytics = (surveyId: string) => {
 
       if (surveyError) throw surveyError;
 
-      // Fetch questions and responses
+      // Fetch questions
       const { data: questions, error: questionsError } = await supabase
         .from('questions')
-        .select(`
-          *,
-          question_responses (
-            id,
-            answer_text,
-            answer_rating,
-            answer_choices,
-            sentiment_label,
-            created_at
-          )
-        `)
+        .select('*')
         .eq('survey_id', surveyId)
         .order('question_order');
 
       if (questionsError) throw questionsError;
 
+      // Fetch responses (JSON data)
+      const { data: responses, error: responsesError } = await supabase
+        .from('responses')
+        .select('*')
+        .eq('survey_id', surveyId)
+        .order('created_at');
+
+      if (responsesError) throw responsesError;
+
       // Process analytics data
-      const processedAnalytics = processAnalyticsData(survey, questions || []);
+      const processedAnalytics = processAnalyticsData(survey, questions || [], responses || []);
       setAnalytics(processedAnalytics);
     } catch (err: any) {
       console.error('Error fetching analytics:', err);
@@ -100,12 +100,47 @@ export const useSurveyAnalytics = (surveyId: string) => {
   }, [surveyId]);
 
   const processAnalyticsData = useMemo(() => {
-    return (survey: any, questions: any[]): SurveyAnalytics => {
-      const allResponses = questions.flatMap(q => q.question_responses || []);
-      const totalResponses = allResponses.length;
+    return (survey: any, questions: any[], responses: any[]): SurveyAnalytics => {
+      // Extract all responses from JSON data
+      const allExtractedResponses: any[] = [];
+      const totalResponses = responses.length;
+
+      // Process each response JSON to extract individual question answers
+      responses.forEach((response) => {
+        if (response.responses && typeof response.responses === 'object') {
+          const responsesData = response.responses as Record<string, any>;
+          
+          Object.entries(responsesData).forEach(([questionId, answerValue]) => {
+            const question = questions.find(q => q.id === questionId);
+            if (question) {
+              // Create standardized response object
+              const extractedResponse = {
+                id: `${response.id}_${questionId}`,
+                question_id: questionId,
+                response_id: response.id,
+                answer_text: typeof answerValue === 'string' ? answerValue : JSON.stringify(answerValue),
+                answer_rating: typeof answerValue === 'number' ? answerValue : null,
+                answer_choices: Array.isArray(answerValue) ? answerValue : (typeof answerValue === 'object' ? [answerValue] : null),
+                sentiment_label: null as 'positive' | 'neutral' | 'negative' | null,
+                created_at: response.created_at
+              };
+
+              // Analyze sentiment for text responses
+              if (typeof answerValue === 'string' && answerValue.trim().length > 0) {
+                const sentimentResult = analyzeBatchSentiment([answerValue]);
+                if (sentimentResult.results.length > 0) {
+                  extractedResponse.sentiment_label = sentimentResult.results[0].label as 'positive' | 'neutral' | 'negative';
+                }
+              }
+
+              allExtractedResponses.push(extractedResponse);
+            }
+          });
+        }
+      });
 
       // Calculate sentiment overview
-      const sentimentCounts = allResponses.reduce(
+      const sentimentCounts = allExtractedResponses.reduce(
         (acc, response) => {
           const sentiment = response.sentiment_label || 'neutral';
           acc[sentiment]++;
@@ -115,19 +150,19 @@ export const useSurveyAnalytics = (surveyId: string) => {
       );
 
       // Calculate responses by date
-      const responsesByDate = allResponses.reduce((acc: Record<string, number>, response) => {
+      const responsesByDate = responses.reduce((acc: Record<string, number>, response) => {
         const date = new Date(response.created_at).toLocaleDateString('pt-BR');
         acc[date] = (acc[date] || 0) + 1;
         return acc;
       }, {});
 
       const responsesByDateArray = Object.entries(responsesByDate)
-        .map(([date, count]) => ({ date, count }))
+        .map(([date, count]) => ({ date, count: count as number }))
         .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
       // Process questions with statistics
       const processedQuestions = questions.map(question => {
-        const questionResponses = question.question_responses || [];
+        const questionResponses = allExtractedResponses.filter(r => r.question_id === question.id);
         const questionTotal = questionResponses.length;
 
         let statistics: any = {
@@ -136,7 +171,7 @@ export const useSurveyAnalytics = (surveyId: string) => {
 
         if (question.question_type === 'rating') {
           const ratings = questionResponses
-            .map((r: any) => (r.answer_rating ?? (typeof r.answer_text === 'string' ? parseFloat(r.answer_text) : NaN)))
+            .map((r: any) => r.answer_rating ?? (typeof r.answer_text === 'string' ? parseFloat(r.answer_text) : NaN))
             .filter((r: number) => !isNaN(r));
           
           if (ratings.length > 0) {

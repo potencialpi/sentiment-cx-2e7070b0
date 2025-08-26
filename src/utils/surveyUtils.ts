@@ -131,10 +131,10 @@ export const uiUtils = {
   /**
    * Copia um link para a área de transferência
    */
-  copyLinkToClipboard: (link: string): void => {
+  copyLinkToClipboard: (link: string, toastFn: typeof toast): void => {
     const fullLink = `${window.location.origin}/survey/${link}`;
     navigator.clipboard.writeText(fullLink);
-    toast({
+    toastFn({
       title: "Link copiado!",
       description: "Link da pesquisa copiado para a área de transferência.",
     });
