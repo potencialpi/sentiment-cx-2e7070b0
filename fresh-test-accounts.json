@@ -1,0 +1,42 @@
+{
+  "timestamp": "2025-08-25T23:33:54.500Z",
+  "testTimestamp": 1756164834498,
+  "accountsCreated": [
+    {
+      "email": "rls.test.user1.1756164834498@example.com",
+      "userId": "6e6ff7d1-2d94-44e5-96ac-7a7fd0e70b51",
+      "password": "TesteSuperSeguro123!@#"
+    },
+    {
+      "email": "rls.test.user2.1756164834498@example.com",
+      "userId": "71c1e89b-1d96-46bb-97d3-fa91a552b405",
+      "password": "TesteSuperSeguro456!@#"
+    },
+    {
+      "email": "rls.test.user3.1756164834498@example.com",
+      "userId": "7f9f9b08-41dc-4fd0-ad25-e1201ed6aa1c",
+      "password": "TesteSuperSeguro789!@#"
+    }
+  ],
+  "surveysCreated": [
+    {
+      "email": "rls.test.user1.1756164834498@example.com",
+      "userId": "6e6ff7d1-2d94-44e5-96ac-7a7fd0e70b51",
+      "surveyId": "440e524e-c923-4ff0-9920-75da4fedb36e",
+      "title": "Survey RLS Test 1 - 1756164834498"
+    },
+    {
+      "email": "rls.test.user2.1756164834498@example.com",
+      "userId": "71c1e89b-1d96-46bb-97d3-fa91a552b405",
+      "surveyId": "7efa2645-1983-4592-9179-e0f56b5399b5",
+      "title": "Survey RLS Test 2 - 1756164834498"
+    },
+    {
+      "email": "rls.test.user3.1756164834498@example.com",
+      "userId": "7f9f9b08-41dc-4fd0-ad25-e1201ed6aa1c",
+      "surveyId": "9c1c5e01-526a-4636-9c1d-25a2fa568057",
+      "title": "Survey RLS Test 3 - 1756164834498"
+    }
+  ],
+  "errors": []
+}

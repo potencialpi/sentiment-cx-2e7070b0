@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback, useMemo, memo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { useSurveyAnalytics } from '@/hooks/useSurveyAnalytics';
 import { analyzeBatchSentiment, getSentimentInsights } from '@/lib/sentimentAnalysis';
-import { BarChart3, PieChart, TrendingUp, Download, Users, MessageSquare, Star, Brain, TrendingDown } from 'lucide-react';
+import { BarChart3, TreePine, TrendingUp, Download, Users, MessageSquare, Star, Brain, TrendingDown, PieChart } from 'lucide-react';
 import {
   BarChart,
   Bar,
@@ -14,14 +14,15 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
-  PieChart as RechartsPieChart,
-  Pie,
-  Cell,
+  Treemap,
   ResponsiveContainer,
   LineChart,
   Line,
   AreaChart,
-  Area
+  Area,
+  PieChart as RechartsPieChart,
+  Pie,
+  Cell
 } from 'recharts';
 
 interface SurveyAnalytics {
@@ -41,20 +42,16 @@ interface QuestionAnalytics {
   id: string;
   text: string;
   type: string;
-  totalResponses: number;
-  data: { label: string; value: number; count?: number; color?: string }[];
-  sentimentData?: {
-    positive: number;
-    neutral: number;
-    negative: number;
-    avgScore: number;
-    insights?: string[];
-  };
-  statisticalData?: {
-    mean: number;
-    median: number;
-    mode: number;
-    stdDev: number;
+  responses: any[];
+  statistics: {
+    totalResponses: number;
+    averageRating?: number;
+    mostCommonAnswer?: string;
+    sentimentBreakdown?: {
+      positive: number;
+      neutral: number;
+      negative: number;
+    };
   };
 }
 
@@ -62,232 +59,30 @@ interface AnalyticsDashboardProps {
   surveyId: string;
 }
 
-const COLORS = ['#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4'];
+const COLORS = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9'];
 
 const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ surveyId }) => {
-  const [analytics, setAnalytics] = useState<SurveyAnalytics | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { analytics, loading, error, refreshAnalytics } = useSurveyAnalytics(surveyId);
   const [selectedQuestion, setSelectedQuestion] = useState<string>('');
-  const [chartType, setChartType] = useState<'bar' | 'pie' | 'line' | 'area' | 'histogram'>('bar');
+  const [chartType, setChartType] = useState<'bar' | 'treemap' | 'line' | 'area' | 'histogram'>('treemap');
 
-  const fetchAnalytics = useCallback(async () => {
-    setLoading(true);
-    try {
-      // Buscar dados da pesquisa
-      const { data: survey, error: surveyError } = await supabase
-        .from('surveys')
-        .select('id, title, current_responses')
-        .eq('id', surveyId)
-        .single();
+  // Dados processados usando useMemo para otimização
 
-      if (surveyError) throw surveyError;
-
-      // Buscar questões
-      const { data: questions, error: questionsError } = await supabase
-        .from('questions')
-        .select('*')
-        .eq('survey_id', surveyId)
-        .order('question_order');
-
-      if (questionsError) throw questionsError;
-
-      // Buscar respostas usando a estrutura correta
-      const { data: responses, error: responsesError } = await supabase
-        .from('responses')
-        .select('*')
-        .eq('survey_id', surveyId);
-
-      if (responsesError) throw responsesError;
-
-      // Processar dados para analytics
-      const processedQuestions = await Promise.all(
-        (questions || []).map(async (question) => {
-          // Map responses based on actual schema structure
-          const qResponses = responses?.filter(r => {
-            if (r.responses && typeof r.responses === 'object') {
-              const responsesData = r.responses as Record<string, any>;
-              return Object.keys(responsesData).includes(question.id);
-            }
-            return false;
-          }) || [];
-          
-          let processedData: { label: string; value: number; count?: number }[] = [];
-          let sentimentData = undefined;
-          let statisticalData = undefined;
-
-          if (question.question_type === 'single_choice' || question.question_type === 'multiple_choice') {
-            // Processar dados de escolha
-            const choiceCounts: { [key: string]: number } = {};
-            qResponses.forEach(response => {
-              if (response.responses && typeof response.responses === 'object') {
-                const responsesData = response.responses as Record<string, any>;
-                const responseValue = responsesData[question.id];
-                if (responseValue) {
-                  const choices = Array.isArray(responseValue) ? responseValue : [responseValue];
-                  choices.forEach(choice => {
-                    if (typeof choice === 'string') {
-                      choiceCounts[choice] = (choiceCounts[choice] || 0) + 1;
-                    }
-                  });
-                }
-              }
-            });
-            
-            processedData = Object.entries(choiceCounts).map(([choice, count]) => ({
-              label: choice,
-              value: count,
-              count: count
-            }));
-          } else if (question.question_type === 'rating') {
-            // Processar dados de rating
-            const ratings = qResponses
-              .filter(r => {
-                if (r.responses && typeof r.responses === 'object') {
-                  const responsesData = r.responses as Record<string, any>;
-                  const responseValue = responsesData[question.id];
-                  return responseValue !== null && typeof responseValue === 'number';
-                }
-                return false;
-              })
-              .map(r => {
-                const responsesData = r.responses as Record<string, any>;
-                return responsesData[question.id] as number;
-              });
-            
-            if (ratings.length > 0) {
-              const ratingCounts: { [key: number]: number } = {};
-              ratings.forEach(rating => {
-                ratingCounts[rating] = (ratingCounts[rating] || 0) + 1;
-              });
-              
-              processedData = Object.entries(ratingCounts).map(([rating, count]) => ({
-                label: `${rating} estrelas`,
-                value: count,
-                count: count
-              }));
-              
-              // Calcular estatísticas
-              const mean = ratings.reduce((a, b) => a + b, 0) / ratings.length;
-              const sortedRatings = [...ratings].sort((a, b) => a - b);
-              const median = sortedRatings[Math.floor(sortedRatings.length / 2)];
-              const mode = ratings.reduce((a, b, i, arr) => 
-                arr.filter(v => v === a).length >= arr.filter(v => v === b).length ? a : b
-              );
-              const variance = ratings.reduce((acc, val) => acc + Math.pow(val - mean, 2), 0) / ratings.length;
-              const stdDev = Math.sqrt(variance);
-              
-              statisticalData = { mean, median, mode, stdDev };
-            }
-          } else if (question.question_type === 'text') {
-            // Processar análise de sentimento real
-            const textResponses = qResponses.filter(r => r.responses && typeof r.responses === 'object');
-            
-            if (textResponses.length > 0) {
-              const texts = textResponses.map(r => {
-                const responsesData = r.responses as Record<string, any>;
-                return responsesData[question.id] as string;
-              });
-              const analysis = analyzeBatchSentiment(texts);
-              const insights = getSentimentInsights(analysis.summary);
-              
-              const sentimentCounts = {
-                positive: analysis.summary.positive,
-                neutral: analysis.summary.neutral,
-                negative: analysis.summary.negative
-              };
-              
-              sentimentData = { 
-                ...sentimentCounts, 
-                avgScore: analysis.summary.averageScore,
-                insights
-              };
-              
-              processedData = [
-                { label: 'Positivo', value: sentimentCounts.positive },
-                { label: 'Neutro', value: sentimentCounts.neutral },
-                { label: 'Negativo', value: sentimentCounts.negative }
-              ];
-            }
-          }
-
-          return {
-            id: question.id,
-            text: question.question_text,
-            type: question.question_type,
-            totalResponses: qResponses.length,
-            data: processedData,
-            sentimentData,
-            statisticalData
-          };
-        })
-      );
-
-      // Calcular overview de sentimento
-      const allSentimentData = processedQuestions
-        .filter(q => q.sentimentData)
-        .map(q => q.sentimentData!);
-      
-      const sentimentOverview = {
-        positive: allSentimentData.reduce((sum, s) => sum + s.positive, 0),
-        neutral: allSentimentData.reduce((sum, s) => sum + s.neutral, 0),
-        negative: allSentimentData.reduce((sum, s) => sum + s.negative, 0)
-      };
-
-      // Processar respostas por data
-      const responsesByDate = responses?.reduce((acc: { [key: string]: number }, response) => {
-        const date = new Date(response.created_at).toLocaleDateString('pt-BR');
-        acc[date] = (acc[date] || 0) + 1;
-        return acc;
-      }, {}) || {};
-
-      const responsesByDateArray = Object.entries(responsesByDate).map(([date, count]) => ({
-        date,
-        count
-      }));
-
-      setAnalytics({
-        surveyId: survey.id,
-        surveyTitle: survey.title,
-        totalResponses: survey.current_responses,
-        questions: processedQuestions,
-        sentimentOverview,
-        responsesByDate: responsesByDateArray
-      });
-    } catch (error) {
-      console.error('Erro ao buscar analytics:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível carregar os dados de analytics.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [surveyId]);
-
-  useEffect(() => {
-    if (surveyId) {
-      fetchAnalytics();
-    }
-  }, [surveyId, fetchAnalytics]);
-
-  const exportData = (format: 'csv' | 'json') => {
+  const exportData = useCallback((format: 'csv' | 'json') => {
     if (!analytics) return;
 
     const data = {
       survey: {
-        id: analytics.surveyId,
-        title: analytics.surveyTitle,
-        totalResponses: analytics.totalResponses
+        totalResponses: analytics.totalResponses,
+        averageRating: analytics.averageRating,
+        completionRate: analytics.completionRate
       },
       questions: analytics.questions.map(q => ({
         id: q.id,
         text: q.text,
         type: q.type,
-        totalResponses: q.totalResponses,
-        data: q.data,
-        sentimentData: q.sentimentData,
-        statisticalData: q.statisticalData
+        responses: q.responses,
+        statistics: q.statistics
       })),
       sentimentOverview: analytics.sentimentOverview,
       responsesByDate: analytics.responsesByDate
@@ -295,26 +90,23 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ surveyId }) => 
 
     if (format === 'json') {
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `analytics-${analytics.surveyTitle}-${new Date().toISOString().split('T')[0]}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
+      const downloadUrl = URL.createObjectURL(blob);
+      const downloadLink = document.createElement('a');
+      downloadLink.href = downloadUrl;
+      downloadLink.download = `analytics-survey-${surveyId}-${new Date().toISOString().split('T')[0]}.json`;
+      downloadLink.click();
+      URL.revokeObjectURL(downloadUrl);
     } else if (format === 'csv') {
       const csvData = analytics.questions.map(q => ({
         'ID da Questão': q.id,
         'Texto da Questão': q.text,
         'Tipo': q.type,
-        'Total de Respostas': q.totalResponses,
-        'Sentimento Positivo': q.sentimentData?.positive || 0,
-        'Sentimento Neutro': q.sentimentData?.neutral || 0,
-        'Sentimento Negativo': q.sentimentData?.negative || 0,
-        'Score Médio': q.sentimentData?.avgScore || 0,
-        'Média Estatística': q.statisticalData?.mean || 0,
-        'Mediana': q.statisticalData?.median || 0,
-        'Moda': q.statisticalData?.mode || 0,
-        'Desvio Padrão': q.statisticalData?.stdDev || 0
+        'Total de Respostas': q.statistics.totalResponses,
+        'Sentimento Positivo': q.statistics.sentimentBreakdown?.positive || 0,
+        'Sentimento Neutro': q.statistics.sentimentBreakdown?.neutral || 0,
+        'Sentimento Negativo': q.statistics.sentimentBreakdown?.negative || 0,
+        'Média de Rating': q.statistics.averageRating || 0,
+        'Resposta Mais Comum': q.statistics.mostCommonAnswer || 'N/A'
       }));
 
       const csvContent = [
@@ -323,25 +115,47 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ surveyId }) => 
       ].join('\n');
 
       const blob = new Blob([csvContent], { type: 'text/csv' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `analytics-${analytics.surveyTitle}-${new Date().toISOString().split('T')[0]}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
+      const downloadUrl = URL.createObjectURL(blob);
+      const downloadLink = document.createElement('a');
+      downloadLink.href = downloadUrl;
+      downloadLink.download = `analytics-survey-${surveyId}-${new Date().toISOString().split('T')[0]}.csv`;
+      downloadLink.click();
+      URL.revokeObjectURL(downloadUrl);
     }
 
     toast({
       title: "Sucesso",
       description: `Dados exportados em formato ${format.toUpperCase()}`
     });
-  };
+  }, [analytics, surveyId, toast]);
+
+  // Precompute memoized data before any early returns to maintain consistent hook order
+  const selectedQuestionData = useMemo(() => {
+    return analytics?.questions.find(q => q.id === selectedQuestion);
+  }, [analytics?.questions, selectedQuestion]);
+
+  const sentimentOverviewData = useMemo(() => {
+    if (!analytics) return [] as Array<{ name: string; value: number; color: string }>;
+    return [
+      { name: 'Positivo', value: analytics.sentimentOverview.positive, color: '#10B981' },
+      { name: 'Neutro', value: analytics.sentimentOverview.neutral, color: '#6B7280' },
+      { name: 'Negativo', value: analytics.sentimentOverview.negative, color: '#EF4444' }
+    ].filter(item => item.value > 0);
+  }, [analytics?.sentimentOverview]);
+
+  const responsesByDateData = useMemo(() => {
+    if (!analytics) return [] as Array<{ name: string; value: number }>;
+    return analytics.responsesByDate.map(item => ({
+      name: item.date,
+      value: item.count
+    }));
+  }, [analytics?.responsesByDate]);
 
   if (loading) {
     return (
       <div className="flex items-center justify-center p-8">
         <div className="text-center">
-          <BarChart3 className="h-12 w-12 mx-auto mb-4 text-gray-300 animate-pulse" />
+          <BarChart3 className="h-12 w-12 mx-auto mb-4 text-gray-600 animate-pulse" />
           <p className="text-gray-500">Carregando análises...</p>
         </div>
       </div>
@@ -351,13 +165,13 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ surveyId }) => 
   if (!analytics) {
     return (
       <div className="text-center py-8">
-        <BarChart3 className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+        <BarChart3 className="h-12 w-12 mx-auto mb-4 text-gray-600" />
         <p className="text-gray-500">Nenhum dado de análise disponível</p>
       </div>
     );
   }
 
-  const selectedQuestionData = analytics.questions.find(q => q.id === selectedQuestion);
+  // moved above early returns to keep hook order consistent
 
   return (
     <div className="space-y-6">
@@ -412,18 +226,16 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ surveyId }) => 
         </div>
 
         {/* Card Sentimento Neutro - Gradient Yellow */}
-        {analytics.sentimentOverview.neutral > 0 && (
-          <div className="relative overflow-hidden rounded-lg bg-gradient-to-br from-yellow-500 to-yellow-700 p-4 text-white shadow-lg hover:shadow-xl transition-all duration-300">
-            <div className="flex flex-col items-center text-center">
-              <div className="bg-white/20 rounded-lg p-2 mb-2">
-                <Brain className="h-5 w-5" />
-              </div>
-              <p className="text-yellow-100 text-xs font-medium mb-1">Sentimento Neutro</p>
-              <p className="text-2xl font-bold">{analytics.sentimentOverview.neutral}</p>
+        <div className="relative overflow-hidden rounded-lg bg-gradient-to-br from-yellow-500 to-yellow-700 p-4 text-white shadow-lg hover:shadow-xl transition-all duration-300">
+          <div className="flex flex-col items-center text-center">
+            <div className="bg-white/20 rounded-lg p-2 mb-2">
+              <Brain className="h-5 w-5" />
             </div>
-            <div className="absolute -right-2 -bottom-2 w-12 h-12 bg-white/10 rounded-full"></div>
+            <p className="text-yellow-100 text-xs font-medium mb-1">Sentimento Neutro</p>
+            <p className="text-2xl font-bold">{analytics.sentimentOverview.neutral}</p>
           </div>
-        )}
+          <div className="absolute -right-2 -bottom-2 w-12 h-12 bg-white/10 rounded-full"></div>
+        </div>
 
         {/* Card de Exportar */}
         <div className="relative overflow-hidden rounded-lg bg-gradient-to-br from-orange-500 to-orange-700 p-4 text-white shadow-lg hover:shadow-xl transition-all duration-300">
@@ -482,10 +294,10 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ surveyId }) => 
               
               <TabsContent value="overview" className="space-y-6 mt-6">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="relative p-6 bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-950/30 dark:to-blue-900/20 rounded-xl border border-blue-200/50 dark:border-blue-800/30">
+                  <div className="relative p-6 bg-gradient-to-br from-blue-500/20 to-blue-600/30 dark:from-blue-950/30 dark:to-blue-900/20 rounded-xl border border-blue-500/30 dark:border-blue-800/30">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-blue-700 dark:text-blue-300 mb-1">Total de Questões</p>
+                        <p className="text-sm font-medium text-blue-800 dark:text-blue-300 mb-1">Total de Questões</p>
                         <p className="text-3xl font-bold text-blue-900 dark:text-blue-100">{analytics.questions.length}</p>
                       </div>
                       <div className="p-3 bg-blue-500/10 rounded-lg">
@@ -494,10 +306,10 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ surveyId }) => 
                     </div>
                   </div>
                   
-                  <div className="relative p-6 bg-gradient-to-br from-purple-50 to-purple-100/50 dark:from-purple-950/30 dark:to-purple-900/20 rounded-xl border border-purple-200/50 dark:border-purple-800/30">
+                  <div className="relative p-6 bg-gradient-to-br from-purple-500/20 to-purple-600/30 dark:from-purple-950/30 dark:to-purple-900/20 rounded-xl border border-purple-500/30 dark:border-purple-800/30">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-purple-700 dark:text-purple-300 mb-1">Tipos de Questão</p>
+                        <p className="text-sm font-medium text-purple-800 dark:text-purple-300 mb-1">Tipos de Questão</p>
                         <p className="text-3xl font-bold text-purple-900 dark:text-purple-100">
                           {new Set(analytics.questions.map(q => q.type)).size}
                         </p>
@@ -508,10 +320,10 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ surveyId }) => 
                     </div>
                   </div>
                   
-                  <div className="relative p-6 bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-950/30 dark:to-emerald-900/20 rounded-xl border border-emerald-200/50 dark:border-emerald-800/30">
+                  <div className="relative p-6 bg-gradient-to-br from-emerald-500/20 to-emerald-600/30 dark:from-emerald-950/30 dark:to-emerald-900/20 rounded-xl border border-emerald-500/30 dark:border-emerald-800/30">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300 mb-1">Taxa de Resposta</p>
+                        <p className="text-sm font-medium text-emerald-800 dark:text-emerald-300 mb-1">Taxa de Resposta</p>
                         <p className="text-3xl font-bold text-emerald-900 dark:text-emerald-100">
                           {analytics.totalResponses > 0 ? '100%' : '0%'}
                         </p>
@@ -523,7 +335,7 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ surveyId }) => 
                   </div>
                 </div>
                 
-                <div className="bg-white dark:bg-gray-900 rounded-xl p-6 shadow-sm border border-gray-200/50 dark:border-gray-700/50">
+                <div className="bg-white dark:bg-gray-900 rounded-xl p-6 shadow-sm border border-gray-400/50 dark:border-gray-700/50">
                   <h4 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
                     <BarChart3 className="h-5 w-5 text-primary" />
                     Respostas por Questão
@@ -533,7 +345,7 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ surveyId }) => 
                       <BarChart 
                         data={analytics.questions.map(q => ({
                           name: q.text.substring(0, 20) + '...',
-                          respostas: q.totalResponses
+                          respostas: q.statistics.totalResponses
                         }))}
                         margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
                       >
@@ -575,8 +387,9 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ surveyId }) => 
               <TabsContent value="sentiment" className="space-y-4">
                 {(() => {
                   const allSentiments = analytics.questions
-                    .filter(q => q.sentimentData)
-                    .flatMap(q => q.sentimentData ? [q.sentimentData] : []);
+                    .filter(q => q.statistics.sentimentBreakdown)
+                    .map(q => q.statistics.sentimentBreakdown!)
+                    .filter(Boolean);
                   
                   const sentimentCounts = {
                     positive: allSentiments.reduce((sum, s) => sum + s.positive, 0),
@@ -584,10 +397,10 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ surveyId }) => 
                     negative: allSentiments.reduce((sum, s) => sum + s.negative, 0)
                   };
                   
-                  const avgScore = allSentiments.length > 0 
-                    ? allSentiments.reduce((sum, s) => sum + s.avgScore, 0) / allSentiments.length 
-                    : 0;
-                    
+                  const avgRating = analytics.questions
+                    .filter(q => q.statistics.averageRating !== undefined)
+                    .reduce((sum, q, _, arr) => sum + (q.statistics.averageRating! / arr.length), 0);
+                  
                   return (
                     <>
                       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -612,7 +425,7 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ surveyId }) => 
                         <div className="p-4 bg-secondary rounded-lg">
                           <p className="text-sm text-muted-foreground">Score Médio</p>
                           <p className="text-2xl font-bold">
-                            {avgScore.toFixed(2)}
+                            {avgRating.toFixed(2)}
                           </p>
                         </div>
                       </div>
@@ -620,22 +433,48 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ surveyId }) => 
                       {Object.values(sentimentCounts).some(v => v > 0) && (
                         <div className="h-64">
                           <ResponsiveContainer width="100%" height="100%">
-                            <RechartsPieChart>
-                              <Pie
-                                data={[
-                                  { name: 'Positivo', value: sentimentCounts.positive, fill: '#22c55e' },
-                                  { name: 'Neutro', value: sentimentCounts.neutral, fill: '#eab308' },
-                                  { name: 'Negativo', value: sentimentCounts.negative, fill: '#ef4444' }
-                                ].filter(item => item.value > 0)}
-                                cx="50%"
-                                cy="50%"
-                                outerRadius={80}
-                                dataKey="value"
-                                label
-                              />
-                              <Tooltip />
-                              <Legend />
-                            </RechartsPieChart>
+                            <Treemap
+                              data={[
+                                { name: 'Positivo', size: sentimentCounts.positive, fill: '#FF6B6B' },
+                                { name: 'Neutro', size: sentimentCounts.neutral, fill: '#FFEAA7' },
+                                { name: 'Negativo', size: sentimentCounts.negative, fill: '#4ECDC4' }
+                              ].filter(item => item.size > 0)}
+                              dataKey="size"
+                              ratio={4/3}
+                              stroke="#fff"
+                              strokeWidth={2}
+                              content={({ root, depth, x, y, width, height, index, payload, colors, rank, name }) => {
+                                return (
+                                  <g>
+                                    <rect
+                                      x={x}
+                                      y={y}
+                                      width={width}
+                                      height={height}
+                                      style={{
+                                        fill: payload.fill,
+                                        stroke: '#fff',
+                                        strokeWidth: 2,
+                                        strokeOpacity: 1,
+                                      }}
+                                    />
+                                    {width > 60 && height > 30 && (
+                                      <text
+                                        x={x + width / 2}
+                                        y={y + height / 2}
+                                        textAnchor="middle"
+                                        fill="#fff"
+                                        fontSize={12}
+                                        fontWeight="bold"
+                                      >
+                                        {`${payload.name}: ${payload.size}`}
+                                      </text>
+                                    )}
+                                  </g>
+                                );
+                              }}
+                            />
+                            <Tooltip />
                           </ResponsiveContainer>
                         </div>
                       )}
@@ -651,7 +490,7 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ surveyId }) => 
                     <p className="font-semibold">
                       {analytics.questions.length > 0 
                         ? analytics.questions.reduce((max, q) => 
-                            q.totalResponses > max.totalResponses ? q : max
+                            q.statistics.totalResponses > max.statistics.totalResponses ? q : max
                           ).text.substring(0, 50) + '...'
                         : 'N/A'
                       }
@@ -712,7 +551,7 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ surveyId }) => 
             <select
               value={selectedQuestion}
               onChange={(e) => setSelectedQuestion(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-md"
+              className="w-full p-2 border border-gray-500 rounded-md"
             >
               {analytics.questions.map((question) => (
                 <option key={question.id} value={question.id}>
@@ -735,11 +574,11 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ surveyId }) => 
                 <div className="mb-4">
                   <select
                     value={chartType}
-                    onChange={(e) => setChartType(e.target.value as 'bar' | 'pie' | 'line' | 'area' | 'histogram')}
-                    className="p-2 border border-gray-300 rounded-md"
+                    onChange={(e) => setChartType(e.target.value as 'bar' | 'treemap' | 'line' | 'area' | 'histogram')}
+                    className="p-2 border border-gray-500 rounded-md"
                   >
                     <option value="bar">Gráfico de Barras</option>
-                    <option value="pie">Gráfico de Pizza</option>
+                    <option value="treemap">Treemap</option>
                     <option value="line">Gráfico de Linha</option>
                     <option value="area">Gráfico de Área</option>
                     <option value="histogram">Histograma</option>
@@ -753,7 +592,7 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ surveyId }) => 
                       <CardTitle className="flex items-center">
                         <BarChart3 className="h-5 w-5 mr-2" />
                         {chartType === 'bar' && 'Distribuição de Respostas'}
-                        {chartType === 'pie' && 'Proporção de Respostas'}
+                        {chartType === 'treemap' && 'Mapa Hierárquico de Respostas'}
                         {chartType === 'line' && 'Tendência de Respostas'}
                         {chartType === 'area' && 'Área de Respostas'}
                         {chartType === 'histogram' && 'Histograma de Distribuição'}
@@ -762,7 +601,16 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ surveyId }) => 
                     <CardContent>
                       <ResponsiveContainer width="100%" height={300}>
                         {chartType === 'bar' ? (
-                          <BarChart data={selectedQuestionData.data}>
+                          <BarChart data={selectedQuestionData.responses.reduce((acc: any[], response: any) => {
+                            const answer = response.answer_text || response.answer_rating?.toString() || 'Sem resposta';
+                            const existing = acc.find(item => item.label === answer);
+                            if (existing) {
+                              existing.value += 1;
+                            } else {
+                              acc.push({ label: answer, value: 1 });
+                            }
+                            return acc;
+                          }, [])}>
                             <CartesianGrid strokeDasharray="3 3" />
                             <XAxis dataKey="label" />
                             <YAxis />
@@ -770,27 +618,94 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ surveyId }) => 
                             <Legend />
                             <Bar dataKey="value" fill="#3B82F6" />
                           </BarChart>
-                        ) : chartType === 'pie' ? (
-                          <RechartsPieChart>
-                            <Tooltip />
-                            <Legend />
-                            <Pie
-                              data={selectedQuestionData.data}
-                              cx="50%"
-                              cy="50%"
-                              labelLine={false}
-                              label={({ label, value }) => `${label}: ${value}`}
-                              outerRadius={80}
-                              fill="#8884d8"
-                              dataKey="value"
-                            >
-                              {selectedQuestionData.data.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                              ))}
-                            </Pie>
-                          </RechartsPieChart>
+                        ) : chartType === 'treemap' ? (
+                          <Treemap
+                            data={selectedQuestionData.responses.reduce((acc: any[], response: any) => {
+                              const answer = response.answer_text || response.answer_rating?.toString() || 'Sem resposta';
+                              const existing = acc.find(item => item.name === answer);
+                              if (existing) {
+                                existing.size += 1;
+                              } else {
+                                acc.push({ name: answer, size: 1, fill: COLORS[acc.length % COLORS.length] });
+                              }
+                              return acc;
+                            }, [])}
+                            dataKey="size"
+                            ratio={4/3}
+                            stroke="#fff"
+                            strokeWidth={2}
+                            content={({ root, depth, x, y, width, height, index, payload, colors, rank, name }) => {
+                              if (!payload || !payload.name || !payload.size || width < 20 || height < 20) return null;
+                              const fillColor = payload.fill || COLORS[0];
+                              return (
+                                <g>
+                                  <rect
+                                    x={x}
+                                    y={y}
+                                    width={width}
+                                    height={height}
+                                    style={{
+                                      fill: fillColor,
+                                      stroke: '#fff',
+                                      strokeWidth: 2,
+                                      strokeOpacity: 1,
+                                      cursor: 'pointer'
+                                    }}
+                                  />
+                                  {width > 50 && height > 25 && (
+                                    <text
+                                      x={x + width / 2}
+                                      y={y + height / 2 - 5}
+                                      textAnchor="middle"
+                                      fill="#fff"
+                                      fontSize={Math.min(width / 8, height / 4, 14)}
+                                      fontWeight="bold"
+                                    >
+                                      {payload.name && payload.name.length > 10 ? payload.name.substring(0, 10) + '...' : payload.name || ''}
+                                    </text>
+                                  )}
+                                  {width > 50 && height > 40 && (
+                                    <text
+                                      x={x + width / 2}
+                                      y={y + height / 2 + 10}
+                                      textAnchor="middle"
+                                      fill="#fff"
+                                      fontSize={Math.min(width / 10, height / 6, 12)}
+                                      fontWeight="normal"
+                                    >
+                                      {payload.size || 0}
+                                    </text>
+                                  )}
+                                </g>
+                              );
+                            }}
+                          >
+                            <Tooltip
+                              content={({ active, payload }) => {
+                                if (active && payload && payload[0]) {
+                                  return (
+                                    <div className="bg-white p-3 border border-gray-300 rounded-lg shadow-lg">
+                                      <p className="font-semibold text-gray-800">{payload[0].payload.name}</p>
+                                      <p className="text-gray-600">Respostas: {payload[0].payload.size}</p>
+                                      <p className="text-gray-600">Percentual: {((payload[0].payload.size / selectedQuestionData.statistics.totalResponses) * 100).toFixed(1)}%</p>
+                                    </div>
+                                  );
+                                }
+                                return null;
+                              }}
+                            />
+                          </Treemap>
                         ) : chartType === 'line' ? (
-                          <LineChart data={selectedQuestionData.data}>
+                          <LineChart data={selectedQuestionData.responses.reduce((acc: any[], response: any) => {
+                            const answer = response.answer_text || response.answer_rating?.toString() || 'Sem resposta';
+                            const existing = acc.find(item => item.label === answer);
+                            if (existing) {
+                              existing.value += 1;
+                            } else {
+                              acc.push({ label: answer, value: 1 });
+                            }
+                            return acc;
+                          }, [])}>
                             <CartesianGrid strokeDasharray="3 3" />
                             <XAxis dataKey="label" />
                             <YAxis />
@@ -799,7 +714,16 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ surveyId }) => 
                             <Line type="monotone" dataKey="value" stroke="#3B82F6" strokeWidth={2} />
                           </LineChart>
                         ) : chartType === 'area' ? (
-                          <AreaChart data={selectedQuestionData.data}>
+                          <AreaChart data={selectedQuestionData.responses.reduce((acc: any[], response: any) => {
+                            const answer = response.answer_text || response.answer_rating?.toString() || 'Sem resposta';
+                            const existing = acc.find(item => item.label === answer);
+                            if (existing) {
+                              existing.value += 1;
+                            } else {
+                              acc.push({ label: answer, value: 1 });
+                            }
+                            return acc;
+                          }, [])}>
                             <CartesianGrid strokeDasharray="3 3" />
                             <XAxis dataKey="label" />
                             <YAxis />
@@ -808,7 +732,16 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ surveyId }) => 
                             <Area type="monotone" dataKey="value" stroke="#3B82F6" fill="#3B82F6" fillOpacity={0.6} />
                           </AreaChart>
                         ) : (
-                          <BarChart data={selectedQuestionData.data}>
+                          <BarChart data={selectedQuestionData.responses.reduce((acc: any[], response: any) => {
+                            const answer = response.answer_text || response.answer_rating?.toString() || 'Sem resposta';
+                            const existing = acc.find(item => item.label === answer);
+                            if (existing) {
+                              existing.value += 1;
+                            } else {
+                              acc.push({ label: answer, value: 1 });
+                            }
+                            return acc;
+                          }, [])}>
                             <CartesianGrid strokeDasharray="3 3" />
                             <XAxis dataKey="label" />
                             <YAxis />
@@ -821,34 +754,89 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ surveyId }) => 
                     </CardContent>
                   </Card>
 
-                  {/* Gráfico Secundário - Sempre pizza para comparação */}
+                  {/* Gráfico Secundário - Treemap para comparação */}
                   <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center">
-                        <PieChart className="h-5 w-5 mr-2" />
+                        <BarChart3 className="h-5 w-5 mr-2" />
                         Proporção Geral
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
                       <ResponsiveContainer width="100%" height={300}>
-                        <RechartsPieChart>
-                          <Tooltip />
-                          <Legend />
-                          <Pie
-                            data={selectedQuestionData.data}
-                            cx="50%"
-                            cy="50%"
-                            labelLine={false}
-                            label={({ label, value }) => `${label}: ${value}`}
-                            outerRadius={80}
-                            fill="#8884d8"
-                            dataKey="value"
-                          >
-                            {selectedQuestionData.data.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                            ))}
-                          </Pie>
-                        </RechartsPieChart>
+                        <Treemap
+                          data={selectedQuestionData.responses.reduce((acc: any[], response: any) => {
+                            const answer = response.answer_text || response.answer_rating?.toString() || 'Sem resposta';
+                            const existing = acc.find(item => item.name === answer);
+                            if (existing) {
+                              existing.size += 1;
+                            } else {
+                              acc.push({ name: answer, size: 1, fill: COLORS[acc.length % COLORS.length] });
+                            }
+                            return acc;
+                          }, [])}
+                          dataKey="size"
+                          aspectRatio={4/3}
+                          stroke="#fff"
+                          fill="#8884d8"
+                          content={(props) => {
+                            const { payload, x, y, width, height } = props;
+                            if (!payload || !payload.name || !payload.size || width < 20 || height < 20) return null;
+                            const fillColor = payload.fill || COLORS[0];
+                            return (
+                              <g>
+                                <rect
+                                  x={x}
+                                  y={y}
+                                  width={width}
+                                  height={height}
+                                  fill={fillColor}
+                                  stroke="#fff"
+                                  strokeWidth={2}
+                                />
+                                {width > 60 && height > 30 && (
+                                  <text
+                                    x={x + width / 2}
+                                    y={y + height / 2 - 5}
+                                    textAnchor="middle"
+                                    fill="#fff"
+                                    fontSize={Math.min(width / 8, height / 4, 14)}
+                                    fontWeight="bold"
+                                  >
+                                    {payload.name && payload.name.length > 10 ? payload.name.substring(0, 10) + '...' : payload.name || ''}
+                                  </text>
+                                )}
+                                {width > 50 && height > 40 && (
+                                  <text
+                                    x={x + width / 2}
+                                    y={y + height / 2 + 10}
+                                    textAnchor="middle"
+                                    fill="#fff"
+                                    fontSize={Math.min(width / 10, height / 6, 12)}
+                                    fontWeight="normal"
+                                  >
+                                    {payload.size || 0}
+                                  </text>
+                                )}
+                              </g>
+                            );
+                          }}
+                        >
+                          <Tooltip
+                            content={({ active, payload }) => {
+                              if (active && payload && payload[0]) {
+                                return (
+                                  <div className="bg-white p-3 border border-gray-300 rounded-lg shadow-lg">
+                                    <p className="font-semibold text-gray-800">{payload[0].payload.name}</p>
+                                    <p className="text-gray-600">Valor: {payload[0].payload.size}</p>
+                                    <p className="text-gray-600">Percentual: {((payload[0].payload.size / selectedQuestionData.statistics.totalResponses) * 100).toFixed(1)}%</p>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            }}
+                          />
+                        </Treemap>
                       </ResponsiveContainer>
                     </CardContent>
                   </Card>
@@ -856,40 +844,39 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ surveyId }) => 
               </TabsContent>
 
               <TabsContent value="stats" className="space-y-4">
-                {selectedQuestionData.statisticalData ? (
+                {selectedQuestionData.statistics.averageRating ? (
                   <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center">
                         <Star className="h-5 w-5 mr-2" />
-                        Estatísticas Descritivas
+                        Estatísticas da Questão
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="text-center p-4 bg-blue-50 rounded-lg">
-                          <p className="text-sm text-gray-600">Média</p>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        <div className="text-center p-4 bg-blue-500/20 rounded-lg">
+                          <p className="text-sm text-gray-600">Total de Respostas</p>
                           <p className="text-2xl font-bold text-blue-600">
-                            {selectedQuestionData.statisticalData.mean.toFixed(2)}
+                            {selectedQuestionData.statistics.totalResponses}
                           </p>
                         </div>
-                        <div className="text-center p-4 bg-green-50 rounded-lg">
-                          <p className="text-sm text-gray-600">Mediana</p>
-                          <p className="text-2xl font-bold text-green-600">
-                            {selectedQuestionData.statisticalData.median}
-                          </p>
-                        </div>
-                        <div className="text-center p-4 bg-yellow-50 rounded-lg">
-                          <p className="text-sm text-gray-600">Moda</p>
-                          <p className="text-2xl font-bold text-yellow-600">
-                            {selectedQuestionData.statisticalData.mode}
-                          </p>
-                        </div>
-                        <div className="text-center p-4 bg-purple-50 rounded-lg">
-                          <p className="text-sm text-gray-600">Desvio Padrão</p>
-                          <p className="text-2xl font-bold text-purple-600">
-                            {selectedQuestionData.statisticalData.stdDev.toFixed(2)}
-                          </p>
-                        </div>
+                        {selectedQuestionData.statistics.averageRating && (
+                          <div className="text-center p-4 bg-green-500/20 rounded-lg">
+                            <p className="text-sm text-gray-600">Rating Médio</p>
+                            <p className="text-2xl font-bold text-green-600">
+                              {selectedQuestionData.statistics.averageRating.toFixed(2)}
+                            </p>
+                          </div>
+                        )}
+                        {selectedQuestionData.statistics.mostCommonAnswer && (
+                          <div className="text-center p-4 bg-purple-500/20 rounded-lg">
+                            <p className="text-sm text-gray-600">Resposta Mais Comum</p>
+                            <p className="text-lg font-bold text-purple-600">
+                              {selectedQuestionData.statistics.mostCommonAnswer.substring(0, 30)}
+                              {selectedQuestionData.statistics.mostCommonAnswer.length > 30 ? '...' : ''}
+                            </p>
+                          </div>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
@@ -903,7 +890,7 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ surveyId }) => 
               </TabsContent>
 
               <TabsContent value="sentiment" className="space-y-4">
-                {selectedQuestionData.sentimentData ? (
+                {selectedQuestionData.statistics.sentimentBreakdown ? (
                   <div className="space-y-6">
                     {/* Distribuição de Sentimento */}
                     <Card>
@@ -914,77 +901,115 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ surveyId }) => 
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                          <div className="text-center p-4 bg-green-50 rounded-lg">
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+                          <div className="text-center p-4 bg-green-500/20 rounded-lg">
                             <p className="text-sm text-gray-600">Positivo</p>
                             <p className="text-2xl font-bold text-green-600">
-                              {selectedQuestionData.sentimentData.positive}
+                              {selectedQuestionData.statistics.sentimentBreakdown.positive}
                             </p>
                           </div>
-                          <div className="text-center p-4 bg-gray-50 rounded-lg">
+                          <div className="text-center p-4 bg-gray-500/20 rounded-lg">
                             <p className="text-sm text-gray-600">Neutro</p>
                             <p className="text-2xl font-bold text-gray-600">
-                              {selectedQuestionData.sentimentData.neutral}
+                              {selectedQuestionData.statistics.sentimentBreakdown.neutral}
                             </p>
                           </div>
-                          <div className="text-center p-4 bg-red-50 rounded-lg">
+                          <div className="text-center p-4 bg-red-500/20 rounded-lg">
                             <p className="text-sm text-gray-600">Negativo</p>
                             <p className="text-2xl font-bold text-red-600">
-                              {selectedQuestionData.sentimentData.negative}
-                            </p>
-                          </div>
-                          <div className="text-center p-4 bg-blue-50 rounded-lg">
-                            <p className="text-sm text-gray-600">Score Médio</p>
-                            <p className="text-2xl font-bold text-blue-600">
-                              {selectedQuestionData.sentimentData.avgScore.toFixed(2)}
+                              {selectedQuestionData.statistics.sentimentBreakdown.negative}
                             </p>
                           </div>
                         </div>
 
-                        {/* Gráfico de Pizza para Sentimento */}
-                        <ResponsiveContainer width="100%" height={300}>
-                          <RechartsPieChart>
-                            <Tooltip />
-                            <Legend />
-                            <Pie
-                              data={selectedQuestionData.data}
-                              cx="50%"
-                              cy="50%"
-                              labelLine={false}
-                              label={({ label, value }) => `${label}: ${value}`}
-                              outerRadius={80}
-                              fill="#8884d8"
-                              dataKey="value"
-                            >
-                              {selectedQuestionData.data.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={entry.color || COLORS[index % COLORS.length]} />
-                              ))}
-                            </Pie>
-                          </RechartsPieChart>
+                        {/* Treemap para Sentimento */}
+                        <ResponsiveContainer width="100%" height="100%">
+                          <Treemap
+                            data={[
+                              { 
+                                name: 'Positivo', 
+                                size: selectedQuestionData.statistics.sentimentBreakdown.positive, 
+                                fill: '#10B981' 
+                              },
+                              { 
+                                name: 'Neutro', 
+                                size: selectedQuestionData.statistics.sentimentBreakdown.neutral, 
+                                fill: '#6B7280' 
+                              },
+                              { 
+                                name: 'Negativo', 
+                                size: selectedQuestionData.statistics.sentimentBreakdown.negative, 
+                                fill: '#EF4444' 
+                              }
+                            ].filter(item => item.size > 0)}
+                            dataKey="size"
+                            aspectRatio={4/3}
+                            stroke="#fff"
+                            fill="#8884d8"
+                            content={(props) => {
+                              const { payload, x, y, width, height } = props;
+                              if (!payload || !payload.name || !payload.size || width < 20 || height < 20) return null;
+                              const fillColor = payload.fill || COLORS[0];
+                              return (
+                                <g>
+                                  <rect
+                                    x={x}
+                                    y={y}
+                                    width={width}
+                                    height={height}
+                                    fill={fillColor}
+                                    stroke="#fff"
+                                    strokeWidth={2}
+                                  />
+                                  {width > 60 && height > 30 && (
+                                    <text
+                                      x={x + width / 2}
+                                      y={y + height / 2}
+                                      textAnchor="middle"
+                                      fill="#fff"
+                                      fontSize={12}
+                                      fontWeight="bold"
+                                    >
+                                      {payload.name}
+                                    </text>
+                                  )}
+                                  {width > 50 && height > 40 && (
+                                    <text
+                                      x={x + width / 2}
+                                      y={y + height / 2 + 10}
+                                      textAnchor="middle"
+                                      fill="#fff"
+                                      fontSize={Math.min(width / 10, height / 6, 12)}
+                                      fontWeight="normal"
+                                    >
+                                      {payload.size || 0}
+                                    </text>
+                                  )}
+                                </g>
+                              );
+                            }}
+                          >
+                            <Tooltip
+                              content={({ active, payload }) => {
+                                if (active && payload && payload[0]) {
+                                  const totalSentiment = selectedQuestionData.statistics.sentimentBreakdown!.positive + 
+                                                       selectedQuestionData.statistics.sentimentBreakdown!.neutral + 
+                                                       selectedQuestionData.statistics.sentimentBreakdown!.negative;
+                                  return (
+                                    <div className="bg-white p-3 border border-gray-300 rounded-lg shadow-lg">
+                                      <p className="font-semibold text-gray-800">{payload[0].payload.name}</p>
+                                      <p className="text-gray-600">Valor: {payload[0].payload.size}</p>
+                                      <p className="text-gray-600">Percentual: {((payload[0].payload.size / totalSentiment) * 100).toFixed(1)}%</p>
+                                    </div>
+                                  );
+                                }
+                                return null;
+                              }}
+                            />
+                          </Treemap>
                         </ResponsiveContainer>
                       </CardContent>
                     </Card>
-
-                    {/* Insights de IA */}
-                    {selectedQuestionData.sentimentData.insights && selectedQuestionData.sentimentData.insights.length > 0 && (
-                      <Card>
-                        <CardHeader>
-                          <CardTitle className="flex items-center">
-                            <Brain className="h-5 w-5 mr-2" />
-                            Insights de IA
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-3">
-                            {selectedQuestionData.sentimentData.insights.map((insight, idx) => (
-                              <div key={idx} className="p-3 bg-purple-50 rounded-lg border-l-4 border-purple-400">
-                                <p className="text-sm text-gray-700">{insight}</p>
-                              </div>
-                            ))}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    )}
                   </div>
                 ) : (
                   <Card>
@@ -1003,4 +1028,4 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ surveyId }) => 
   );
 };
 
-export default AnalyticsDashboard;
+export default memo(AnalyticsDashboard);

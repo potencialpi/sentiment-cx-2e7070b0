@@ -20,7 +20,7 @@ const PaymentCancel = () => {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4">
-            <XCircle className="h-16 w-16 text-red-500" />
+            <XCircle className="h-16 w-16 text-red-600" />
           </div>
           <CardTitle className="text-2xl font-bold text-gray-900">
             Pagamento Cancelado
@@ -52,7 +52,7 @@ const PaymentCancel = () => {
             </Button>
           </div>
           
-          <div className="bg-blue-50 p-4 rounded-lg">
+          <div className="bg-red-500/20 border border-red-500 rounded-lg p-6 text-center">
             <h3 className="font-semibold text-blue-900 mb-2">Precisa de ajuda?</h3>
             <p className="text-sm text-blue-800">
               Se você está enfrentando problemas com o pagamento, entre em contato com nosso suporte.

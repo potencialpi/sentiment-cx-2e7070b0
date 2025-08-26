@@ -34,12 +34,12 @@ const TestSelect: React.FC = () => {
             onOpenChange={(open) => addLog(`Select ${open ? 'aberto' : 'fechado'}`)}
           >
             <SelectTrigger 
-              className="w-full min-h-[44px] border border-gray-300"
+              className="w-full min-h-[44px] border border-gray-500"
               onClick={() => addLog('Trigger clicado')}
             >
               <SelectValue placeholder="Escolha o tipo de resposta" />
             </SelectTrigger>
-            <SelectContent className="z-50 bg-white border border-gray-200 shadow-lg">
+            <SelectContent className="z-50 bg-white border border-gray-500 shadow-lg">
               <SelectItem 
                 value="text"
                 onClick={() => addLog('Item texto clicado')}
@@ -74,7 +74,7 @@ const TestSelect: React.FC = () => {
 
         <div className="mt-4">
           <h3 className="text-sm font-medium mb-2">Log de Eventos:</h3>
-          <div className="bg-gray-100 p-3 rounded max-h-32 overflow-y-auto">
+          <div className="bg-gray-500/20 p-3 rounded max-h-32 overflow-y-auto">
             {log.length === 0 ? (
               <p className="text-xs text-gray-500">Nenhum evento registrado</p>
             ) : (

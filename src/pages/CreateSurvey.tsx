@@ -244,7 +244,7 @@ const CreateSurvey = () => {
                         <h3 className="text-lg font-semibold text-brand-dark-gray">{survey.title}</h3>
                         <Badge 
                           variant={survey.status === 'active' ? 'default' : 'secondary'}
-                          className={survey.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}
+                          className={survey.status === 'active' ? 'bg-green-500/20 text-green-700' : 'bg-gray-500/20 text-gray-700'}
                         >
                           {survey.status === 'active' ? 'Ativa' : 'Inativa'}
                         </Badge>
@@ -288,7 +288,7 @@ const CreateSurvey = () => {
                                     <span className="font-medium">Status:</span> 
                                     <Badge 
                                       variant={selectedSurvey.status === 'active' ? 'default' : 'secondary'}
-                                      className={`ml-2 ${selectedSurvey.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}
+                                      className={`ml-2 ${selectedSurvey.status === 'active' ? 'bg-green-500/20 text-green-700' : 'bg-gray-500/20 text-gray-700'}`}
                                     >
                                       {selectedSurvey.status === 'active' ? 'Ativa' : 'Inativa'}
                                     </Badge>

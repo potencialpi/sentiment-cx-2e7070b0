@@ -1,0 +1,20 @@
+{
+  "timestamp": "2025-08-25T23:28:09.660Z",
+  "policies_found": [],
+  "permissions": [],
+  "rls_status": {},
+  "issues": [
+    "Cannot fetch policies: Could not find the function public.sql(query) in the schema cache",
+    "Cannot fetch permissions: Could not find the function public.sql(query) in the schema cache"
+  ],
+  "test_results": {
+    "teste.isolamento.forte1@example.com": {
+      "login": false,
+      "error": "Invalid login credentials"
+    },
+    "teste.isolamento.forte2@example.com": {
+      "login": false,
+      "error": "Invalid login credentials"
+    }
+  }
+}

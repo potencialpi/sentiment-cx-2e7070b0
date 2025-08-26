@@ -32,7 +32,7 @@ export function getPlanAdminRoute(planCode: string): string {
   
   switch (normalizedCode) {
     case 'start-quantico':
-      return '/admin/questionarios';
+      return '/admin/start';
     case 'vortex-neural':
       return '/admin/vortex';
     case 'nexus-infinito':
@@ -49,13 +49,13 @@ export function getPlanCreateSurveyRoute(planCode: string): string {
   
   switch (normalizedCode) {
     case 'start-quantico':
-      return '/create-survey-start';
+      return '/admin/start';
     case 'vortex-neural':
       return '/create-survey-vortex';
     case 'nexus-infinito':
       return '/create-survey-nexus';
     default:
-      return '/create-survey-start';
+      return '/admin/start';
   }
 }
 

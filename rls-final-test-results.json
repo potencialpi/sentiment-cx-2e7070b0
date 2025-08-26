@@ -1,0 +1,76 @@
+{
+  "timestamp": "2025-08-25T23:30:55.388Z",
+  "rlsStatus": [
+    {
+      "test_name": "RLS Status",
+      "result": "ENABLED",
+      "details": "Table: profiles"
+    },
+    {
+      "test_name": "RLS Status",
+      "result": "ENABLED",
+      "details": "Table: responses"
+    },
+    {
+      "test_name": "RLS Status",
+      "result": "ENABLED",
+      "details": "Table: surveys"
+    },
+    {
+      "test_name": "Policy Count",
+      "result": "4",
+      "details": "Table: profiles"
+    },
+    {
+      "test_name": "Policy Count",
+      "result": "4",
+      "details": "Table: responses"
+    },
+    {
+      "test_name": "Policy Count",
+      "result": "4",
+      "details": "Table: surveys"
+    }
+  ],
+  "policyCount": {
+    "profiles": 4,
+    "responses": 4,
+    "surveys": 4
+  },
+  "testResults": [
+    {
+      "email": "teste.isolamento.forte1@example.com",
+      "loginSuccess": false,
+      "surveysVisible": 0,
+      "ownSurveys": 0,
+      "otherUserSurveys": 0,
+      "violationDetails": [],
+      "userId": null
+    },
+    {
+      "email": "teste.isolamento.forte2@example.com",
+      "loginSuccess": false,
+      "surveysVisible": 0,
+      "ownSurveys": 0,
+      "otherUserSurveys": 0,
+      "violationDetails": [],
+      "userId": null
+    },
+    {
+      "email": "teste.isolamento.forte3@example.com",
+      "loginSuccess": false,
+      "surveysVisible": 0,
+      "ownSurveys": 0,
+      "otherUserSurveys": 0,
+      "violationDetails": [],
+      "userId": null
+    }
+  ],
+  "summary": {
+    "totalViolations": 0,
+    "rlsWorking": false,
+    "criticalIssues": [
+      "Nenhum login de teste foi bem-sucedido"
+    ]
+  }
+}

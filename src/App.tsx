@@ -21,7 +21,6 @@ import Dashboard from "./pages/Dashboard";
 import CreateSurvey from "./pages/CreateSurvey";
 
 import CreateSurveyRedirect from "./pages/CreateSurveyRedirect";
-import CreateSurveyStart from "./pages/CreateSurveyStart";
 import CreateSurveyVortex from "./pages/CreateSurveyVortex";
 import CreateSurveyNexus from "./pages/CreateSurveyNexus";
 import SurveyResponse from "./pages/SurveyResponse";
@@ -50,7 +49,7 @@ const App = () => (
           <Route path="/admin" element={<Admin />} />
 
           <Route path="/admin/questionarios" element={<AdminQuestionarios />} />
-          <Route path="/admin/start" element={<CreateSurveyStart />} />
+          <Route path="/admin/start" element={<AdminQuestionarios />} />
           <Route path="/admin/vortex" element={<AdminVortex />} />
           <Route path="/admin/nexus" element={<AdminNexus />} />
           <Route path="/admin/questionarios/nexus" element={<AdminNexus />} />
@@ -58,7 +57,7 @@ const App = () => (
           <Route path="/admin/vortex/respondentes" element={<AdminRespondents />} />
           <Route path="/admin/nexus/respondentes" element={<AdminRespondents />} />
           <Route path="/create-survey" element={<CreateSurveyRedirect />} />
-          <Route path="/create-survey-start" element={<CreateSurveyStart />} />
+
           <Route path="/create-survey-vortex" element={<CreateSurveyVortex />} />
           <Route path="/create-survey-nexus" element={<CreateSurveyNexus />} />
           <Route path="/manage-surveys" element={<CreateSurvey />} />

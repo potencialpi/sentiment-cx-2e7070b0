@@ -1,80 +1,108 @@
--- Corrigir políticas RLS para permitir inserção via triggers
+-- Remover políticas existentes que podem estar muito permissivas
+DROP POLICY IF EXISTS "surveys_select_policy" ON surveys;
+DROP POLICY IF EXISTS "surveys_insert_policy" ON surveys;
+DROP POLICY IF EXISTS "surveys_update_policy" ON surveys;
+DROP POLICY IF EXISTS "surveys_delete_policy" ON surveys;
 
--- Desabilitar RLS temporariamente para verificar se é o problema
-ALTER TABLE public.profiles DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.companies DISABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "responses_select_policy" ON responses;
+DROP POLICY IF EXISTS "responses_insert_policy" ON responses;
+DROP POLICY IF EXISTS "responses_update_policy" ON responses;
+DROP POLICY IF EXISTS "responses_delete_policy" ON responses;
 
--- Ou criar políticas mais permissivas para os triggers
--- DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
--- DROP POLICY IF EXISTS "Users can insert their own company" ON public.companies;
+DROP POLICY IF EXISTS "profiles_select_policy" ON profiles;
+DROP POLICY IF EXISTS "profiles_update_policy" ON profiles;
 
--- CREATE POLICY "Allow profile creation via trigger" ON public.profiles
---   FOR INSERT WITH CHECK (true);
+-- Criar políticas RLS mais restritivas para SURVEYS
+-- Usuários autenticados só podem ver seus próprios surveys
+CREATE POLICY "surveys_select_own_only" ON surveys
+    FOR SELECT
+    TO authenticated
+    USING (auth.uid() = user_id);
 
--- CREATE POLICY "Allow company creation via trigger" ON public.companies
---   FOR INSERT WITH CHECK (true);
+-- Usuários autenticados só podem inserir surveys para si mesmos
+CREATE POLICY "surveys_insert_own_only" ON surveys
+    FOR INSERT
+    TO authenticated
+    WITH CHECK (auth.uid() = user_id);
 
--- Garantir que as funções tenham privilégios de SECURITY DEFINER
-CREATE OR REPLACE FUNCTION public.handle_new_user_profile()
-RETURNS trigger
-SECURITY DEFINER
-SET search_path = public
-LANGUAGE plpgsql
-AS $$
-BEGIN
-  INSERT INTO public.profiles (id, email, company_name, plan_id, billing_type)
-  VALUES (
-    NEW.id,
-    NEW.email,
-    COALESCE(NEW.raw_user_meta_data->>'company_name', 'Empresa Padrão'),
-    COALESCE(NEW.raw_user_meta_data->>'plan_id', 'start-quantico'),
-    COALESCE(NEW.raw_user_meta_data->>'billing_type', 'monthly')
-  );
-  RETURN NEW;
-EXCEPTION
-  WHEN OTHERS THEN
-    RAISE LOG 'Erro ao criar profile: %', SQLERRM;
-    RETURN NEW;
-END;
-$$;
+-- Usuários autenticados só podem atualizar seus próprios surveys
+CREATE POLICY "surveys_update_own_only" ON surveys
+    FOR UPDATE
+    TO authenticated
+    USING (auth.uid() = user_id)
+    WITH CHECK (auth.uid() = user_id);
 
-CREATE OR REPLACE FUNCTION public.handle_new_user_company()
-RETURNS trigger
-SECURITY DEFINER
-SET search_path = public
-LANGUAGE plpgsql
-AS $$
-BEGIN
-  INSERT INTO public.companies (id, name, plan_id, billing_type, owner_id)
-  VALUES (
-    gen_random_uuid(),
-    COALESCE(NEW.raw_user_meta_data->>'company_name', 'Empresa Padrão'),
-    COALESCE(NEW.raw_user_meta_data->>'plan_id', 'start-quantico'),
-    COALESCE(NEW.raw_user_meta_data->>'billing_type', 'monthly'),
-    NEW.id
-  );
-  RETURN NEW;
-EXCEPTION
-  WHEN OTHERS THEN
-    RAISE LOG 'Erro ao criar company: %', SQLERRM;
-    RETURN NEW;
-END;
-$$;
+-- Usuários autenticados só podem deletar seus próprios surveys
+CREATE POLICY "surveys_delete_own_only" ON surveys
+    FOR DELETE
+    TO authenticated
+    USING (auth.uid() = user_id);
 
--- Recriar os triggers
-DROP TRIGGER IF EXISTS on_auth_user_created_profile ON auth.users;
-DROP TRIGGER IF EXISTS on_auth_user_created_company ON auth.users;
+-- Criar políticas RLS para RESPONSES
+-- Usuários autenticados podem ver responses de seus surveys
+CREATE POLICY "responses_select_own_surveys" ON responses
+    FOR SELECT
+    TO authenticated
+    USING (
+        EXISTS (
+            SELECT 1 FROM surveys 
+            WHERE surveys.id = responses.survey_id 
+            AND surveys.user_id = auth.uid()
+        )
+    );
 
-CREATE TRIGGER on_auth_user_created_profile
-  AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user_profile();
+-- Usuários anônimos podem inserir responses em surveys ativos
+CREATE POLICY "responses_insert_anonymous" ON responses
+    FOR INSERT
+    TO anon
+    WITH CHECK (
+        EXISTS (
+            SELECT 1 FROM surveys 
+            WHERE surveys.id = responses.survey_id 
+            AND surveys.status = 'active'
+        )
+    );
 
-CREATE TRIGGER on_auth_user_created_company
-  AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user_company();
+-- Usuários autenticados podem inserir responses em surveys ativos
+CREATE POLICY "responses_insert_authenticated" ON responses
+    FOR INSERT
+    TO authenticated
+    WITH CHECK (
+        EXISTS (
+            SELECT 1 FROM surveys 
+            WHERE surveys.id = responses.survey_id 
+            AND surveys.status = 'active'
+        )
+    );
 
--- Garantir permissões
-GRANT ALL PRIVILEGES ON public.profiles TO authenticated;
-GRANT ALL PRIVILEGES ON public.companies TO authenticated;
-GRANT SELECT ON public.profiles TO anon;
-GRANT SELECT ON public.companies TO anon;
+-- Criar políticas RLS para PROFILES
+-- Usuários só podem ver seu próprio perfil
+CREATE POLICY "profiles_select_own_only" ON profiles
+    FOR SELECT
+    TO authenticated
+    USING (auth.uid() = user_id);
+
+-- Usuários só podem atualizar seu próprio perfil
+CREATE POLICY "profiles_update_own_only" ON profiles
+    FOR UPDATE
+    TO authenticated
+    USING (auth.uid() = user_id)
+    WITH CHECK (auth.uid() = user_id);
+
+-- Garantir que RLS está habilitado
+ALTER TABLE surveys ENABLE ROW LEVEL SECURITY;
+ALTER TABLE responses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+
+-- Verificar as políticas criadas
+SELECT 
+    schemaname,
+    tablename,
+    policyname,
+    permissive,
+    roles,
+    cmd
+FROM pg_policies 
+WHERE schemaname = 'public' 
+AND tablename IN ('surveys', 'responses', 'profiles')
+ORDER BY tablename, policyname;

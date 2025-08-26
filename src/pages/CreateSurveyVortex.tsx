@@ -497,7 +497,7 @@ const CreateSurveyVortex = () => {
                                   variant="outline"
                                   onClick={() => removeOption(index)}
                                   disabled={newOptions.length <= 1}
-                                  className="border-red-300 text-red-600 hover:bg-red-50 hover:border-red-400"
+                                  className="border-red-500 text-red-700 hover:bg-red-500/20 hover:border-red-600"
                                 >
                                   <Minus className="h-4 w-4" />
                                 </Button>
@@ -549,9 +549,9 @@ const CreateSurveyVortex = () => {
                     </div>
                   ) : activeSurveys.length === 0 ? (
                     <div className="text-center py-8">
-                      <Activity className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                      <Activity className="h-12 w-12 text-gray-600 mx-auto mb-4" />
                       <p className="text-gray-500">Nenhuma pesquisa ativa encontrada</p>
-                      <p className="text-sm text-gray-400 mt-2">Crie sua primeira pesquisa na aba "Criar Pesquisa"</p>
+                      <p className="text-sm text-gray-600 mt-2">Crie sua primeira pesquisa na aba "Criar Pesquisa"</p>
                     </div>
                   ) : (
                     <div className="grid gap-4">

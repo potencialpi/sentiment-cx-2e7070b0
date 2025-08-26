@@ -1,0 +1,215 @@
+{
+  "timestamp": "2025-08-25T23:09:01.556Z",
+  "rlsStatus": {},
+  "authTests": {
+    "basico": {
+      "success": true,
+      "userId": "8606a106-96a9-4204-bd9c-cbad6a19e080",
+      "email": "teste.basico@example.com",
+      "surveyInsertion": {
+        "success": false,
+        "error": "Limite de pesquisas por mês excedido para o plano basico: 2 pesquisas"
+      }
+    },
+    "vortex-pro": {
+      "success": true,
+      "userId": "aef1114d-63c8-4f03-8fdf-85bcf9ac1792",
+      "email": "teste.vortex@example.com",
+      "surveyInsertion": {
+        "success": false,
+        "error": "Limite de pesquisas por mês excedido para o plano vortex-pro: 2 pesquisas"
+      }
+    },
+    "nexus-infinito": {
+      "success": true,
+      "userId": "cd08569a-0790-40a8-8af7-131d27203c62",
+      "email": "teste.nexus@example.com",
+      "surveyInsertion": {
+        "success": true,
+        "surveyId": "f5076269-1689-42f4-aebd-cf1eb83047d3"
+      }
+    }
+  },
+  "isolationTests": {
+    "basico": {
+      "surveysVisible": 11,
+      "surveys": [
+        {
+          "id": "d813cf8d-c1bf-41a3-a425-60bb80a9d947",
+          "title": "pesquisa"
+        },
+        {
+          "id": "3ba8cba4-91a2-486c-9ec2-01f30855b929",
+          "title": "pesquisa"
+        },
+        {
+          "id": "92c0b680-3ff4-451d-909f-e52c500f0d24",
+          "title": "pesquisa testes"
+        },
+        {
+          "id": "d0a68e29-0ede-459a-ae3d-4b7ddcf99b73",
+          "title": "pesquisa testes"
+        },
+        {
+          "id": "6bee5cf2-46f4-4b5f-a058-c6302eb85d2f",
+          "title": "guaguaguarana"
+        },
+        {
+          "id": "8c0b3488-22cd-4eaf-9899-c8230021d3cc",
+          "title": "Pesquisa de teste"
+        },
+        {
+          "id": "68c00e88-d07c-481e-849a-c51f20c8925c",
+          "title": "Teste 19/08"
+        },
+        {
+          "id": "9bdbe6d0-4224-4935-9b78-9eac9e38f167",
+          "title": "pesquisa de testes de agosto"
+        },
+        {
+          "id": "a7faa48b-7ef4-4085-8149-0703a6a9b9e5",
+          "title": "pesquisa nexus"
+        },
+        {
+          "id": "2d27d64f-d514-4314-98bb-2bdc9528779a",
+          "title": "Survey de Teste - basico"
+        },
+        {
+          "id": "c12a08b7-6d36-430a-901b-79e967d2df8a",
+          "title": "Survey de Teste - basico"
+        }
+      ]
+    },
+    "vortex-pro": {
+      "surveysVisible": 11,
+      "surveys": [
+        {
+          "id": "d813cf8d-c1bf-41a3-a425-60bb80a9d947",
+          "title": "pesquisa"
+        },
+        {
+          "id": "3ba8cba4-91a2-486c-9ec2-01f30855b929",
+          "title": "pesquisa"
+        },
+        {
+          "id": "92c0b680-3ff4-451d-909f-e52c500f0d24",
+          "title": "pesquisa testes"
+        },
+        {
+          "id": "d0a68e29-0ede-459a-ae3d-4b7ddcf99b73",
+          "title": "pesquisa testes"
+        },
+        {
+          "id": "6bee5cf2-46f4-4b5f-a058-c6302eb85d2f",
+          "title": "guaguaguarana"
+        },
+        {
+          "id": "8c0b3488-22cd-4eaf-9899-c8230021d3cc",
+          "title": "Pesquisa de teste"
+        },
+        {
+          "id": "68c00e88-d07c-481e-849a-c51f20c8925c",
+          "title": "Teste 19/08"
+        },
+        {
+          "id": "9bdbe6d0-4224-4935-9b78-9eac9e38f167",
+          "title": "pesquisa de testes de agosto"
+        },
+        {
+          "id": "a7faa48b-7ef4-4085-8149-0703a6a9b9e5",
+          "title": "pesquisa nexus"
+        },
+        {
+          "id": "42fa681c-9edd-4c4a-9172-9d57f0f59b1d",
+          "title": "Survey de Teste - vortex-pro"
+        },
+        {
+          "id": "95974917-62e5-42a0-97dd-147ad4ab6d89",
+          "title": "Survey de Teste - vortex-pro"
+        }
+      ]
+    },
+    "nexus-infinito": {
+      "surveysVisible": 16,
+      "surveys": [
+        {
+          "id": "d813cf8d-c1bf-41a3-a425-60bb80a9d947",
+          "title": "pesquisa"
+        },
+        {
+          "id": "3ba8cba4-91a2-486c-9ec2-01f30855b929",
+          "title": "pesquisa"
+        },
+        {
+          "id": "92c0b680-3ff4-451d-909f-e52c500f0d24",
+          "title": "pesquisa testes"
+        },
+        {
+          "id": "d0a68e29-0ede-459a-ae3d-4b7ddcf99b73",
+          "title": "pesquisa testes"
+        },
+        {
+          "id": "6bee5cf2-46f4-4b5f-a058-c6302eb85d2f",
+          "title": "guaguaguarana"
+        },
+        {
+          "id": "8c0b3488-22cd-4eaf-9899-c8230021d3cc",
+          "title": "Pesquisa de teste"
+        },
+        {
+          "id": "68c00e88-d07c-481e-849a-c51f20c8925c",
+          "title": "Teste 19/08"
+        },
+        {
+          "id": "9bdbe6d0-4224-4935-9b78-9eac9e38f167",
+          "title": "pesquisa de testes de agosto"
+        },
+        {
+          "id": "a7faa48b-7ef4-4085-8149-0703a6a9b9e5",
+          "title": "pesquisa nexus"
+        },
+        {
+          "id": "26866f8d-a99d-4148-a173-3d2ce1c86171",
+          "title": "Survey de Teste - nexus-infinito"
+        },
+        {
+          "id": "fde853f3-8b32-4ae1-a1f1-682bfe8de87e",
+          "title": "Survey de Teste - nexus-infinito"
+        },
+        {
+          "id": "d7338d39-1863-467c-80a2-e5169bd5afb9",
+          "title": "Survey PRIVADO de nexus-infinito"
+        },
+        {
+          "id": "1158f071-1056-4b3c-98e8-58aee71c2277",
+          "title": "Survey PRIVADO de nexus-infinito"
+        },
+        {
+          "id": "db67b629-2501-42bd-8776-5f548536df64",
+          "title": "Survey de Teste - nexus-infinito"
+        },
+        {
+          "id": "ccee83a5-f6a5-481c-82a2-4375c0089c69",
+          "title": "Survey de Teste - nexus-infinito"
+        },
+        {
+          "id": "f5076269-1689-42f4-aebd-cf1eb83047d3",
+          "title": "Survey de Teste - nexus-infinito"
+        }
+      ]
+    }
+  },
+  "integrityTests": {},
+  "summary": {
+    "rlsEnabled": true,
+    "authWorking": true,
+    "isolationWorking": true,
+    "overallStatus": "PASSED"
+  },
+  "anonymousAccess": {
+    "readAllowed": false,
+    "surveysVisible": 0,
+    "insertBlocked": true,
+    "insertError": "permission denied for table surveys"
+  }
+}

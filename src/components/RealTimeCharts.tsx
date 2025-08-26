@@ -1,19 +1,14 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
-import { supabase } from '@/integrations/supabase/client';
-import type { Json } from '@/integrations/supabase/types';
-import { analyzeBatchSentiment } from '@/lib/sentimentAnalysis';
-import { BarChart3, PieChart as PieChartIcon, TrendingUp, RefreshCw } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Treemap, Cell, LineChart, Line } from 'recharts';
+import { RefreshCw, BarChart3, TrendingUp } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 import { toast } from '@/hooks/use-toast';
-
-interface ChartData {
-  name: string;
-  value: number;
-  color?: string;
-}
+import { analyzeBatchSentiment } from '@/lib/sentimentAnalysis';
+import { useChartData, ChartDataItem } from '../hooks/useChartData';
+import { useTreemapData, TreemapDataItem } from '../hooks/useTreemapData';
 
 interface SurveyData {
   id: string;
@@ -25,16 +20,19 @@ interface RealTimeChartsProps {
   className?: string;
 }
 
-const COLORS = ['#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4'];
+const COLORS = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9'];
 
 const RealTimeCharts: React.FC<RealTimeChartsProps> = ({ className }) => {
+  const { processChartData, processTreemapData, calculateSentimentData, formatResponsesByDate, COLORS } = useChartData();
+  const { processTreemapData: processAdvancedTreemap, calculateTreemapMetrics, sortTreemapData } = useTreemapData();
   const [surveys, setSurveys] = useState<SurveyData[]>([]);
   const [selectedSurvey, setSelectedSurvey] = useState<string>('');
-  const [chartData, setChartData] = useState<ChartData[]>([]);
-  const [sentimentData, setSentimentData] = useState<ChartData[]>([]);
-  const [responsesByDate, setResponsesByDate] = useState<ChartData[]>([]);
+  const [chartData, setChartData] = useState<ChartDataItem[]>([]);
+  const [sentimentData, setSentimentData] = useState<ChartDataItem[]>([]);
+  const [responsesByDate, setResponsesByDate] = useState<ChartDataItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [chartType, setChartType] = useState<'bar' | 'pie' | 'line'>('bar');
+  const [refreshing, setRefreshing] = useState(false);
+  const [chartType, setChartType] = useState<'bar' | 'treemap' | 'line'>('treemap');
 
   const fetchSurveys = useCallback(async () => {
     try {
@@ -227,12 +225,20 @@ const RealTimeCharts: React.FC<RealTimeChartsProps> = ({ className }) => {
     }
   };
 
-  const renderChart = (data: ChartData[], title: string) => {
+  const processedChartData = useMemo(() => processChartData(chartData), [chartData, processChartData]);
+  const processedSentimentData = useMemo(() => processChartData(sentimentData), [sentimentData, processChartData]);
+  const processedResponsesByDate = useMemo(() => processChartData(responsesByDate), [responsesByDate, processChartData]);
+  const treemapData = useMemo(() => {
+    const processed = processAdvancedTreemap(chartData);
+    return sortTreemapData(processed, 'value', 'desc');
+  }, [chartData, processAdvancedTreemap, sortTreemapData]);
+
+  const renderChart = (data: ChartDataItem[], title: string) => {
     if (data.length === 0) {
       return (
         <div className="flex items-center justify-center h-64 text-gray-500">
           <div className="text-center">
-            <BarChart3 className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+            <BarChart3 className="h-12 w-12 mx-auto mb-2 text-gray-600" />
             <p>Nenhum dado disponível</p>
           </div>
         </div>
@@ -254,27 +260,19 @@ const RealTimeCharts: React.FC<RealTimeChartsProps> = ({ className }) => {
           </ResponsiveContainer>
         );
       
-      case 'pie':
-        return (
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie
-                data={data}
-                cx="50%"
-                cy="50%"
-                outerRadius={80}
-                fill="#8884d8"
+      case 'treemap':
+          const currentTreemapData = data === chartData ? treemapData : processTreemapData(data);
+          return (
+            <ResponsiveContainer width="100%" height={300}>
+              <Treemap
+                data={currentTreemapData}
                 dataKey="value"
-                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-              >
-                {data.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color || COLORS[index % COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip />
-            </PieChart>
-          </ResponsiveContainer>
-        );
+                aspectRatio={4/3}
+                stroke="#fff"
+                strokeWidth={2}
+              />
+            </ResponsiveContainer>
+          );
       
       case 'line':
         return (
@@ -336,7 +334,7 @@ const RealTimeCharts: React.FC<RealTimeChartsProps> = ({ className }) => {
             
             <div>
               <label htmlFor="chart-type" className="text-sm font-medium">Tipo de Gráfico:</label>
-              <Select value={chartType} onValueChange={(value: 'bar' | 'pie' | 'line') => setChartType(value)}>
+              <Select value={chartType} onValueChange={(value: 'bar' | 'treemap' | 'line') => setChartType(value)}>
                 <SelectTrigger className="w-32">
                   <SelectValue />
                 </SelectTrigger>
@@ -347,10 +345,10 @@ const RealTimeCharts: React.FC<RealTimeChartsProps> = ({ className }) => {
                       Barras
                     </div>
                   </SelectItem>
-                  <SelectItem value="pie">
+                  <SelectItem value="treemap">
                     <div className="flex items-center gap-2">
-                      <PieChartIcon className="h-4 w-4" />
-                      Pizza
+                      <BarChart3 className="h-4 w-4" />
+                      Treemap
                     </div>
                   </SelectItem>
                   <SelectItem value="line">
@@ -369,9 +367,9 @@ const RealTimeCharts: React.FC<RealTimeChartsProps> = ({ className }) => {
       {surveys.length === 0 && (
         <Card>
           <CardContent className="text-center py-8">
-            <BarChart3 className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+            <BarChart3 className="h-12 w-12 mx-auto mb-4 text-gray-600" />
             <p className="text-gray-500">Nenhuma pesquisa com respostas encontrada</p>
-            <p className="text-sm text-gray-400 mt-2">
+            <p className="text-sm text-gray-600 mt-2">
               Crie uma pesquisa e colete algumas respostas para ver os gráficos
             </p>
           </CardContent>
@@ -388,7 +386,7 @@ const RealTimeCharts: React.FC<RealTimeChartsProps> = ({ className }) => {
             <CardContent>
               {loading ? (
                 <div className="flex items-center justify-center h-64">
-                  <RefreshCw className="h-8 w-8 animate-spin text-gray-400" />
+                  <RefreshCw className="h-8 w-8 animate-spin text-gray-600" />
                 </div>
               ) : (
                 renderChart(chartData, 'Respostas')
@@ -404,7 +402,7 @@ const RealTimeCharts: React.FC<RealTimeChartsProps> = ({ className }) => {
             <CardContent>
               {loading ? (
                 <div className="flex items-center justify-center h-64">
-                  <RefreshCw className="h-8 w-8 animate-spin text-gray-400" />
+                  <RefreshCw className="h-8 w-8 animate-spin text-gray-600" />
                 </div>
               ) : (
                 renderChart(sentimentData, 'Sentimento')
@@ -420,7 +418,7 @@ const RealTimeCharts: React.FC<RealTimeChartsProps> = ({ className }) => {
             <CardContent>
               {loading ? (
                 <div className="flex items-center justify-center h-64">
-                  <RefreshCw className="h-8 w-8 animate-spin text-gray-400" />
+                  <RefreshCw className="h-8 w-8 animate-spin text-gray-600" />
                 </div>
               ) : (
                 renderChart(responsesByDate, 'Tempo')
@@ -433,4 +431,4 @@ const RealTimeCharts: React.FC<RealTimeChartsProps> = ({ className }) => {
   );
 };
 
-export default RealTimeCharts;
+export default memo(RealTimeCharts);

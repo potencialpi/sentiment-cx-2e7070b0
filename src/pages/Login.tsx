@@ -83,10 +83,8 @@ const Login = () => {
           description: 'Redirecionando para o painel...'
         });
         
-        // Force refresh da página para garantir estado limpo
-        setTimeout(() => {
-          window.location.href = '/';
-        }, 500);
+        // Redirecionar automaticamente para a página correta baseada no plano
+        await redirectToCorrectAdminPage(authData.user.id);
       }
     } catch (err) {
       setError('Erro interno. Tente novamente.');
@@ -111,7 +109,7 @@ const Login = () => {
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               {error && (
-                <Alert className="border-red-500 bg-red-50">
+                <Alert className="border-red-600 bg-red-500/20">
                   <AlertDescription className="text-red-600">
                     {error}
                   </AlertDescription>
@@ -127,7 +125,7 @@ const Login = () => {
                   type="email"
                   placeholder="seu@email.com"
                   {...register('email')}
-                  className="border-gray-300 focus:border-brand-green focus:ring-brand-green"
+                  className="border-gray-500 focus:border-brand-green focus:ring-brand-green"
                 />
                 {errors.email && (
                   <p className="text-red-500 text-sm">{errors.email.message}</p>
@@ -143,7 +141,7 @@ const Login = () => {
                   type="password"
                   placeholder="Digite sua senha"
                   {...register('password')}
-                  className="border-gray-300 focus:border-brand-green focus:ring-brand-green"
+                  className="border-gray-500 focus:border-brand-green focus:ring-brand-green"
                 />
                 {errors.password && (
                   <p className="text-red-500 text-sm">{errors.password.message}</p>

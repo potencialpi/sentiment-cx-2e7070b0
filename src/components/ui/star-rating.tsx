@@ -42,8 +42,8 @@ export const StarRating = ({ value = 0, onChange, disabled = false, className }:
             "h-6 w-6 cursor-pointer transition-colors",
             disabled && "cursor-not-allowed opacity-50",
             (hoveredStar >= star || value >= star)
-              ? "fill-yellow-400 text-yellow-400"
-              : "text-gray-300 hover:text-yellow-300"
+              ? "fill-yellow-500 text-yellow-500"
+              : "text-gray-500 hover:text-yellow-300"
           )}
           onClick={() => handleStarClick(star)}
           onMouseEnter={() => handleStarHover(star)}

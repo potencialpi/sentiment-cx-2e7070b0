@@ -1,0 +1,37 @@
+{
+  "timestamp": "2025-08-25T23:26:25.619Z",
+  "rls_status": {
+    "anon_blocked": true
+  },
+  "policies": {},
+  "permissions": {},
+  "issues_found": [
+    "Cannot access system tables: relation \"public.information_schema.tables\" does not exist",
+    "CRÍTICO: Usuários autenticados podem ver surveys de outros usuários",
+    "RLS não está funcionando adequadamente"
+  ],
+  "recommendations": [
+    "Implementar políticas RLS restritivas para tabela surveys",
+    "Verificar se as políticas RLS estão sendo aplicadas corretamente",
+    "Considerar recriar as políticas RLS do zero",
+    "Revisar todas as políticas RLS",
+    "Verificar permissões GRANT nas tabelas",
+    "URGENTE: Recriar políticas RLS para tabela surveys",
+    "Aplicar política: CREATE POLICY \"surveys_select_own\" ON surveys FOR SELECT USING (auth.uid() = user_id);",
+    "Aplicar política: CREATE POLICY \"surveys_insert_own\" ON surveys FOR INSERT WITH CHECK (auth.uid() = user_id);",
+    "Aplicar política: CREATE POLICY \"surveys_update_own\" ON surveys FOR UPDATE USING (auth.uid() = user_id);",
+    "Aplicar política: CREATE POLICY \"surveys_delete_own\" ON surveys FOR DELETE USING (auth.uid() = user_id);",
+    "Verificar se RLS está habilitado: ALTER TABLE surveys ENABLE ROW LEVEL SECURITY;",
+    "Testar isolamento após aplicar as políticas"
+  ],
+  "raw_data": {
+    "surveys_count": 10,
+    "users_with_surveys": 4,
+    "isolation_test_summary": {
+      "total_accounts": 3,
+      "successful_logins": 3,
+      "isolation_violations": 3,
+      "rls_working": false
+    }
+  }
+}

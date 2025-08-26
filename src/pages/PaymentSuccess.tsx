@@ -85,7 +85,7 @@ const PaymentSuccess = () => {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4">
-            <CheckCircle className="h-16 w-16 text-green-500" />
+            <CheckCircle className="h-16 w-16 text-green-600" />
           </div>
           <CardTitle className="text-2xl font-bold text-gray-900">
             {paymentVerified ? 'Pagamento Confirmado!' : 'Processando...'}

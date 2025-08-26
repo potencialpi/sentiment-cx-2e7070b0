@@ -1,0 +1,39 @@
+{
+  "policies": {
+    "surveys": {
+      "policiesCount": 0,
+      "policies": []
+    },
+    "responses": {
+      "policiesCount": 0,
+      "policies": []
+    },
+    "profiles": {
+      "policiesCount": 0,
+      "policies": []
+    }
+  },
+  "permissions": {
+    "basico": {
+      "error": "Invalid login credentials"
+    },
+    "vortex-pro": {
+      "error": "Invalid login credentials"
+    },
+    "nexus-infinito": {
+      "error": "Invalid login credentials"
+    }
+  },
+  "isolation": {},
+  "integrity": {},
+  "unauthorized": {
+    "anonymousRead": 5,
+    "anonymousInsert": false,
+    "insertError": "new row violates row-level security policy for table \"surveys\""
+  },
+  "summary": {
+    "timestamp": "2025-08-25T21:35:17.371Z",
+    "status": "PASSED",
+    "testsRun": 5
+  }
+}

@@ -186,7 +186,7 @@ const CheckoutGuest = () => {
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
               {error && (
-                <Alert className="border-red-500 bg-red-50">
+                <Alert className="border-red-600 bg-red-500/20">
                   <AlertDescription className="text-red-600">
                     {error}
                   </AlertDescription>
@@ -203,7 +203,7 @@ const CheckoutGuest = () => {
                     type="email"
                     placeholder="seu@email.com"
                     {...register('email')}
-                    className="border-gray-300 focus:border-brand-green focus:ring-brand-green"
+                    className="border-gray-500 focus:border-brand-green focus:ring-brand-green"
                   />
                   {errors.email && (
                     <p className="text-red-500 text-sm">{errors.email.message}</p>
@@ -218,7 +218,7 @@ const CheckoutGuest = () => {
                     id="companyName"
                     placeholder="Nome da sua empresa"
                     {...register('companyName')}
-                    className="border-gray-300 focus:border-brand-green focus:ring-brand-green"
+                    className="border-gray-500 focus:border-brand-green focus:ring-brand-green"
                   />
                   {errors.companyName && (
                     <p className="text-red-500 text-sm">{errors.companyName.message}</p>
@@ -235,7 +235,7 @@ const CheckoutGuest = () => {
                   placeholder="(11) 99999-9999"
                   {...register('phoneNumber')}
                   onChange={handlePhoneChange}
-                  className="border-gray-300 focus:border-brand-green focus:ring-brand-green"
+                  className="border-gray-500 focus:border-brand-green focus:ring-brand-green"
                   maxLength={15}
                 />
                 <p className="text-xs text-brand-dark-blue/70">
@@ -259,7 +259,7 @@ const CheckoutGuest = () => {
                     type={showPassword ? 'text' : 'password'}
                     placeholder="Digite sua senha"
                     {...register('password')}
-                    className="border-gray-300 focus:border-brand-green focus:ring-brand-green pr-12"
+                    className="border-gray-500 focus:border-brand-green focus:ring-brand-green pr-12"
                   />
                   <Button
                     type="button"
@@ -322,7 +322,7 @@ const CheckoutGuest = () => {
                     type={showConfirmPassword ? 'text' : 'password'}
                     placeholder="Confirme sua senha"
                     {...register('confirmPassword')}
-                    className="border-gray-300 focus:border-brand-green focus:ring-brand-green pr-12"
+                    className="border-gray-500 focus:border-brand-green focus:ring-brand-green pr-12"
                   />
                   <Button
                     type="button"

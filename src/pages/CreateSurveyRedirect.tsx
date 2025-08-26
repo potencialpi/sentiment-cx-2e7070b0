@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { getUserPlan, getPlanCreateSurveyRoute } from '@/lib/planUtils';
+import { getUserPlan, getPlanCreateSurveyRoute, getPlanAdminRoute } from '@/lib/planUtils';
 
 const CreateSurveyRedirect = () => {
   const navigate = useNavigate();
@@ -33,7 +33,8 @@ const CreateSurveyRedirect = () => {
           description: "Erro ao verificar plano do usuário",
           variant: "destructive"
         });
-        navigate('/create-survey-start');
+        // Em caso de erro, redireciona para a página admin padrão
+        navigate('/admin/start');
       } finally {
         setLoading(false);
       }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useCallback, useMemo, memo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,34 +19,21 @@ import {
   ExternalLink, 
   Download, 
   BarChart3, 
-  PieChart, 
   TrendingUp, 
   Users, 
   Calendar, 
   Activity, 
   ArrowLeft, 
-  LogOut 
+  LogOut,
+  Brain,
+  Loader2 
 } from "lucide-react";
 import { useNavigate } from 'react-router-dom';
 import AnalyticsDashboard from './AnalyticsDashboard';
+import { useSurveyManager } from '@/hooks/useSurveyManager';
+import { Question, Survey, uiUtils, surveyDataUtils, executeAIAnalysis } from '@/utils/surveyUtils';
 
-interface Question {
-  id: string;
-  text: string;
-  type: 'text' | 'single_choice' | 'multiple_choice' | 'rating';
-  options: string[];
-}
-
-interface Survey {
-  id: string;
-  title: string;
-  description: string | null;
-  status: string;
-  created_at: string;
-  current_responses: number;
-  max_responses: number;
-  unique_link: string;
-}
+// Interfaces movidas para surveyUtils.ts
 
 interface PlanConfig {
   planName: string;
@@ -83,61 +70,37 @@ interface UnifiedPlanInterfaceProps {
 
 const UnifiedPlanInterface: React.FC<UnifiedPlanInterfaceProps> = ({ config }) => {
   const navigate = useNavigate();
-  const [surveyTitle, setSurveyTitle] = useState("");
-  const [surveyDescription, setSurveyDescription] = useState("");
-  const [questions, setQuestions] = useState<Question[]>([]);
-  const [activeSurveys, setActiveSurveys] = useState<Survey[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [surveysLoading, setSurveysLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("create");
   const [selectedSurveyForAnalysis, setSelectedSurveyForAnalysis] = useState('');
+  const [analysisLoading, setAnalysisLoading] = useState<string | null>(null);
+  const [analysisResults, setAnalysisResults] = useState<{[key: string]: any}>({});
+  
+  // Usando o hook customizado para gerenciar pesquisas
+  const {
+    surveyTitle,
+    surveyDescription,
+    questions,
+    activeSurveys,
+    isLoading,
+    setSurveyTitle,
+    setSurveyDescription,
+    addQuestion,
+    removeQuestion,
+    updateQuestion,
+    addOption,
+    removeOption,
+    updateOption,
+    saveSurvey,
+    fetchActiveSurveys,
+    resetForm
+  } = useSurveyManager();
 
-  const fetchActiveSurveys = useCallback(async () => {
-    setSurveysLoading(true);
-    try {
-      console.log('[DEBUG] Buscando pesquisas ativas...');
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        console.log('[DEBUG] Usuário não encontrado na sessão');
-        return;
-      }
-      
-      console.log('[DEBUG] Usuário encontrado:', user.id);
+  // fetchActiveSurveys agora está no hook customizado
 
-      const { data, error } = await supabase
-        .from('surveys')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('status', 'active')
-        .order('created_at', { ascending: false });
-
-      console.log('[DEBUG] Resultado da consulta:', { data, error });
-
-      if (error) {
-        console.error('[DEBUG] Erro na consulta:', error);
-        throw error;
-      }
-      
-      console.log('[DEBUG] Pesquisas encontradas:', data?.length || 0);
-      setActiveSurveys(data || []);
-    } catch (error) {
-      console.error('Error fetching surveys:', error);
-      toast({
-        title: "Erro ao carregar pesquisas",
-        description: "Não foi possível carregar as pesquisas ativas.",
-        variant: "destructive",
-      });
-    } finally {
-      setSurveysLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchActiveSurveys();
-  }, [fetchActiveSurveys]);
-
-  const addQuestion = () => {
+  // Funções de manipulação de questões agora estão no hook customizado
+  
+  // Wrapper para addQuestion com validação de limite do plano
+  const handleAddQuestion = useCallback(() => {
     if (questions.length >= config.maxQuestions) {
       toast({
         title: "Limite atingido",
@@ -146,196 +109,21 @@ const UnifiedPlanInterface: React.FC<UnifiedPlanInterfaceProps> = ({ config }) =
       });
       return;
     }
+    addQuestion();
+  }, [questions.length, config.maxQuestions, addQuestion]);
 
-    const newQuestion: Question = {
-      id: Date.now().toString(),
-      text: "",
-      type: 'text', // Valor inicial válido para o Select funcionar
-      options: []
-    };
-    setQuestions(prev => [...prev, newQuestion]);
-  };
+  // Funções de validação, salvamento e utilitárias agora estão nos utilitários
+  
+  // Wrapper para saveSurvey com mudança de aba após sucesso
+  const handleSaveSurvey = useCallback(async () => {
+    await saveSurvey();
+    setActiveTab('active');
+  }, [saveSurvey]);
 
-  const removeQuestion = (id: string) => {
-    setQuestions(questions.filter(q => q.id !== id));
-  };
-
-  const updateQuestion = (id: string, field: keyof Question, value: string | string[]) => {
-    setQuestions(prev => 
-      prev.map(q => 
-        q.id === id ? { ...q, [field]: value } : q
-      )
-    );
-  };
-
-  const addOption = (questionId: string) => {
-    setQuestions(questions.map(q => 
-      q.id === questionId && q.options.length < 5 
-        ? { ...q, options: [...q.options, ""] }
-        : q
-    ));
-  };
-
-  const removeOption = (questionId: string, optionIndex: number) => {
-    setQuestions(questions.map(q => 
-      q.id === questionId 
-        ? { ...q, options: q.options.filter((_, index) => index !== optionIndex) }
-        : q
-    ));
-  };
-
-  const updateOption = (questionId: string, optionIndex: number, value: string) => {
-    setQuestions(questions.map(q => 
-      q.id === questionId 
-        ? { ...q, options: q.options.map((opt, index) => index === optionIndex ? value : opt) }
-        : q
-    ));
-  };
-
-  const validateQuestions = () => {
-    const emptyQuestions = questions.filter(q => !q.text.trim());
-    if (emptyQuestions.length > 0) {
-      return "Todas as questões devem ter texto";
-    }
-
-    const invalidChoiceQuestions = questions.filter(q => 
-      (q.type === 'single_choice' || q.type === 'multiple_choice') && 
-      (!q.options || q.options.length < 2 || q.options.some(opt => !opt.trim()))
-    );
-    
-    if (invalidChoiceQuestions.length > 0) {
-      return "Questões de escolha devem ter pelo menos 2 opções válidas";
-    }
-
-    return null;
-  };
-
-  const saveSurvey = async () => {
-    if (!surveyTitle.trim()) {
-      toast({
-        title: "Erro",
-        description: "Título da pesquisa é obrigatório",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (questions.length === 0) {
-      toast({
-        title: "Erro",
-        description: "Adicione pelo menos uma questão",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const validationError = validateQuestions();
-    if (validationError) {
-      toast({
-        title: "Erro",
-        description: validationError,
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        navigate('/');
-        return;
-      }
-
-      // Insert survey
-      const { data: survey, error: surveyError } = await supabase
-        .from('surveys')
-        .insert({
-          user_id: user.id,
-          title: surveyTitle,
-          description: surveyDescription,
-          max_responses: config.maxResponses,
-          unique_link: crypto.randomUUID()
-        })
-        .select()
-        .single();
-
-      if (surveyError) throw surveyError;
-
-      // Insert questions
-      const questionsToInsert = questions.map((q, index) => ({
-        survey_id: survey.id,
-        question_text: q.text,
-        question_type: q.type === 'rating' ? 'rating' : q.type,
-        question_order: index + 1,
-        options: (q.type === 'single_choice' || q.type === 'multiple_choice') ? q.options.filter(opt => opt.trim()) : null
-      }));
-
-      const { error: questionsError } = await supabase
-        .from('questions')
-        .insert(questionsToInsert);
-
-      if (questionsError) throw questionsError;
-
-      toast({
-        title: "Sucesso!",
-        description: "Pesquisa criada com sucesso",
-      });
-
-      // Reset form
-      setSurveyTitle('');
-      setSurveyDescription('');
-      setQuestions([]);
-      fetchActiveSurveys();
-      setActiveTab('active');
-
-    } catch (error: any) {
-      console.error('Error saving survey:', error);
-      
-      // Tratar erros específicos de limites
-      if (error.message?.includes("Limite de questões por pesquisa excedido")) {
-        toast({
-          title: "Limite de questões excedido",
-          description: `Seu plano ${config.planName} permite apenas ${config.maxQuestions} questões por pesquisa.`,
-          variant: "destructive"
-        });
-      } else if (error.message?.includes("Limite de pesquisas por mês excedido")) {
-        toast({
-          title: "Limite de pesquisas excedido",
-          description: `Seu plano ${config.planName} permite apenas ${config.maxSurveysPerMonth} pesquisas por mês.`,
-          variant: "destructive"
-        });
-      } else {
-        toast({
-          title: "Erro",
-          description: error.message || "Falha ao criar pesquisa",
-          variant: "destructive"
-        });
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const copyLinkToClipboard = (link: string) => {
-    const fullLink = `${window.location.origin}/survey/${link}`;
-    navigator.clipboard.writeText(fullLink);
-    toast({
-      title: "Link copiado!",
-      description: "Link da pesquisa copiado para a área de transferência.",
-    });
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR');
-  };
-
-  const exportData = (format: 'csv' | 'json' | 'parquet') => {
-    toast({
-      title: `Exportando ${format.toUpperCase()}`,
-      description: "A exportação será iniciada em breve.",
-    });
-  };
+  // Wrapper para executeAIAnalysis com estado local
+  const handleExecuteAIAnalysis = useCallback((analysisKey: string, analysisName: string) => {
+    return executeAIAnalysis(analysisKey, analysisName, setAnalysisLoading, setAnalysisResults, toast);
+  }, [toast]);
 
   return (
     <div className="min-h-screen bg-brand-bg-gray">
@@ -502,7 +290,7 @@ const UnifiedPlanInterface: React.FC<UnifiedPlanInterfaceProps> = ({ config }) =
                                   <SelectTrigger className="mt-1 min-h-[44px] touch-manipulation text-sm sm:text-base">
                                     <SelectValue placeholder="Escolha o tipo de resposta" />
                                   </SelectTrigger>
-                                  <SelectContent className="z-[9999] bg-white border border-gray-200 shadow-lg">
+                                  <SelectContent className="z-[9999] bg-white border border-gray-500 shadow-lg">
                                     <SelectItem value="text">Texto Aberto</SelectItem>
                                     <SelectItem value="rating">Avaliação 1-5 Estrelas</SelectItem>
                                     <SelectItem value="single_choice">Escolha Única</SelectItem>
@@ -566,7 +354,7 @@ const UnifiedPlanInterface: React.FC<UnifiedPlanInterfaceProps> = ({ config }) =
                                 <Label className="text-sm font-medium text-brand-dark-gray mb-3 block">
                                   Prévia da Avaliação por Estrelas:
                                 </Label>
-                                <div className="p-4 bg-gray-50 rounded-lg">
+                                <div className="p-4 bg-gray-500/20 rounded-lg">
                                   <p className="text-sm mb-3 text-gray-600">{question.text || "Sua questão aparecerá aqui"}</p>
                                   <StarRating value={0} disabled className="justify-start" />
                                 </div>
@@ -580,7 +368,7 @@ const UnifiedPlanInterface: React.FC<UnifiedPlanInterfaceProps> = ({ config }) =
 
                   <div className="flex justify-center pt-4 sm:pt-6">
                     <Button
-                      onClick={saveSurvey}
+                      onClick={handleSaveSurvey}
                       disabled={isLoading}
                       className="bg-brand-green hover:bg-brand-green/90 hover:shadow-lg text-brand-white font-medium px-6 sm:px-8 py-3 text-base sm:text-lg transition-all duration-300 min-h-[48px] touch-manipulation w-full sm:w-auto max-w-xs sm:max-w-none"
                     >
@@ -603,13 +391,13 @@ const UnifiedPlanInterface: React.FC<UnifiedPlanInterfaceProps> = ({ config }) =
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {surveysLoading ? (
+                  {isLoading ? (
                     <div className="text-center py-8">
                       <p className="text-brand-dark-gray">Carregando pesquisas...</p>
                     </div>
                   ) : activeSurveys.length === 0 ? (
                     <div className="text-center py-8">
-                      <BarChart3 className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                      <BarChart3 className="h-12 w-12 mx-auto mb-4 text-gray-600" />
                       <p className="text-brand-dark-gray mb-4">Nenhuma pesquisa ativa encontrada.</p>
                       <Button
                         onClick={() => setActiveTab('create')}
@@ -626,7 +414,7 @@ const UnifiedPlanInterface: React.FC<UnifiedPlanInterfaceProps> = ({ config }) =
                             <div className="space-y-3">
                               <h3 className="font-semibold text-brand-dark-gray text-sm sm:text-base line-clamp-2">{survey.title}</h3>
                               <div className="text-xs sm:text-sm text-brand-dark-gray space-y-1">
-                                <p><strong>Criada em:</strong> {formatDate(survey.created_at)}</p>
+                                <p><strong>Criada em:</strong> {uiUtils.formatDate(survey.created_at)}</p>
                                 <p><strong>Status:</strong> {survey.status}</p>
                                 <p><strong>Respostas:</strong> {survey.current_responses}/{survey.max_responses === 999999 ? 'Ilimitado' : survey.max_responses}</p>
                               </div>
@@ -634,7 +422,7 @@ const UnifiedPlanInterface: React.FC<UnifiedPlanInterfaceProps> = ({ config }) =
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  onClick={() => copyLinkToClipboard(survey.unique_link)}
+                                  onClick={() => uiUtils.copyLinkToClipboard(survey.unique_link, toast)}
                                   className="flex-1 border-brand-dark-gray text-brand-dark-gray hover:bg-brand-dark-gray hover:text-brand-white text-xs sm:text-sm py-2 px-3 min-h-[44px] touch-manipulation"
                                 >
                                   <Copy className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
@@ -674,7 +462,7 @@ const UnifiedPlanInterface: React.FC<UnifiedPlanInterfaceProps> = ({ config }) =
                          <select
                            value={selectedSurveyForAnalysis}
                            onChange={(e) => setSelectedSurveyForAnalysis(e.target.value)}
-                           className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-green focus:border-transparent"
+                           className="w-full p-3 border border-gray-500 rounded-lg focus:ring-2 focus:ring-brand-green focus:border-transparent"
                          >
                            <option value="">Escolha uma pesquisa...</option>
                            {activeSurveys
@@ -713,10 +501,35 @@ const UnifiedPlanInterface: React.FC<UnifiedPlanInterfaceProps> = ({ config }) =
                                        variant="outline" 
                                        size="sm"
                                        className="w-full mt-2"
-                                       onClick={() => {/* TODO: Implementar análise específica */}}
+                                       onClick={() => handleExecuteAIAnalysis(key, feature)}
+                                       disabled={analysisLoading === key}
                                      >
-                                       Executar Análise
+                                       {analysisLoading === key ? (
+                                         <>
+                                           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                           Processando...
+                                         </>
+                                       ) : (
+                                         <>
+                                           <Brain className="w-4 h-4 mr-2" />
+                                           Executar Análise
+                                         </>
+                                       )}
                                      </Button>
+                                     {analysisResults[key] && (
+                                       <div className="mt-3 p-3 bg-green-500/20 border border-green-500 rounded-lg">
+                                         <div className="flex items-center space-x-2 mb-2">
+                                           <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                           <span className="text-sm font-medium text-green-800">Análise Concluída</span>
+                                         </div>
+                                         <p className="text-xs text-green-700">{analysisResults[key].insights}</p>
+                                         <div className="mt-2">
+                                           <span className="text-xs text-green-600">
+                                             Confiança: {Math.round(analysisResults[key].data?.confidence || 0)}%
+                                           </span>
+                                         </div>
+                                       </div>
+                                     )}
                                    </div>
                                  ))}
                                </CardContent>
@@ -727,14 +540,14 @@ const UnifiedPlanInterface: React.FC<UnifiedPlanInterfaceProps> = ({ config }) =
                      </div>
                   ) : (
                     <div className="text-center py-12">
-                      <TrendingUp className="w-16 h-16 mx-auto text-gray-400 mb-4" />
+                      <TrendingUp className="w-16 h-16 mx-auto text-gray-600 mb-4" />
                       <h3 className="text-lg font-semibold text-gray-600 mb-2">
                         Nenhuma pesquisa com respostas
                       </h3>
                       <p className="text-gray-500 mb-6 max-w-md mx-auto">
                         Para ver análises avançadas, você precisa ter pelo menos uma pesquisa ativa que tenha recebido respostas.
                       </p>
-                       <div className="bg-gray-50 rounded-lg p-6 space-y-6">
+                       <div className="bg-gray-500/20 rounded-lg p-6 space-y-6">
                          <div>
                            <h4 className="font-semibold mb-4">Recursos disponíveis no {config.planName}:</h4>
                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -757,8 +570,8 @@ const UnifiedPlanInterface: React.FC<UnifiedPlanInterfaceProps> = ({ config }) =
                                </ul>
                              </div>
                              <div className="text-center">
-                               <PieChart className="w-8 h-8 mx-auto mb-2 text-brand-green" />
-                               <h5 className="font-medium text-sm mb-1">Gráficos</h5>
+                               <BarChart3 className="w-8 h-8 mx-auto mb-2 text-brand-green" />
+                               <h5 className="font-medium text-sm mb-1">Treemaps</h5>
                                <ul className="text-xs text-gray-600 space-y-1">
                                  {config.features.analytics.charts.slice(0, 3).map((chart, index) => (
                                    <li key={index}>• {chart}</li>
@@ -810,4 +623,4 @@ const UnifiedPlanInterface: React.FC<UnifiedPlanInterfaceProps> = ({ config }) =
   );
 };
 
-export default UnifiedPlanInterface;
+export default memo(UnifiedPlanInterface);

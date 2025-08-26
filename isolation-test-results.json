@@ -1,0 +1,106 @@
+{
+  "timestamp": "2025-08-25T23:27:05.909Z",
+  "accounts_tested": [
+    {
+      "email": "teste.isolamento.forte1@example.com",
+      "login_success": true,
+      "user_id": "5a32970b-bdd6-4b2e-b1de-4638f4065a3d",
+      "surveys_visible": 12,
+      "own_surveys": 1,
+      "other_surveys": 11,
+      "isolation_violation": true,
+      "error_messages": []
+    },
+    {
+      "email": "teste.isolamento.forte2@example.com",
+      "login_success": true,
+      "user_id": "7833b88a-7177-4464-9ccc-6430352fa0ca",
+      "surveys_visible": 13,
+      "own_surveys": 1,
+      "other_surveys": 12,
+      "isolation_violation": true,
+      "error_messages": []
+    },
+    {
+      "email": "teste.isolamento.forte3@example.com",
+      "login_success": true,
+      "user_id": "0ef9cad3-dd38-4859-a270-f0e98ed546f5",
+      "surveys_visible": 14,
+      "own_surveys": 1,
+      "other_surveys": 13,
+      "isolation_violation": true,
+      "error_messages": []
+    }
+  ],
+  "isolation_issues": [
+    {
+      "viewer_user_id": "5a32970b-bdd6-4b2e-b1de-4638f4065a3d",
+      "viewer_email": "teste.isolamento.forte1@example.com",
+      "survey_id": "d813cf8d-c1bf-41a3-a425-60bb80a9d947",
+      "survey_title": "pesquisa",
+      "survey_owner_id": "f82c54c4-e211-41aa-8126-4c8dfd2d18c7"
+    },
+    {
+      "viewer_user_id": "5a32970b-bdd6-4b2e-b1de-4638f4065a3d",
+      "viewer_email": "teste.isolamento.forte1@example.com",
+      "survey_id": "3ba8cba4-91a2-486c-9ec2-01f30855b929",
+      "survey_title": "pesquisa",
+      "survey_owner_id": "f82c54c4-e211-41aa-8126-4c8dfd2d18c7"
+    },
+    {
+      "viewer_user_id": "5a32970b-bdd6-4b2e-b1de-4638f4065a3d",
+      "viewer_email": "teste.isolamento.forte1@example.com",
+      "survey_id": "92c0b680-3ff4-451d-909f-e52c500f0d24",
+      "survey_title": "pesquisa testes",
+      "survey_owner_id": "f82c54c4-e211-41aa-8126-4c8dfd2d18c7"
+    },
+    {
+      "viewer_user_id": "7833b88a-7177-4464-9ccc-6430352fa0ca",
+      "viewer_email": "teste.isolamento.forte2@example.com",
+      "survey_id": "d813cf8d-c1bf-41a3-a425-60bb80a9d947",
+      "survey_title": "pesquisa",
+      "survey_owner_id": "f82c54c4-e211-41aa-8126-4c8dfd2d18c7"
+    },
+    {
+      "viewer_user_id": "7833b88a-7177-4464-9ccc-6430352fa0ca",
+      "viewer_email": "teste.isolamento.forte2@example.com",
+      "survey_id": "3ba8cba4-91a2-486c-9ec2-01f30855b929",
+      "survey_title": "pesquisa",
+      "survey_owner_id": "f82c54c4-e211-41aa-8126-4c8dfd2d18c7"
+    },
+    {
+      "viewer_user_id": "7833b88a-7177-4464-9ccc-6430352fa0ca",
+      "viewer_email": "teste.isolamento.forte2@example.com",
+      "survey_id": "92c0b680-3ff4-451d-909f-e52c500f0d24",
+      "survey_title": "pesquisa testes",
+      "survey_owner_id": "f82c54c4-e211-41aa-8126-4c8dfd2d18c7"
+    },
+    {
+      "viewer_user_id": "0ef9cad3-dd38-4859-a270-f0e98ed546f5",
+      "viewer_email": "teste.isolamento.forte3@example.com",
+      "survey_id": "d813cf8d-c1bf-41a3-a425-60bb80a9d947",
+      "survey_title": "pesquisa",
+      "survey_owner_id": "f82c54c4-e211-41aa-8126-4c8dfd2d18c7"
+    },
+    {
+      "viewer_user_id": "0ef9cad3-dd38-4859-a270-f0e98ed546f5",
+      "viewer_email": "teste.isolamento.forte3@example.com",
+      "survey_id": "3ba8cba4-91a2-486c-9ec2-01f30855b929",
+      "survey_title": "pesquisa",
+      "survey_owner_id": "f82c54c4-e211-41aa-8126-4c8dfd2d18c7"
+    },
+    {
+      "viewer_user_id": "0ef9cad3-dd38-4859-a270-f0e98ed546f5",
+      "viewer_email": "teste.isolamento.forte3@example.com",
+      "survey_id": "92c0b680-3ff4-451d-909f-e52c500f0d24",
+      "survey_title": "pesquisa testes",
+      "survey_owner_id": "f82c54c4-e211-41aa-8126-4c8dfd2d18c7"
+    }
+  ],
+  "summary": {
+    "total_accounts": 3,
+    "successful_logins": 3,
+    "isolation_violations": 3,
+    "rls_working": false
+  }
+}

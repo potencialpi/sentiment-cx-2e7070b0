@@ -1,0 +1,34 @@
+{
+  "timestamp": "2025-08-25T23:34:04.439Z",
+  "testResults": [
+    {
+      "email": "rls.test.user1.1756164834498@example.com",
+      "userId": "6e6ff7d1-2d94-44e5-96ac-7a7fd0e70b51",
+      "loginSuccess": true,
+      "surveysVisible": 1,
+      "ownSurveys": 1,
+      "otherUserSurveys": 0,
+      "violationDetails": []
+    },
+    {
+      "email": "rls.test.user2.1756164834498@example.com",
+      "userId": "71c1e89b-1d96-46bb-97d3-fa91a552b405",
+      "loginSuccess": true,
+      "surveysVisible": 1,
+      "ownSurveys": 1,
+      "otherUserSurveys": 0,
+      "violationDetails": []
+    },
+    {
+      "email": "rls.test.user3.1756164834498@example.com",
+      "userId": "7f9f9b08-41dc-4fd0-ad25-e1201ed6aa1c",
+      "loginSuccess": true,
+      "surveysVisible": 1,
+      "ownSurveys": 1,
+      "otherUserSurveys": 0,
+      "violationDetails": []
+    }
+  ],
+  "totalViolations": 0,
+  "rlsWorking": true
+}

@@ -1,0 +1,23 @@
+{
+  "timestamp": "2025-08-25T23:32:10.534Z",
+  "accountsCreated": [],
+  "accountsExisting": [],
+  "errors": [
+    {
+      "email": "teste.isolamento.forte1@example.com",
+      "action": "login",
+      "error": "Invalid login credentials"
+    },
+    {
+      "email": "teste.isolamento.forte2@example.com",
+      "action": "login",
+      "error": "Invalid login credentials"
+    },
+    {
+      "email": "teste.isolamento.forte3@example.com",
+      "action": "login",
+      "error": "Invalid login credentials"
+    }
+  ],
+  "surveysCreated": []
+}

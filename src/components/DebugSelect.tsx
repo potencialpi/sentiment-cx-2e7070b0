@@ -38,13 +38,13 @@ const DebugSelect = () => {
               onOpenChange={handleOpenChange}
             >
               <SelectTrigger 
-                className="w-full min-h-[44px] border-2 border-blue-300 bg-white"
+                className="w-full min-h-[44px] border-2 border-blue-500 bg-white"
                 onClick={() => addLog('Trigger clicked')}
               >
                 <SelectValue placeholder="Escolha o tipo de resposta" />
               </SelectTrigger>
               <SelectContent 
-                className="z-[9999] bg-white border-2 border-red-300 shadow-2xl"
+                className="z-[9999] bg-white border-2 border-red-500 shadow-2xl"
                 onPointerDownOutside={() => addLog('Clicked outside')}
               >
                 <SelectItem 
@@ -90,7 +90,7 @@ const DebugSelect = () => {
           <CardTitle>Debug Logs</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="bg-gray-100 p-4 rounded max-h-60 overflow-y-auto">
+          <div className="bg-gray-500/20 p-4 rounded max-h-60 overflow-y-auto">
             {debugLogs.length === 0 ? (
               <p className="text-gray-500">Nenhum log ainda...</p>
             ) : (

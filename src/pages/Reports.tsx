@@ -8,6 +8,7 @@ import { toast } from '@/hooks/use-toast';
 import { ArrowLeft, BarChart3, FileText, TrendingUp, Users, LogOut } from 'lucide-react';
 import AnalyticsDashboard from '@/components/AnalyticsDashboard';
 import AnalyticsDashboardFallback from '@/components/AnalyticsDashboardFallback';
+import { getPlanCreateSurveyRoute, getUserPlan } from '@/lib/planUtils';
 
 interface Survey {
   id: string;
@@ -173,7 +174,13 @@ const Reports = () => {
               <div>
                 <Button
                   variant="outline"
-                  onClick={() => navigate('/create-survey-start')}
+                  onClick={async () => {
+                    if (user) {
+                      const planCode = await getUserPlan(user.id);
+                      const route = getPlanCreateSurveyRoute(planCode);
+                      navigate(route);
+                    }
+                  }}
                   className="border-[#00FF00] text-[#00FF00] hover:bg-[#00FF00] hover:text-[#0A192F]"
                 >
                   Criar Nova Pesquisa

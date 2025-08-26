@@ -103,7 +103,7 @@ const ChoosePlan = () => {
               <Card 
                 key={plan.id} 
                 className={`bg-brand-white border-2 transition-all duration-300 hover:shadow-lg ${
-                  selectedPlan === plan.id ? 'border-brand-green' : 'border-gray-200'
+                  selectedPlan === plan.id ? 'border-brand-green' : 'border-gray-500'
                 }`}
               >
                 <CardHeader className="text-center">

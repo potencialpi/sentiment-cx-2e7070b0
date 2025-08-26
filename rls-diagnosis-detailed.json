@@ -1,0 +1,15 @@
+{
+  "timestamp": "2025-08-25T23:22:24.059Z",
+  "rls_status": null,
+  "policies": null,
+  "permissions": null,
+  "users": null,
+  "survey_stats": null,
+  "errors": {
+    "rls_error": "Could not find the function public.exec_sql(query) in the schema cache",
+    "policies_error": "Could not find the function public.exec_sql(query) in the schema cache",
+    "permissions_error": "Could not find the function public.exec_sql(query) in the schema cache",
+    "users_error": "Could not find the function public.exec_sql(query) in the schema cache",
+    "stats_error": "Could not find the function public.exec_sql(query) in the schema cache"
+  }
+}
