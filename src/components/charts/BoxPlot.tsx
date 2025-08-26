@@ -92,10 +92,9 @@ const BoxPlot: React.FC<BoxPlotProps> = ({
             reset: true
           }
         },
-        animations: {
-          enabled: true,
-          easing: 'easeinout',
-          speed: 800
+      animations: {
+        enabled: true,
+        speed: 800
         }
       },
       title: {

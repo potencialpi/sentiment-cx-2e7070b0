@@ -14,19 +14,20 @@ import { Loader2, TrendingUp, BarChart3, PieChart, Activity, Brain, Target, Zap,
 import Chart from 'react-apexcharts';
 import { ApexOptions } from 'apexcharts';
 import { fetchRealSurveyData } from '@/utils/realDataFetcher';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 
 interface NexusInfinitoAnalyticsProps {
   surveyId: string;
 }
 
-interface SurveyResponse {
+interface SurveyResponseNexus {
   id: string;
-  survey_id: string;
-  responses: Record<string, any>;
-  sentiment_score?: number;
-  created_at: string;
-  updated_at: string;
+  surveyId: string;
+  respondentId: string;
+  responses: any;
+  sentimentScore: number;
+  sentimentCategory: string;
+  createdAt: string;
 }
 
 interface StatisticalMetrics {
@@ -144,7 +145,7 @@ interface SentimentAnalysis {
 const NexusInfinitoAnalytics: React.FC<NexusInfinitoAnalyticsProps> = ({ surveyId }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [responses, setResponses] = useState<SurveyResponse[]>([]);
+  const [responses, setResponses] = useState<SurveyResponseNexus[]>([]);
   const [activeTab, setActiveTab] = useState('statistics');
   const [processingAnalysis, setProcessingAnalysis] = useState<string | null>(null);
 

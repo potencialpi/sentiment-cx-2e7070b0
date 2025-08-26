@@ -328,7 +328,7 @@ const VortexNeuralAnalytics: React.FC<VortexNeuralAnalyticsProps> = ({ className
       const processedData = await convertRealDataToAnalysisFormat(data);
       
       setRealData(processedData);
-      setAnalysisData(processedData);
+      setAnalysisData(processedData as any);
       setError(null);
     } catch (err) {
       console.error('Erro ao atualizar dados:', err);
@@ -544,11 +544,11 @@ const VortexNeuralAnalytics: React.FC<VortexNeuralAnalyticsProps> = ({ className
                   </div>
                 </div>
 
-                {statisticalResults.ratings.outliers.length > 0 && (
+                {Array.isArray(statisticalResults.ratings.outliers?.outliers) && statisticalResults.ratings.outliers.outliers.length > 0 && (
                   <div className="pt-4 border-t">
                     <h4 className="font-semibold mb-2 text-red-600">Outliers Detectados</h4>
                     <div className="flex flex-wrap gap-1">
-                      {statisticalResults.ratings.outliers.map((outlier, index) => (
+                      {statisticalResults.ratings.outliers.outliers.map((outlier, index) => (
                         <Badge key={index} variant="destructive" className="text-xs">
                           {outlier.toFixed(2)}
                         </Badge>
@@ -739,9 +739,6 @@ const VortexNeuralAnalytics: React.FC<VortexNeuralAnalyticsProps> = ({ className
                   data={analysisData?.barChartData || []}
                   height={300}
                   colorScheme="categorical"
-                  showExport={true}
-                  showSort={true}
-                  showFilter={true}
                 />
               </CardContent>
             </Card>
@@ -756,7 +753,7 @@ const VortexNeuralAnalytics: React.FC<VortexNeuralAnalyticsProps> = ({ className
               </CardHeader>
               <CardContent>
                 <BoxPlot 
-                  data={analysisData?.boxPlotData?.satisfactionByCategory ? Object.entries(analysisData.boxPlotData.satisfactionByCategory).map(([name, values]) => ({ name, values })) : []}
+                  data={analysisData?.boxPlotData?.satisfactionByCategory ? Object.entries(analysisData.boxPlotData.satisfactionByCategory).map(([name, values]) => ({ name, values: Array.isArray(values) ? values : [] })) : []}
                   title="Satisfação por Categoria"
                   height={300}
                 />

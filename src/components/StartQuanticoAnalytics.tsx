@@ -19,21 +19,19 @@ interface SentimentData {
 }
 
 const StartQuanticoAnalytics: React.FC<StartQuanticoAnalyticsProps> = ({ surveyId }) => {
-  const { data, loading, error } = useSurveyAnalytics(surveyId);
+  const { analytics, loading, error } = useSurveyAnalytics(surveyId);
 
   // Análise estatística básica
   const statisticalAnalysis = useMemo(() => {
-    if (!data?.responses || data.responses.length === 0) {
+    if (!analytics?.questions || analytics.questions.length === 0) {
       return null;
     }
 
     // Extrair valores numéricos das respostas
     const numericValues: number[] = [];
-    data.responses.forEach(response => {
-      if (response.question_type === 'rating' && typeof response.answer === 'number') {
-        numericValues.push(response.answer);
-      } else if (response.question_type === 'scale' && typeof response.answer === 'number') {
-        numericValues.push(response.answer);
+    analytics.questions.forEach(question => {
+      if (question.statistics?.averageRating && question.statistics.averageRating > 0) {
+        numericValues.push(question.statistics.averageRating);
       }
     });
 
@@ -55,11 +53,24 @@ const StartQuanticoAnalytics: React.FC<StartQuanticoAnalyticsProps> = ({ surveyI
       percentiles,
       sampleSize: numericValues.length
     };
-  }, [data]);
+  }, [analytics]);
 
   // Análise de sentimento simples
   const sentimentAnalysis = useMemo((): SentimentData => {
-    if (!data?.responses || data.responses.length === 0) {
+    if (!analytics?.sentimentOverview) {
+      return { positive: 0, neutral: 0, negative: 0 };
+    }
+
+    return {
+      positive: analytics.sentimentOverview.positive,
+      neutral: analytics.sentimentOverview.neutral,
+      negative: analytics.sentimentOverview.negative
+    };
+  }, [analytics]);
+
+  // Análise de sentimento manual (fallback)
+  const manualSentimentAnalysis = useMemo((): SentimentData => {
+    if (!analytics?.questions || analytics.questions.length === 0) {
       return { positive: 0, neutral: 0, negative: 0 };
     }
 
@@ -67,9 +78,9 @@ const StartQuanticoAnalytics: React.FC<StartQuanticoAnalyticsProps> = ({ surveyI
     let neutral = 0;
     let negative = 0;
 
-    data.responses.forEach(response => {
-      if (response.question_type === 'rating' && typeof response.answer === 'number') {
-        const rating = response.answer;
+    analytics.questions.forEach(question => {
+      if (question.statistics?.averageRating) {
+        const rating = question.statistics.averageRating;
         if (rating >= 4) {
           positive++;
         } else if (rating === 3) {
@@ -77,27 +88,11 @@ const StartQuanticoAnalytics: React.FC<StartQuanticoAnalyticsProps> = ({ surveyI
         } else {
           negative++;
         }
-      } else if (response.question_type === 'text' && typeof response.answer === 'string') {
-        const text = response.answer.toLowerCase();
-        // Análise de sentimento baseada em regras simples
-        const positiveWords = ['bom', 'ótimo', 'excelente', 'satisfeito', 'feliz', 'positivo', 'recomendo'];
-        const negativeWords = ['ruim', 'péssimo', 'insatisfeito', 'problema', 'negativo', 'não recomendo'];
-        
-        const hasPositive = positiveWords.some(word => text.includes(word));
-        const hasNegative = negativeWords.some(word => text.includes(word));
-        
-        if (hasPositive && !hasNegative) {
-          positive++;
-        } else if (hasNegative && !hasPositive) {
-          negative++;
-        } else {
-          neutral++;
-        }
       }
     });
 
     return { positive, neutral, negative };
-  }, [data]);
+  }, [analytics]);
 
   // Configuração do gráfico de barras
   const barChartOptions: ApexOptions = {
@@ -144,9 +139,13 @@ const StartQuanticoAnalytics: React.FC<StartQuanticoAnalyticsProps> = ({ surveyI
     colors: ['#10B981', '#F59E0B', '#EF4444']
   };
 
+  const finalSentiment = sentimentAnalysis.positive > 0 || sentimentAnalysis.neutral > 0 || sentimentAnalysis.negative > 0 
+    ? sentimentAnalysis 
+    : manualSentimentAnalysis;
+
   const barChartSeries = [{
     name: 'Sentimentos',
-    data: [sentimentAnalysis.positive, sentimentAnalysis.neutral, sentimentAnalysis.negative]
+    data: [finalSentiment.positive, finalSentiment.neutral, finalSentiment.negative]
   }];
 
   // Configuração do gráfico polar
@@ -189,7 +188,7 @@ const StartQuanticoAnalytics: React.FC<StartQuanticoAnalyticsProps> = ({ surveyI
     }
   };
 
-  const polarChartSeries = [sentimentAnalysis.positive, sentimentAnalysis.neutral, sentimentAnalysis.negative];
+  const polarChartSeries = [finalSentiment.positive, finalSentiment.neutral, finalSentiment.negative];
 
   if (loading) {
     return (
@@ -209,7 +208,7 @@ const StartQuanticoAnalytics: React.FC<StartQuanticoAnalyticsProps> = ({ surveyI
     );
   }
 
-  if (!data || !data.responses || data.responses.length === 0) {
+  if (!analytics || analytics.totalResponses === 0) {
     return (
       <div className="text-center py-8">
         <p className="text-gray-500">Nenhum dado disponível para análise</p>
@@ -343,7 +342,7 @@ const StartQuanticoAnalytics: React.FC<StartQuanticoAnalyticsProps> = ({ surveyI
                 <div className="h-4 w-4 bg-green-500 rounded-full"></div>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-green-600">{sentimentAnalysis.positive}</div>
+                <div className="text-2xl font-bold text-green-600">{finalSentiment.positive}</div>
                 <p className="text-xs text-muted-foreground">Respostas positivas</p>
               </CardContent>
             </Card>
@@ -354,7 +353,7 @@ const StartQuanticoAnalytics: React.FC<StartQuanticoAnalyticsProps> = ({ surveyI
                 <div className="h-4 w-4 bg-yellow-500 rounded-full"></div>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-yellow-600">{sentimentAnalysis.neutral}</div>
+                <div className="text-2xl font-bold text-yellow-600">{finalSentiment.neutral}</div>
                 <p className="text-xs text-muted-foreground">Respostas neutras</p>
               </CardContent>
             </Card>
@@ -365,7 +364,7 @@ const StartQuanticoAnalytics: React.FC<StartQuanticoAnalyticsProps> = ({ surveyI
                 <div className="h-4 w-4 bg-red-500 rounded-full"></div>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-red-600">{sentimentAnalysis.negative}</div>
+                <div className="text-2xl font-bold text-red-600">{finalSentiment.negative}</div>
                 <p className="text-xs text-muted-foreground">Respostas negativas</p>
               </CardContent>
             </Card>

@@ -157,7 +157,6 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
       },
       animations: {
         enabled: true,
-        easing: 'easeinout',
         speed: 800
       }
     },
@@ -224,9 +223,9 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         colors: 'hsl(var(--foreground))'
       },
       markers: {
-        width: 12,
-        height: 12,
-        radius: 6
+        size: 12,
+        strokeWidth: 2,
+        shape: 'circle'
       },
       itemMargin: {
         horizontal: 15,
@@ -500,7 +499,6 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                           },
                           animations: {
                             enabled: true,
-                            easing: 'easeinout',
                             speed: 800,
                             animateGradually: {
                               enabled: true,
@@ -611,15 +609,13 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                         states: {
                           hover: {
                             filter: {
-                              type: 'lighten',
-                              value: 0.1
+                              type: 'lighten'
                             }
                           },
                           active: {
                             allowMultipleDataPointsSelection: false,
                             filter: {
-                              type: 'darken',
-                              value: 0.1
+                              type: 'darken'
                             }
                           }
                         },
@@ -686,7 +682,6 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                             },
                             animations: {
                               enabled: true,
-                              easing: 'easeinout',
                               speed: 800,
                               animateGradually: {
                                 enabled: true,

@@ -26,7 +26,7 @@ export interface RealQuestion {
   id: string;
   survey_id: string;
   question_text: string;
-  question_type: 'text' | 'rating' | 'single_choice' | 'multiple_choice';
+  question_type: string;
   question_order: number;
   options?: any;
   created_at: string;
