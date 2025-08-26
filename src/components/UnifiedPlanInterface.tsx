@@ -30,6 +30,8 @@ import {
 } from "lucide-react";
 import { useNavigate } from 'react-router-dom';
 import AnalyticsDashboard from './AnalyticsDashboard';
+import VortexNeuralAnalytics from './VortexNeuralAnalytics';
+import NexusInfinitoAnalytics from './NexusInfinitoAnalytics';
 import { useSurveyManager } from '@/hooks/useSurveyManager';
 import { Question, Survey, uiUtils, surveyDataUtils, executeAIAnalysis } from '@/utils/surveyUtils';
 
@@ -478,7 +480,13 @@ const UnifiedPlanInterface: React.FC<UnifiedPlanInterfaceProps> = ({ config }) =
                        {/* Dashboard de análise */}
                        {selectedSurveyForAnalysis && (
                          <div className="space-y-6">
-                           <AnalyticsDashboard surveyId={selectedSurveyForAnalysis} />
+                           {config.planName === "Nexus Infinito" ? (
+                             <NexusInfinitoAnalytics surveyId={selectedSurveyForAnalysis} />
+                           ) : config.planName === "Vortex Neural" ? (
+                             <VortexNeuralAnalytics surveyId={selectedSurveyForAnalysis} />
+                           ) : (
+                             <AnalyticsDashboard surveyId={selectedSurveyForAnalysis} />
+                           )}
                            
                            {config.features.aiFeatures && (
                              <Card>

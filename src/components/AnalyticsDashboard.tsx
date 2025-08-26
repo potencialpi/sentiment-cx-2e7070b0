@@ -1,28 +1,23 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
 import { useSurveyAnalytics } from '@/hooks/useSurveyAnalytics';
 import { BarChart3, TrendingUp, Download, Users, MessageSquare, Brain, TrendingDown } from 'lucide-react';
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  AreaChart,
-  Area,
-  Treemap,
-  Cell
-} from 'recharts';
+import { supabase } from '@/integrations/supabase/client';
+import { getUserPlan } from '@/lib/planUtils';
+// Recharts removido - agora usando apenas ApexCharts
+import Chart from 'react-apexcharts';
+import { ApexOptions } from 'apexcharts';
+import VortexNeuralAnalytics from './VortexNeuralAnalytics';
+import NexusInfinitoAnalytics from './NexusInfinitoAnalytics';
+import StartQuanticoAnalytics from './StartQuanticoAnalytics';
 
 interface AnalyticsDashboardProps {
   surveyId: string;
+  className?: string;
+  accountType?: 'basic' | 'premium' | 'vortex-neural' | 'nexus-infinito' | 'start-quantico';
 }
 
 // Modern vibrant color palette - highly saturated and impactful
@@ -31,9 +26,45 @@ const COLORS = [
   '#FFFF00', '#FF8000', '#0080FF', '#FF0040', '#40FF00'
 ];
 
-const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ surveyId }) => {
+const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ 
+  surveyId, 
+  className = '',
+  accountType: propAccountType = 'basic'
+}) => {
   const { analytics, loading, error, refreshAnalytics } = useSurveyAnalytics(surveyId);
   const [selectedQuestion, setSelectedQuestion] = useState<string>('');
+  const [accountType, setAccountType] = useState<'basic' | 'premium' | 'vortex-neural' | 'nexus-infinito' | 'start-quantico'>(propAccountType);
+  const [userPlanLoading, setUserPlanLoading] = useState(true);
+
+  // Detect user plan and set account type
+  useEffect(() => {
+    const detectUserPlan = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const userPlan = await getUserPlan(supabase, user.id);
+          console.log('Detected user plan:', userPlan);
+          
+          if (userPlan === 'vortex-neural') {
+            setAccountType('vortex-neural');
+          } else if (userPlan === 'nexus-infinito') {
+            setAccountType('nexus-infinito');
+          } else if (userPlan === 'start-quantico') {
+            setAccountType('start-quantico');
+          } else {
+            setAccountType('basic');
+          }
+        }
+      } catch (error) {
+        console.error('Error detecting user plan:', error);
+        setAccountType(propAccountType);
+      } finally {
+        setUserPlanLoading(false);
+      }
+    };
+
+    detectUserPlan();
+  }, [propAccountType]);
 
   const exportData = useCallback((format: 'csv' | 'json') => {
     if (!analytics) return;
@@ -102,13 +133,153 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ surveyId }) => 
   }, [analytics?.questions, selectedQuestion]);
 
   const sentimentOverviewData = useMemo(() => {
-    if (!analytics) return [] as Array<{ name: string; value: number; fill: string }>;
-    return [
-      { name: 'Positivo', value: analytics.sentimentOverview.positive, fill: '#00FF80' }, // Bright green neon
-      { name: 'Neutro', value: analytics.sentimentOverview.neutral, fill: '#00FFFF' }, // Cyan electric
-      { name: 'Negativo', value: analytics.sentimentOverview.negative, fill: '#FF0040' } // Red neon
+    if (!analytics) return { series: [], labels: [] };
+    
+    const data = [
+      { name: 'Positivo', value: analytics.sentimentOverview.positive },
+      { name: 'Neutro', value: analytics.sentimentOverview.neutral },
+      { name: 'Negativo', value: analytics.sentimentOverview.negative }
     ].filter(item => item.value > 0);
+    
+    return {
+      series: data.map(item => item.value),
+      labels: data.map(item => item.name)
+    };
   }, [analytics?.sentimentOverview]);
+
+  const sentimentChartOptions: ApexOptions = useMemo(() => ({
+    chart: {
+      type: 'donut',
+      height: 300,
+      fontFamily: 'inherit',
+      toolbar: {
+        show: false
+      },
+      animations: {
+        enabled: true,
+        easing: 'easeinout',
+        speed: 800
+      }
+    },
+    colors: ['#22c55e', '#eab308', '#ef4444'], // Verde semântico, amarelo, vermelho
+    labels: sentimentOverviewData.labels,
+    dataLabels: {
+      enabled: true,
+      style: {
+        fontSize: '14px',
+        fontWeight: '600',
+        colors: ['#ffffff']
+      },
+      dropShadow: {
+        enabled: true,
+        top: 1,
+        left: 1,
+        blur: 1,
+        opacity: 0.8
+      }
+    },
+    plotOptions: {
+      pie: {
+        donut: {
+          size: '60%',
+          labels: {
+            show: true,
+            name: {
+              show: true,
+              fontSize: '16px',
+              fontWeight: '600',
+              color: 'hsl(var(--foreground))'
+            },
+            value: {
+              show: true,
+              fontSize: '24px',
+              fontWeight: '700',
+              color: 'hsl(var(--foreground))',
+              formatter: function (val: string) {
+                return val;
+              }
+            },
+            total: {
+              show: true,
+              showAlways: true,
+              label: 'Total',
+              fontSize: '14px',
+              fontWeight: '600',
+              color: 'hsl(var(--muted-foreground))',
+              formatter: function (w: any) {
+                return w.globals.seriesTotals.reduce((a: number, b: number) => a + b, 0);
+              }
+            }
+          }
+        }
+      }
+    },
+    legend: {
+      show: true,
+      position: 'bottom',
+      horizontalAlign: 'center',
+      fontSize: '14px',
+      fontWeight: '500',
+      labels: {
+        colors: 'hsl(var(--foreground))'
+      },
+      markers: {
+        width: 12,
+        height: 12,
+        radius: 6
+      },
+      itemMargin: {
+        horizontal: 15,
+        vertical: 5
+      }
+    },
+    tooltip: {
+      enabled: true,
+      style: {
+        fontSize: '14px'
+      },
+      y: {
+        formatter: function (val: number) {
+          return val + ' respostas';
+        }
+      }
+    },
+    responsive: [
+      {
+        breakpoint: 768,
+        options: {
+          chart: {
+            height: 250
+          },
+          legend: {
+            position: 'bottom',
+            fontSize: '12px'
+          },
+          dataLabels: {
+            style: {
+              fontSize: '12px'
+            }
+          }
+        }
+      },
+      {
+        breakpoint: 480,
+        options: {
+          chart: {
+            height: 200
+          },
+          legend: {
+            fontSize: '11px'
+          },
+          dataLabels: {
+            style: {
+              fontSize: '11px'
+            }
+          }
+        }
+      }
+    ]
+  }), [sentimentOverviewData.labels]);
 
   const responsesByDateData = useMemo(() => {
     if (!analytics) return [] as Array<{ name: string; value: number }>;
@@ -318,45 +489,165 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ surveyId }) => 
                     Respostas por Questão
                   </h4>
                   <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart 
-                        data={analytics.questions.map(q => ({
-                          name: q.text.substring(0, 20) + '...',
-                          respostas: q.statistics.totalResponses
-                        }))}
-                        margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted-foreground) / 0.2)" />
-                        <XAxis 
-                          dataKey="name" 
-                          tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
-                          tickLine={{ stroke: 'hsl(var(--muted-foreground) / 0.3)' }}
-                        />
-                        <YAxis 
-                          tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
-                          tickLine={{ stroke: 'hsl(var(--muted-foreground) / 0.3)' }}
-                        />
-                        <Tooltip 
-                          contentStyle={{
-                            backgroundColor: 'hsl(var(--background))',
-                            border: '1px solid hsl(var(--border))',
-                            borderRadius: '8px',
-                            color: 'hsl(var(--foreground))'
-                          }}
-                        />
-                        <Bar 
-                          dataKey="respostas" 
-                          fill="url(#barGradient)"
-                          radius={[4, 4, 0, 0]}
-                        />
-                        <defs>
-                          <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="hsl(var(--primary))" />
-                            <stop offset="100%" stopColor="hsl(var(--primary) / 0.6)" />
-                          </linearGradient>
-                        </defs>
-                      </BarChart>
-                    </ResponsiveContainer>
+                    <Chart
+                      options={{
+                        chart: {
+                          type: 'bar',
+                          height: 320,
+                          fontFamily: 'inherit',
+                          toolbar: {
+                            show: false
+                          },
+                          animations: {
+                            enabled: true,
+                            easing: 'easeinout',
+                            speed: 800,
+                            animateGradually: {
+                              enabled: true,
+                              delay: 150
+                            },
+                            dynamicAnimation: {
+                              enabled: true,
+                              speed: 350
+                            }
+                          }
+                        },
+                        plotOptions: {
+                          bar: {
+                            horizontal: true,
+                            borderRadius: 8,
+                            borderRadiusApplication: 'end',
+                            borderRadiusWhenStacked: 'last',
+                            dataLabels: {
+                              position: 'center'
+                            }
+                          }
+                        },
+                        colors: ['#3b82f6'],
+                        fill: {
+                          type: 'gradient',
+                          gradient: {
+                            shade: 'light',
+                            type: 'horizontal',
+                            shadeIntensity: 0.25,
+                            gradientToColors: ['#06b6d4'],
+                            inverseColors: false,
+                            opacityFrom: 1,
+                            opacityTo: 0.85,
+                            stops: [0, 100]
+                          }
+                        },
+                        dataLabels: {
+                          enabled: true,
+                          style: {
+                            fontSize: '12px',
+                            fontWeight: '600',
+                            colors: ['#ffffff']
+                          },
+                          dropShadow: {
+                            enabled: true,
+                            top: 1,
+                            left: 1,
+                            blur: 1,
+                            opacity: 0.8
+                          }
+                        },
+                        xaxis: {
+                          categories: analytics.questions.map(q => 
+                            q.text.length > 30 ? q.text.substring(0, 30) + '...' : q.text
+                          ),
+                          labels: {
+                            style: {
+                              fontSize: '12px',
+                              fontWeight: '500'
+                            }
+                          }
+                        },
+                        yaxis: {
+                          labels: {
+                            style: {
+                              fontSize: '11px',
+                              fontWeight: '400'
+                            },
+                            maxWidth: 200
+                          }
+                        },
+                        grid: {
+                          show: true,
+                          borderColor: 'hsl(var(--muted-foreground) / 0.1)',
+                          strokeDashArray: 3,
+                          position: 'back',
+                          xaxis: {
+                            lines: {
+                              show: true
+                            }
+                          },
+                          yaxis: {
+                            lines: {
+                              show: false
+                            }
+                          }
+                        },
+                        tooltip: {
+                          enabled: true,
+                          theme: 'dark',
+                          style: {
+                            fontSize: '12px',
+                            fontFamily: 'inherit'
+                          },
+                          custom: function({ series, seriesIndex, dataPointIndex, w }) {
+                            const questionText = analytics.questions[dataPointIndex]?.text || 'Questão';
+                            const responses = series[seriesIndex][dataPointIndex];
+                            return `
+                              <div class="px-3 py-2 bg-gray-900 text-white rounded-lg shadow-lg border border-gray-700">
+                                <div class="font-semibold text-sm mb-1">${questionText}</div>
+                                <div class="text-xs text-gray-300">
+                                  <span class="font-medium">${responses}</span> respostas
+                                </div>
+                              </div>
+                            `;
+                          }
+                        },
+                        states: {
+                          hover: {
+                            filter: {
+                              type: 'lighten',
+                              value: 0.1
+                            }
+                          },
+                          active: {
+                            allowMultipleDataPointsSelection: false,
+                            filter: {
+                              type: 'darken',
+                              value: 0.1
+                            }
+                          }
+                        },
+                        responsive: [
+                          {
+                            breakpoint: 768,
+                            options: {
+                              plotOptions: {
+                                bar: {
+                                  borderRadius: 4
+                                }
+                              },
+                              dataLabels: {
+                                style: {
+                                  fontSize: '10px'
+                                }
+                              }
+                            }
+                          }
+                        ]
+                      }}
+                      series={[{
+                        name: 'Respostas',
+                        data: analytics.questions.map(q => q.statistics.totalResponses)
+                      }]}
+                      type="bar"
+                      height={320}
+                    />
                   </div>
                 </div>
               </TabsContent>
@@ -364,20 +655,14 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ surveyId }) => 
               <TabsContent value="sentiment" className="space-y-4">
                 <div className="bg-white dark:bg-gray-900 rounded-xl p-6 shadow-sm border border-gray-400/50 dark:border-gray-700/50">
                   <h4 className="text-lg font-semibold text-foreground mb-4">Análise de Sentimento</h4>
-                  {sentimentOverviewData.length > 0 ? (
-                    <div className="h-64">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <Treemap
-                          data={sentimentOverviewData}
-                          dataKey="value"
-                          aspectRatio={4/3}
-                          stroke="#000"
-                        >
-                          {sentimentOverviewData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.fill} />
-                          ))}
-                        </Treemap>
-                      </ResponsiveContainer>
+                  {sentimentOverviewData.series.length > 0 ? (
+                    <div className="w-full">
+                      <Chart
+                        options={sentimentChartOptions}
+                        series={sentimentOverviewData.series}
+                        type="donut"
+                        height={300}
+                      />
                     </div>
                   ) : (
                     <p className="text-gray-500 text-center py-8">Nenhum dado de sentimento disponível</p>
@@ -390,21 +675,145 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ surveyId }) => 
                   <h4 className="text-lg font-semibold text-foreground mb-4">Tendências de Respostas</h4>
                   {responsesByDateData.length > 0 ? (
                     <div className="h-64">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={responsesByDateData}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="name" />
-                          <YAxis />
-                          <Tooltip />
-                          <Line 
-                            type="monotone" 
-                            dataKey="value" 
-                            stroke="hsl(var(--primary))" 
-                            strokeWidth={2}
-                            dot={{ fill: "hsl(var(--primary))" }}
-                          />
-                        </LineChart>
-                      </ResponsiveContainer>
+                      <Chart
+                        options={{
+                          chart: {
+                            type: 'line',
+                            height: 256,
+                            fontFamily: 'inherit',
+                            toolbar: {
+                              show: false
+                            },
+                            animations: {
+                              enabled: true,
+                              easing: 'easeinout',
+                              speed: 800,
+                              animateGradually: {
+                                enabled: true,
+                                delay: 150
+                              },
+                              dynamicAnimation: {
+                                enabled: true,
+                                speed: 350
+                              }
+                            },
+                            zoom: {
+                              enabled: false
+                            }
+                          },
+                          colors: ['#3b82f6'],
+                          stroke: {
+                            curve: 'smooth',
+                            width: 3,
+                            lineCap: 'round'
+                          },
+                          fill: {
+                            type: 'gradient',
+                            gradient: {
+                              shade: 'light',
+                              type: 'vertical',
+                              shadeIntensity: 0.4,
+                              gradientToColors: ['#60a5fa'],
+                              inverseColors: false,
+                              opacityFrom: 0.8,
+                              opacityTo: 0.1,
+                              stops: [0, 100]
+                            }
+                          },
+                          markers: {
+                            size: 6,
+                            colors: ['#3b82f6'],
+                            strokeColors: '#ffffff',
+                            strokeWidth: 2,
+                            hover: {
+                              size: 8,
+                              sizeOffset: 2
+                            }
+                          },
+                          grid: {
+                            show: true,
+                            borderColor: 'hsl(var(--muted-foreground) / 0.1)',
+                            strokeDashArray: 3,
+                            position: 'back',
+                            xaxis: {
+                              lines: {
+                                show: true
+                              }
+                            },
+                            yaxis: {
+                              lines: {
+                                show: true
+                              }
+                            }
+                          },
+                          xaxis: {
+                            categories: responsesByDateData.map(item => item.name),
+                            labels: {
+                              style: {
+                                fontSize: '12px',
+                                fontWeight: '500'
+                              },
+                              rotate: -45
+                            },
+                            axisBorder: {
+                              show: false
+                            },
+                            axisTicks: {
+                              show: false
+                            }
+                          },
+                          yaxis: {
+                            labels: {
+                              style: {
+                                fontSize: '11px',
+                                fontWeight: '400'
+                              }
+                            },
+                            min: 0
+                          },
+                          tooltip: {
+                            enabled: true,
+                            theme: 'dark',
+                            style: {
+                              fontSize: '12px',
+                              fontFamily: 'inherit'
+                            },
+                            custom: function({ series, seriesIndex, dataPointIndex, w }) {
+                              const date = responsesByDateData[dataPointIndex]?.name || 'Data';
+                              const responses = series[seriesIndex][dataPointIndex];
+                              return `
+                                <div class="px-3 py-2 bg-gray-900 text-white rounded-lg shadow-lg border border-gray-700">
+                                  <div class="font-semibold text-sm mb-1">${date}</div>
+                                  <div class="text-xs text-gray-300">
+                                    <span class="font-medium">${responses}</span> respostas
+                                  </div>
+                                </div>
+                              `;
+                            }
+                          },
+                          responsive: [
+                            {
+                              breakpoint: 768,
+                              options: {
+                                xaxis: {
+                                  labels: {
+                                    rotate: -90,
+                                    style: {
+                                      fontSize: '10px'
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          ]
+                        }}
+                        series={[{
+                          name: 'Respostas por Data',
+                          data: responsesByDateData.map(item => item.value)
+                        }]}
+                        type="area"
+                        height={256}
+                      />
                     </div>
                   ) : (
                     <p className="text-gray-500 text-center py-8">Nenhum dado de tendência disponível</p>
@@ -414,6 +823,27 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ surveyId }) => 
             </Tabs>
           </CardContent>
         </Card>
+
+        {/* Seção Start Quantico - Análises Básicas */}
+        {accountType === 'start-quantico' && (
+          <div className="mt-8">
+            <StartQuanticoAnalytics surveyId={surveyId} />
+          </div>
+        )}
+
+        {/* Seção Vórtex Neural - Análises Avançadas */}
+        {accountType === 'vortex-neural' && (
+          <div className="mt-8">
+            <VortexNeuralAnalytics surveyId={surveyId} />
+          </div>
+        )}
+
+        {/* Seção Nexus Infinito - Análises Estatísticas Avançadas */}
+        {accountType === 'nexus-infinito' && (
+          <div className="mt-8">
+            <NexusInfinitoAnalytics surveyId={surveyId} />
+          </div>
+        )}
       </div>
     </div>
   );
