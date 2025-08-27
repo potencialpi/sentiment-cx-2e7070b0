@@ -161,6 +161,7 @@ const StripeCheckout: React.FC<StripeCheckoutProps> = ({
           >
             <Tag className="mr-2 h-4 w-4" />
             Tem um cupom de desconto?
+            <span className="block text-xs mt-1">Aceita códigos simples ou IDs de promoção</span>
           </Button>
         ) : (
           <div className="space-y-2">
@@ -186,7 +187,7 @@ const StripeCheckout: React.FC<StripeCheckoutProps> = ({
               <div className="space-y-2">
                 <div className="flex space-x-2">
                   <Input
-                    placeholder="Digite seu cupom"
+                    placeholder="Ex: DESCONTO10 ou promo_1S0..."
                     value={couponCode}
                     onChange={(e) => setCouponCode(e.target.value)}
                     onBlur={validateCoupon}

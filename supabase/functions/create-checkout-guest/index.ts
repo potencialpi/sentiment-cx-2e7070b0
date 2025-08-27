@@ -55,19 +55,31 @@ serve(async (req) => {
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
 
-    // Validate coupon if provided
+    // Validate coupon if provided  
     let discounts = undefined;
     if (couponCode) {
       try {
-        const coupon = await stripe.coupons.retrieve(couponCode);
-        if (coupon.valid) {
-          discounts = [{ coupon: couponCode }];
-          logStep("Coupon applied", { couponCode });
-        } else {
-          logStep("Invalid coupon", { couponCode });
+        // Try as promotion code first, then as direct coupon
+        try {
+          const promotionCode = await stripe.promotionCodes.retrieve(couponCode);
+          if (promotionCode && promotionCode.active) {
+            discounts = [{ promotion_code: promotionCode.id }];
+            logStep("Promotion code applied", { promotionId: promotionCode.id });
+          }
+        } catch (promoError) {
+          // Try as direct coupon
+          const coupon = await stripe.coupons.retrieve(couponCode);
+          if (coupon.valid) {
+            discounts = [{ coupon: coupon.id }];
+            logStep("Direct coupon applied", { couponId: coupon.id });
+          }
         }
-      } catch (couponError) {
-        logStep("Coupon validation failed", { couponCode, error: couponError });
+        
+        if (!discounts) {
+          logStep("No valid coupon found", { couponCode });
+        }
+      } catch (error) {
+        logStep("Coupon validation failed", { couponCode, error });
         // Continue without coupon rather than failing the entire checkout
       }
     }
