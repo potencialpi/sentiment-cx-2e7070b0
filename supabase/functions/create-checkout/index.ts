@@ -1,6 +1,6 @@
-import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import Stripe from "https://esm.sh/stripe@15.12.0";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
+import Stripe from "https://esm.sh/stripe@18.4.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.52.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -46,30 +46,21 @@ serve(async (req) => {
     if (!planId || !billingType) throw new Error("Missing planId or billingType");
     logStep("Request data received", { planId, billingType, couponCode });
 
-    // Price IDs mapping
-    const STRIPE_PRICE_IDS = {
-      'start-quantico': {
-        monthly: 'price_1RlEVbBN5utVkHFQRKE6lpoF',
-        yearly: 'price_1RlEVbBN5utVkHFQ7gHYz6mN'
-      },
-      'vortex-neural': {
-        monthly: 'price_1RlEZ2BN5utVkHFQfF7tK4nA',
-        yearly: 'price_1RlEZ2BN5utVkHFQ0lfV3BT3'
-      },
-      'nexus-infinito': {
-        monthly: 'price_1RlEaiBN5utVkHFQI9vfPqDb',
-        yearly: 'price_1RlEaiBN5utVkHFQyHQzmooL'
-      }
+    // Calculate price based on plan and billing type (using same logic as create-checkout-guest)
+    const planPrices = {
+      'start-quantico': { monthly: 34900, yearly: 349900 }, // R$ 349/mês, R$ 3.499/ano
+      'vortex-neural': { monthly: 64900, yearly: 619900 },  // R$ 649/mês, R$ 6.199/ano
+      'nexus-infinito': { monthly: 124900, yearly: 1189900 } // R$ 1.249/mês, R$ 11.899/ano
     };
 
-    const priceIds = STRIPE_PRICE_IDS[planId as keyof typeof STRIPE_PRICE_IDS];
-    if (!priceIds) throw new Error(`Invalid plan: ${planId}`);
-    
-    const priceId = priceIds[billingType as 'monthly' | 'yearly'];
-    if (!priceId) throw new Error(`Invalid billing type: ${billingType}`);
-    logStep("Price ID resolved", { priceId });
+    const price = planPrices[planId as keyof typeof planPrices]?.[billingType as 'monthly' | 'yearly'];
+    if (!price) {
+      throw new Error("Invalid plan or billing type");
+    }
 
-    const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
+    logStep("Price calculated", { planId, billingType, price });
+
+    const stripe = new Stripe(stripeKey, { apiVersion: "2024-12-18" });
     
     // Check if customer already exists
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
@@ -117,11 +108,18 @@ serve(async (req) => {
       customer_email: customerId ? undefined : user.email,
       line_items: [
         {
-          price: priceId,
+          price_data: {
+            currency: "brl",
+            product_data: { 
+              name: `${planId === 'start-quantico' ? 'Start Quântico' : planId === 'vortex-neural' ? 'Vortex Neural' : 'Nexus Infinito'} - ${billingType === 'monthly' ? 'Mensal' : 'Anual'}` 
+            },
+            unit_amount: price,
+            ...(billingType === 'yearly' ? {} : { recurring: { interval: "month" } })
+          },
           quantity: 1,
         },
       ],
-      mode: "subscription",
+      mode: billingType === 'yearly' ? "payment" : "subscription",
       discounts,
       success_url: `${origin}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/payment-cancel`,
@@ -131,14 +129,16 @@ serve(async (req) => {
         userId: user.id,
         couponCode: couponCode || ''
       },
-      subscription_data: {
-        metadata: {
-          planId: planId,
-          billingType: billingType,
-          userId: user.id,
-          couponCode: couponCode || ''
-        },
-      },
+      ...(billingType === 'monthly' ? {
+        subscription_data: {
+          metadata: {
+            planId: planId,
+            billingType: billingType,
+            userId: user.id,
+            couponCode: couponCode || ''
+          },
+        }
+      } : {})
     });
 
     logStep("Checkout session created", { sessionId: session.id, url: session.url });

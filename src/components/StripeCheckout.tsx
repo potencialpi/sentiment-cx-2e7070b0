@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { createCheckoutSession } from '@/lib/stripe';
 import { Loader2, Tag, Check, X } from 'lucide-react';
 
 interface StripeCheckoutProps {
@@ -85,28 +86,23 @@ const StripeCheckout: React.FC<StripeCheckoutProps> = ({
   const handleCheckout = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { 
-          planId, 
-          billingType,
-          couponCode: couponData?.couponId || undefined
-        }
+      const url = await createCheckoutSession(
+        planId,
+        billingType,
+        couponData?.couponId,
+        customerEmail
+      );
+
+      // Open Stripe checkout in a new tab
+      window.open(url, '_blank');
+      
+      toast({
+        title: "Redirecionando...",
+        description: "Uma nova aba foi aberta para o checkout do Stripe",
       });
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      if (data?.url) {
-        // Open Stripe checkout in a new tab
-        window.open(data.url, '_blank');
-        
-        toast({
-          title: "Redirecionando...",
-          description: "Uma nova aba foi aberta para o checkout do Stripe",
-        });
-      } else {
-        throw new Error('URL de checkout não recebida');
+      
+      if (onSuccess) {
+        onSuccess();
       }
     } catch (error) {
       console.error('Checkout error:', error);
