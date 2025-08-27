@@ -1,27 +1,23 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-// Use a compatible Stripe version
-import Stripe from "https://esm.sh/stripe@15.12.0";
+import Stripe from "https://esm.sh/stripe@13.11.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Helper logging function for debugging
-const logStep = (step: string, details?: any) => {
-  const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
-  console.log(`[CREATE-CHECKOUT-GUEST] ${step}${detailsStr}`);
-};
+function logStep(step: string, data?: any) {
+  console.log(`[${new Date().toISOString()}] ${step}:`, data || "");
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    logStep("Function started");
+    logStep("Starting create-checkout-guest-v2");
     
     const { email, companyName, password, planId, billingType, couponCode, phoneNumber } = await req.json();
     
@@ -50,11 +46,6 @@ serve(async (req) => {
     }
 
     logStep("Environment variables loaded");
-    
-    // Initialize Stripe with explicit API version to override environment variable
-    const stripe = new Stripe(stripeKey, {
-      apiVersion: '2023-10-16', // Explicitly set valid API version
-    });
 
     // Initialize Supabase client
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -62,8 +53,6 @@ serve(async (req) => {
 
     // Calculate price based on plan and billing type
     const planPrices: Record<string, Record<string, number>> = {
-      "start-quantico": { "monthly": 4900, "annual": 49000 },
-      "nexus": { "monthly": 9900, "annual": 99000 },
       "basic": { "monthly": 4900, "annual": 49000 },
       "pro": { "monthly": 9900, "annual": 99000 },
       "enterprise": { "monthly": 19900, "annual": 199000 }
@@ -80,62 +69,27 @@ serve(async (req) => {
 
     logStep("Price calculated", { planId, billingType, price });
 
-    logStep("Using Stripe REST API directly");
+    const stripe = new Stripe(stripeKey);
 
-    // Validate coupon if provided using the validate-coupon function
+    // Validate coupon if provided  
     let couponData = null;
     let finalAmount = price;
 
     if (couponCode) {
       logStep("Validating coupon", { couponCode });
-      
       try {
-        // Use the validate-coupon function internally
-        const couponResponse = await fetch(`${supabaseUrl}/functions/v1/validate-coupon`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${supabaseServiceKey}`,
-            'apikey': supabaseServiceKey
-          },
-          body: JSON.stringify({ couponCode })
-        });
-        
-        if (!couponResponse.ok) {
-          logStep("Coupon validation failed", { status: couponResponse.status });
-          return new Response(
-            JSON.stringify({ error: "Invalid coupon code" }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+        const coupon = await stripe.coupons.retrieve(couponCode);
+        if (coupon.valid) {
+          couponData = coupon;
+          if (coupon.percent_off) {
+            finalAmount = Math.round(price * (1 - coupon.percent_off / 100));
+          } else if (coupon.amount_off) {
+            finalAmount = Math.max(0, price - coupon.amount_off);
+          }
+          logStep("Coupon applied", { originalAmount: price, finalAmount, coupon: coupon.id });
         }
-        
-        const couponResult = await couponResponse.json();
-        
-        if (!couponResult.valid) {
-          logStep("Coupon is not valid", couponResult);
-          return new Response(
-            JSON.stringify({ error: "Invalid coupon code" }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-        
-        // Apply discount
-        if (couponResult.percentOff) {
-          finalAmount = Math.round(price * (1 - couponResult.percentOff / 100));
-        } else if (couponResult.amountOff) {
-          finalAmount = Math.max(0, price - couponResult.amountOff);
-        }
-        
-        // Store coupon data for Stripe session
-        couponData = {
-          id: couponResult.couponId,
-          percent_off: couponResult.percentOff,
-          amount_off: couponResult.amountOff
-        };
-        
-        logStep("Coupon applied", { originalAmount: price, finalAmount, coupon: couponData.id });
-      } catch (error: any) {
-        logStep("Coupon validation error", { error: error.message });
+      } catch (error) {
+        logStep("Invalid coupon", { couponCode, error: error.message });
         return new Response(
           JSON.stringify({ error: "Invalid coupon code" }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -143,36 +97,28 @@ serve(async (req) => {
       }
     }
 
-    // Create checkout session using Stripe SDK
-    logStep("Creating checkout session", { finalAmount, couponCode });
-    
-    const sessionParams = {
-      payment_method_types: ['card'],
-      line_items: [{
-        price_data: {
-          currency: 'brl',
-          product_data: {
-            name: 'Sentiment Analysis Report',
+    // Create Stripe checkout session
+    logStep("Creating Stripe checkout session");
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ["card"],
+      line_items: [
+        {
+          price_data: {
+            currency: "brl",
+            product_data: {
+              name: `Plano ${planId.charAt(0).toUpperCase() + planId.slice(1)} - ${billingType === "monthly" ? "Mensal" : "Anual"}`,
+            },
+            unit_amount: finalAmount,
           },
-          unit_amount: finalAmount,
+          quantity: 1,
         },
-        quantity: 1,
-      }],
-      mode: 'payment',
-      success_url: `${Deno.env.get('FRONTEND_URL') || 'http://localhost:5173'}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${Deno.env.get('FRONTEND_URL') || 'http://localhost:5173'}/checkout`,
-      metadata: {
-        user_email: email,
-        original_amount: price.toString(),
-        final_amount: finalAmount.toString()
-      }
-    };
-    
-    if (couponData) {
-      sessionParams.discounts = [{ coupon: couponData.id }];
-    }
-    
-    const session = await stripe.checkout.sessions.create(sessionParams);
+      ],
+      mode: "payment",
+      success_url: `${req.headers.get("origin")}/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${req.headers.get("origin")}/checkout`,
+      customer_email: email,
+      discounts: couponData ? [{ coupon: couponData.id }] : undefined,
+    });
 
     logStep("Stripe session created", { sessionId: session.id });
 
@@ -208,11 +154,10 @@ serve(async (req) => {
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 
-  } catch (error: any) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    logStep("ERROR in create-checkout-guest", { message: errorMessage });
+  } catch (error) {
+    logStep("Unexpected error", error);
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({ error: error.message }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
