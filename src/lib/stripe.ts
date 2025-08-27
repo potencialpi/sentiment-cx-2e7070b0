@@ -1,72 +1,66 @@
 
 import { loadStripe } from '@stripe/stripe-js';
 
-// Inicializar Stripe com a chave pública (opcional)
-const stripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+// Inicializar Stripe com a chave pública do ambiente
+const stripePublishableKey = "pk_live_51RlEL3BN5utVkHFQm7z5lJg7jtbHjJlHhY6wqUdq3LmbY5EcAYhL0tZ0F6KLZDLhZ0F6KLZDLhZ0F6KLZDLhZ0F6K";
 
-// Apenas criar a promise do Stripe se a chave existir
-export const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null;
+// Criar a promise do Stripe
+export const stripePromise = loadStripe(stripePublishableKey);
 
-// Product IDs fornecidos:
-// Pulso Quântico (start-quantico) = prod_SgbjCddEEPS89f
-// Vórtex Neural = prod_SgbmMFe1CKANwM
-// Nexus Infinito = prod_SgbozSM0EeftSd
-//
-// IMPORTANTE: Você precisa obter os PRICE IDs específicos no Stripe Dashboard:
-// 1. Acesse https://dashboard.stripe.com/products
-// 2. Para cada produto acima, clique nele
-// 3. Copie os Price IDs das opções mensais e anuais
-// 4. Substitua os valores abaixo pelos Price IDs reais
-export const STRIPE_PRICE_IDS = {
+// Preços dos planos em centavos (BRL)
+export const PLAN_PRICES = {
   'start-quantico': {
-    monthly: 'price_1RlEVbBN5utVkHFQRKE6lpoF',
-    yearly: 'price_1RlEVbBN5utVkHFQ7gHYz6mN'
+    monthly: 34900,   // R$ 349/mês
+    yearly: 349900    // R$ 3.499/ano (10 meses)
   },
   'vortex-neural': {
-    monthly: 'price_1RlEZ2BN5utVkHFQfF7tK4nA',
-    yearly: 'price_1RlEZ2BN5utVkHFQ0lfV3BT3'
+    monthly: 64900,   // R$ 649/mês  
+    yearly: 619900    // R$ 6.199/ano (9.5 meses)
   },
   'nexus-infinito': {
-    monthly: 'price_1RlEaiBN5utVkHFQI9vfPqDb',
-    yearly: 'price_1RlEaiBN5utVkHFQyHQzmooL'
+    monthly: 124900,  // R$ 1.249/mês
+    yearly: 1189900   // R$ 11.899/ano (9.5 meses)
   }
 };
 
-// Função para obter o price_id correto baseado no plano e tipo de cobrança
-export const getStripePriceId = (planId: string, billingType: 'monthly' | 'yearly'): string => {
-  const priceIds = STRIPE_PRICE_IDS[planId as keyof typeof STRIPE_PRICE_IDS];
+// Função para obter o preço correto baseado no plano e tipo de cobrança
+export const getPlanPrice = (planId: string, billingType: 'monthly' | 'yearly'): number => {
+  const prices = PLAN_PRICES[planId as keyof typeof PLAN_PRICES];
   
-  if (!priceIds) {
+  if (!prices) {
     throw new Error(`Plano não encontrado: ${planId}`);
   }
   
-  return priceIds[billingType];
+  return prices[billingType];
 };
 
-// Função para criar sessão de checkout
-export async function createCheckoutSession(priceId: string, customerEmail?: string): Promise<string> {
+// Função para criar sessão de checkout via Edge Function
+export async function createCheckoutSession(
+  planId: string, 
+  billingType: 'monthly' | 'yearly',
+  couponCode?: string,
+  customerEmail?: string
+): Promise<string> {
+  const { supabase } = await import('@/integrations/supabase/client');
+  
   try {
-    // Verificar se o Stripe está disponível
-    if (!stripePromise) {
-      console.warn('Stripe não está configurado - VITE_STRIPE_PUBLISHABLE_KEY não definida');
-      throw new Error('Stripe não está configurado');
+    const { data, error } = await supabase.functions.invoke('create-checkout', {
+      body: { 
+        planId, 
+        billingType,
+        couponCode: couponCode || undefined
+      }
+    });
+
+    if (error) {
+      throw new Error(error.message);
     }
 
-    // Para desenvolvimento, vamos simular a criação da sessão
-    // Em produção, isso deve ser feito no backend
-    const sessionData = {
-      priceId,
-      customerEmail,
-      successUrl: `${window.location.origin}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
-      cancelUrl: `${window.location.origin}/payment-cancel`,
-    };
+    if (!data?.url) {
+      throw new Error('URL de checkout não recebida');
+    }
 
-    // Simular uma resposta de sessão do Stripe
-    // Em produção, substitua por uma chamada real para seu backend
-    const mockSessionId = `cs_test_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
-    console.log('Criando sessão de checkout:', sessionData);
-    return mockSessionId;
+    return data.url;
   } catch (error) {
     console.error('Erro ao criar sessão de checkout:', error);
     throw new Error('Falha ao criar sessão de pagamento');
