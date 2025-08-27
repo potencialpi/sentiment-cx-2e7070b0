@@ -28,7 +28,7 @@ serve(async (req) => {
     if (!couponCode) throw new Error("Coupon code is required");
     logStep("Coupon code received", { couponCode });
 
-    const stripe = new Stripe(stripeKey, { apiVersion: "2024-12-18.acacia" });
+    const stripe = new Stripe(stripeKey, { apiVersion: "2024-12-18" });
 
     try {
       // First try to retrieve as promotion code, then as coupon

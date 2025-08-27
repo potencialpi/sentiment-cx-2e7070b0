@@ -60,7 +60,7 @@ serve(async (req) => {
 
     logStep("Price calculated", { planId, billingType, price });
 
-    const stripe = new Stripe(stripeKey, { apiVersion: "2024-12-18.acacia" });
+    const stripe = new Stripe(stripeKey, { apiVersion: "2024-12-18" });
     
     // Check if customer already exists
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });

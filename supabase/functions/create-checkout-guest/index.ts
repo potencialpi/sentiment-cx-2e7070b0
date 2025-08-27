@@ -53,7 +53,7 @@ serve(async (req) => {
 
     logStep("Price calculated", { planId, billingType, price });
 
-    const stripe = new Stripe(stripeKey, { apiVersion: "2024-12-18.acacia" });
+    const stripe = new Stripe(stripeKey, { apiVersion: "2024-12-18" });
 
     // Validate coupon if provided  
     let discounts = undefined;
