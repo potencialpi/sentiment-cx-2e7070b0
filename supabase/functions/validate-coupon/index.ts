@@ -28,7 +28,7 @@ serve(async (req) => {
     if (!couponCode) throw new Error("Coupon code is required");
     logStep("Coupon code received", { couponCode });
 
-    const stripe = new Stripe(stripeKey, { apiVersion: "2024-12-18" });
+    const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
 
     try {
       // First try to retrieve as promotion code, then as coupon
@@ -108,7 +108,12 @@ serve(async (req) => {
       });
 
     } catch (stripeError: any) {
-      logStep("Stripe error", { error: stripeError.message });
+      logStep("DETAILED Stripe error", { 
+        error: stripeError.message,
+        code: stripeError.code,
+        type: stripeError.type,
+        statusCode: stripeError.statusCode
+      });
       
       if (stripeError.code === 'resource_missing') {
         return new Response(JSON.stringify({ 
@@ -125,10 +130,16 @@ serve(async (req) => {
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    logStep("ERROR in validate-coupon", { message: errorMessage });
+    logStep("DETAILED ERROR in validate-coupon", { 
+      message: errorMessage,
+      stack: error instanceof Error ? error.stack : undefined,
+      name: error instanceof Error ? error.name : undefined
+    });
+    
     return new Response(JSON.stringify({ 
       valid: false, 
-      error: "Erro ao validar cupom" 
+      error: "Erro ao validar cupom",
+      debug: errorMessage // Temporarily add debug info
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
