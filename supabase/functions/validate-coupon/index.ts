@@ -31,9 +31,36 @@ serve(async (req) => {
     const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
 
     try {
-      // Retrieve coupon from Stripe
-      const coupon = await stripe.coupons.retrieve(couponCode);
-      logStep("Coupon found", { 
+      // First try to retrieve as promotion code, then as coupon
+      let coupon;
+      let promotionCode;
+      
+      try {
+        // Try as promotion code first
+        promotionCode = await stripe.promotionCodes.retrieve(couponCode);
+        if (promotionCode && promotionCode.active) {
+          coupon = await stripe.coupons.retrieve(promotionCode.coupon as string);
+          logStep("Promotion code found", { 
+            id: promotionCode.id, 
+            couponId: coupon.id,
+            active: promotionCode.active
+          });
+        }
+      } catch (promoError) {
+        // If not a promotion code, try as direct coupon code
+        try {
+          coupon = await stripe.coupons.retrieve(couponCode);
+          logStep("Direct coupon found", { id: coupon.id });
+        } catch (couponError) {
+          throw couponError;
+        }
+      }
+
+      if (!coupon) {
+        throw new Error("Coupon not found");
+      }
+
+      logStep("Coupon details", { 
         id: coupon.id, 
         valid: coupon.valid,
         percentOff: coupon.percent_off,
@@ -51,10 +78,22 @@ serve(async (req) => {
         });
       }
 
+      // Check if promotion code has usage limits
+      if (promotionCode && promotionCode.restrictions?.first_time_transaction && promotionCode.times_redeemed >= (promotionCode.max_redemptions || 1)) {
+        return new Response(JSON.stringify({ 
+          valid: false, 
+          error: "Cupom já foi utilizado o número máximo de vezes" 
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
+      }
+
       // Calculate discount information
       const discountInfo = {
         valid: true,
-        couponId: coupon.id,
+        couponId: promotionCode ? promotionCode.code : coupon.id,
+        couponCode: couponCode,
         percentOff: coupon.percent_off,
         amountOff: coupon.amount_off,
         currency: coupon.currency,
