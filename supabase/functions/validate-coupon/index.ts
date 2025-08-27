@@ -1,5 +1,7 @@
-import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
-import Stripe from "https://esm.sh/stripe@18.4.0";
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+
+// Use a compatible Stripe version
+import Stripe from "https://esm.sh/stripe@15.12.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -21,23 +23,33 @@ serve(async (req) => {
     logStep("Function started");
 
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-    if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
+    if (!stripeKey) {
+      throw new Error("STRIPE_SECRET_KEY is not set");
+    }
     logStep("Stripe key verified");
 
     const { couponCode } = await req.json();
-    if (!couponCode) throw new Error("Coupon code is required");
-    logStep("Coupon code received", { couponCode });
+    
+    // Clean and validate coupon code - remove spaces and trim
+    const cleanCouponCode = couponCode?.toString().trim().replace(/\s+/g, '');
+    if (!cleanCouponCode) {
+      throw new Error("Coupon code is required");
+    }
+    
+    logStep("Coupon code received", { original: couponCode, cleaned: cleanCouponCode });
 
-    const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
+    // Initialize Stripe with explicit API version
+    const stripe = new Stripe(stripeKey, {
+      apiVersion: '2023-10-16',
+    });
+
+    let coupon: any = null;
+    let promotionCode: any = null;
 
     try {
-      // First try to retrieve as promotion code, then as coupon
-      let coupon;
-      let promotionCode;
-      
+      // First try as promotion code (promo_xxxxxxx format)
       try {
-        // Try as promotion code first
-        promotionCode = await stripe.promotionCodes.retrieve(couponCode);
+        promotionCode = await stripe.promotionCodes.retrieve(cleanCouponCode);
         if (promotionCode && promotionCode.active) {
           coupon = await stripe.coupons.retrieve(promotionCode.coupon as string);
           logStep("Promotion code found", { 
@@ -49,10 +61,11 @@ serve(async (req) => {
       } catch (promoError) {
         // If not a promotion code, try as direct coupon code
         try {
-          coupon = await stripe.coupons.retrieve(couponCode);
+          coupon = await stripe.coupons.retrieve(cleanCouponCode);
           logStep("Direct coupon found", { id: coupon.id });
         } catch (couponError) {
-          throw couponError;
+          logStep("Stripe error", { error: couponError.message });
+          throw new Error(`No such coupon: '${cleanCouponCode}'`);
         }
       }
 
@@ -69,77 +82,56 @@ serve(async (req) => {
       });
 
       if (!coupon.valid) {
-        return new Response(JSON.stringify({ 
-          valid: false, 
-          error: "Cupom expirado ou inválido" 
+        return new Response(JSON.stringify({
+          valid: false,
+          error: "Coupon is not valid"
         }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 200,
         });
       }
 
-      // Check if promotion code has usage limits
-      if (promotionCode && promotionCode.restrictions?.first_time_transaction && promotionCode.times_redeemed >= (promotionCode.max_redemptions || 1)) {
-        return new Response(JSON.stringify({ 
-          valid: false, 
-          error: "Cupom já foi utilizado o número máximo de vezes" 
-        }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 200,
-        });
-      }
-
-      // Calculate discount information
-      const discountInfo = {
-        valid: true,
-        couponId: promotionCode ? promotionCode.code : coupon.id,
-        couponCode: couponCode,
+      logStep("Coupon validation successful", { 
+        valid: true, 
+        couponId: coupon.id, 
+        couponCode: cleanCouponCode,
         percentOff: coupon.percent_off,
         amountOff: coupon.amount_off,
         currency: coupon.currency,
-        description: coupon.name || `Desconto de ${coupon.percent_off ? `${coupon.percent_off}%` : `R$ ${(coupon.amount_off || 0) / 100}`}`
-      };
+        description: `${cleanCouponCode} - ${coupon.percent_off ? `${coupon.percent_off}% Desconto` : `R$ ${((coupon.amount_off || 0) / 100).toFixed(2)} Desconto`}`
+      });
 
-      logStep("Coupon validation successful", discountInfo);
-
-      return new Response(JSON.stringify(discountInfo), {
+      return new Response(JSON.stringify({
+        valid: true,
+        couponId: coupon.id,
+        couponCode: cleanCouponCode,
+        percentOff: coupon.percent_off,
+        amountOff: coupon.amount_off,
+        currency: coupon.currency,
+        description: `${cleanCouponCode} - ${coupon.percent_off ? `${coupon.percent_off}% Desconto` : `R$ ${((coupon.amount_off || 0) / 100).toFixed(2)} Desconto`}`
+      }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
       });
 
-    } catch (stripeError: any) {
-      logStep("DETAILED Stripe error", { 
-        error: stripeError.message,
-        code: stripeError.code,
-        type: stripeError.type,
-        statusCode: stripeError.statusCode
+    } catch (error: any) {
+      logStep("Stripe error", { error: error.message });
+      return new Response(JSON.stringify({
+        valid: false,
+        error: "Cupom inválido ou expirado"
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
       });
-      
-      if (stripeError.code === 'resource_missing') {
-        return new Response(JSON.stringify({ 
-          valid: false, 
-          error: "Cupom não encontrado" 
-        }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 200,
-        });
-      }
-
-      throw stripeError;
     }
 
-  } catch (error) {
+  } catch (error: any) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    logStep("DETAILED ERROR in validate-coupon", { 
-      message: errorMessage,
-      stack: error instanceof Error ? error.stack : undefined,
-      name: error instanceof Error ? error.name : undefined
-    });
+    logStep("ERROR in validate-coupon", { message: errorMessage });
     
-    return new Response(JSON.stringify({ 
-      valid: false, 
-      error: "Erro ao validar cupom",
-      debug: errorMessage // Temporarily add debug info
+    return new Response(JSON.stringify({
+      valid: false,
+      error: "Erro ao validar cupom"
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
