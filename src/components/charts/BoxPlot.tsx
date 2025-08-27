@@ -308,7 +308,7 @@ const BoxPlot: React.FC<BoxPlotProps> = ({
                       <div className="pt-1 border-t border-gray-200">
                         <div className="flex items-center justify-between">
                           <span className="text-red-600">Outliers:</span>
-                          <Badge variant="destructive" size="sm">
+                          <Badge variant="destructive" className="text-xs px-1">
                             {stat.outliers.length}
                           </Badge>
                         </div>

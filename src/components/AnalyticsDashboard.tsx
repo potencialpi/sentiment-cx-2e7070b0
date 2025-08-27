@@ -11,7 +11,7 @@ import { getUserPlan } from '@/lib/planUtils';
 import Chart from 'react-apexcharts';
 import { ApexOptions } from 'apexcharts';
 import VortexNeuralAnalytics from './VortexNeuralAnalytics';
-import NexusInfinitoAnalytics from './NexusInfinitoAnalytics';
+import { NexusInfinitoAnalytics } from './NexusInfinitoAnalytics';
 import StartQuanticoAnalytics from './StartQuanticoAnalytics';
 
 interface AnalyticsDashboardProps {
