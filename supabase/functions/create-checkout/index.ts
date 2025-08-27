@@ -121,8 +121,8 @@ serve(async (req) => {
       ],
       mode: billingType === 'yearly' ? "payment" : "subscription",
       discounts,
-      success_url: `${(origin.includes('localhost') ? 'http://localhost:8080' : origin)}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${(origin.includes('localhost') ? 'http://localhost:8080' : origin)}/payment-cancel`,
+      success_url: `${((origin.includes('localhost') || origin.includes('127.0.0.1')) ? 'http://localhost:8080' : origin)}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${((origin.includes('localhost') || origin.includes('127.0.0.1')) ? 'http://localhost:8080' : origin)}/payment-cancel`,
       customer_email: email,
       metadata: {
         planId: planId,

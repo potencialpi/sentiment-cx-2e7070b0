@@ -116,8 +116,8 @@ serve(async (req) => {
       mode: "payment",
 -      success_url: `${req.headers.get("origin")}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
 -      cancel_url: `${req.headers.get("origin")}/checkout`,
-+      success_url: `${(() => { const o = req.headers.get("origin") || 'http://localhost:8080'; return o.includes('localhost') ? 'http://localhost:8080' : o; })()}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
-+      cancel_url: `${(() => { const o = req.headers.get("origin") || 'http://localhost:8080'; return o.includes('localhost') ? 'http://localhost:8080' : o; })()}/checkout`,
++      success_url: `${(() => { const o = req.headers.get("origin") || 'http://localhost:8080'; return (o.includes('localhost') || o.includes('127.0.0.1')) ? 'http://localhost:8080' : o; })()}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
++      cancel_url: `${(() => { const o = req.headers.get("origin") || 'http://localhost:8080'; return (o.includes('localhost') || o.includes('127.0.0.1')) ? 'http://localhost:8080' : o; })()}/checkout`,
       customer_email: email,
       discounts: couponData ? [{ coupon: couponData.id }] : undefined,
     });
