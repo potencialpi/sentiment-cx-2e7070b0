@@ -62,11 +62,13 @@ serve(async (req) => {
 
     // Calculate price based on plan and billing type
     const planPrices: Record<string, Record<string, number>> = {
-      "start-quantico": { "monthly": 4900, "annual": 49000 },
-      "nexus": { "monthly": 9900, "annual": 99000 },
-      "basic": { "monthly": 4900, "annual": 49000 },
-      "pro": { "monthly": 9900, "annual": 99000 },
-      "enterprise": { "monthly": 19900, "annual": 199000 }
+      "start-quantico": { "monthly": 34900, "yearly": 349900 },
+      "vortex-neural": { "monthly": 64900, "yearly": 619900 },
+      "nexus-infinito": { "monthly": 124900, "yearly": 1189900 },
+      "nexus": { "monthly": 124900, "yearly": 1189900 },
+      "basic": { "monthly": 34900, "yearly": 349900 },
+      "pro": { "monthly": 64900, "yearly": 619900 },
+      "enterprise": { "monthly": 124900, "yearly": 1189900 }
     };
 
     const price = planPrices[planId]?.[billingType];
