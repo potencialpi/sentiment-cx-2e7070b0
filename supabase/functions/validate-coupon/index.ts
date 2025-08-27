@@ -43,41 +43,37 @@ serve(async (req) => {
     const cleanCode = couponCode.trim().replace(/\s+/g, '');
 
     try {
+      // Try to retrieve as promotion code first, then as direct coupon if not found
       let coupon: any = null;
       let promotionCode: any = null;
 
-      try {
-        // Try as promotion code first
-        logStep("Trying to retrieve as promotion code", { couponCode: cleanCode });
-        const promotionCodes = await stripe.promotionCodes.list({
-          code: cleanCode,
-          limit: 1
-        });
-        
-        if (promotionCodes.data.length > 0) {
-          promotionCode = promotionCodes.data[0];
-          if (promotionCode && promotionCode.active) {
-            coupon = await stripe.coupons.retrieve(promotionCode.coupon as string);
-            logStep("Promotion code found", { 
-              id: promotionCode.id, 
-              couponId: coupon.id,
-              active: promotionCode.active
-            });
-          }
+      logStep("Trying to retrieve as promotion code", { couponCode: cleanCode });
+      const promotionCodes = await stripe.promotionCodes.list({
+        code: cleanCode,
+        limit: 1
+      });
+
+      if (promotionCodes.data.length > 0) {
+        promotionCode = promotionCodes.data[0];
+        logStep("Promotion code lookup result", { id: promotionCode.id, active: promotionCode.active });
+        if (promotionCode && promotionCode.active) {
+          coupon = await stripe.coupons.retrieve(promotionCode.coupon as string);
+          logStep("Promotion code found and coupon retrieved", { 
+            promotionCodeId: promotionCode.id,
+            couponId: coupon.id,
+            active: promotionCode.active
+          });
         }
-      } catch (promoError: any) {
-        logStep("Promotion code lookup failed", { error: promoError.message });
       }
 
+      // If no active promotion code found, try direct coupon retrieval
       if (!coupon) {
-        // If not a promotion code, try as direct coupon code
         try {
           logStep("Trying to retrieve as direct coupon", { couponCode: cleanCode });
           coupon = await stripe.coupons.retrieve(cleanCode);
           logStep("Direct coupon found", { id: coupon.id });
         } catch (couponError: any) {
           logStep("Direct coupon lookup failed", { error: couponError.message });
-          throw couponError;
         }
       }
 
