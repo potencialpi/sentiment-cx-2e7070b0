@@ -161,9 +161,9 @@ serve(async (req) => {
         quantity: 1,
       }],
       mode: 'payment',
-      success_url: `${Deno.env.get('FRONTEND_URL') || 'http://localhost:8080'}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${Deno.env.get('FRONTEND_URL') || 'http://localhost:8080'}/checkout`,
-      metadata: {
+      success_url: `${(() => { const base = Deno.env.get('FRONTEND_URL') || req.headers.get('origin') || 'http://localhost:8080'; return (base.includes('localhost') || base.includes('127.0.0.1')) ? 'http://localhost:8080' : base; })()}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${(() => { const base = Deno.env.get('FRONTEND_URL') || req.headers.get('origin') || 'http://localhost:8080'; return (base.includes('localhost') || base.includes('127.0.0.1')) ? 'http://localhost:8080' : base; })()}/checkout`,
+       metadata: {
         user_email: email,
         original_amount: price.toString(),
         final_amount: finalAmount.toString()
