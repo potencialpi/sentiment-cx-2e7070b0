@@ -327,7 +327,7 @@ const VortexNeuralAnalytics: React.FC<VortexNeuralAnalyticsProps> = ({ className
       const data = await fetchRealSurveyData(surveyId);
       const processedData = await convertRealDataToAnalysisFormat(data);
       
-      setRealData(processedData);
+      setRealData(data);
       setAnalysisData(processedData as any);
       setError(null);
     } catch (err) {
@@ -544,13 +544,13 @@ const VortexNeuralAnalytics: React.FC<VortexNeuralAnalyticsProps> = ({ className
                   </div>
                 </div>
 
-                {Array.isArray(statisticalResults.ratings.outliers?.outliers) && statisticalResults.ratings.outliers.outliers.length > 0 && (
+                {Array.isArray(statisticalResults.ratings.outliers) && statisticalResults.ratings.outliers.length > 0 && (
                   <div className="pt-4 border-t">
                     <h4 className="font-semibold mb-2 text-red-600">Outliers Detectados</h4>
                     <div className="flex flex-wrap gap-1">
-                      {statisticalResults.ratings.outliers.outliers.map((outlier, index) => (
+                      {statisticalResults.ratings.outliers.map((outlier, index) => (
                         <Badge key={index} variant="destructive" className="text-xs">
-                          {outlier.toFixed(2)}
+                          {typeof outlier === 'number' ? outlier.toFixed(2) : outlier}
                         </Badge>
                       ))}
                     </div>
@@ -771,7 +771,7 @@ const VortexNeuralAnalytics: React.FC<VortexNeuralAnalyticsProps> = ({ className
             </CardHeader>
             <CardContent>
               <BoxPlot 
-                data={analysisData?.boxPlotData?.responseTimesByHour ? Object.entries(analysisData.boxPlotData.responseTimesByHour).map(([name, values]) => ({ name, values })) : []}
+                data={realData && realData.statisticalData ? [{ name: 'Response Times', values: realData.statisticalData.ratings || [] }] : []}
                 title="Tempo de Resposta (segundos)"
                 height={400}
               />
