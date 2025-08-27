@@ -32,8 +32,8 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
-    const { email, companyName, phoneNumber, password, planId, billingType } = await req.json();
-    logStep("Request data received", { email, companyName, phoneNumber, planId, billingType });
+    const { email, companyName, phoneNumber, password, planId, billingType, couponCode } = await req.json();
+    logStep("Request data received", { email, companyName, phoneNumber, planId, billingType, couponCode });
 
     if (!email || !companyName || !phoneNumber || !password || !planId || !billingType) {
       throw new Error("Missing required fields");
@@ -55,6 +55,23 @@ serve(async (req) => {
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
 
+    // Validate coupon if provided
+    let discounts = undefined;
+    if (couponCode) {
+      try {
+        const coupon = await stripe.coupons.retrieve(couponCode);
+        if (coupon.valid) {
+          discounts = [{ coupon: couponCode }];
+          logStep("Coupon applied", { couponCode });
+        } else {
+          logStep("Invalid coupon", { couponCode });
+        }
+      } catch (couponError) {
+        logStep("Coupon validation failed", { couponCode, error: couponError });
+        // Continue without coupon rather than failing the entire checkout
+      }
+    }
+
     // Create Stripe checkout session
     const session = await stripe.checkout.sessions.create({
       customer_email: email,
@@ -75,6 +92,7 @@ serve(async (req) => {
         },
       ],
       mode: billingType === 'yearly' ? "payment" : "subscription",
+      discounts,
       success_url: `${req.headers.get("origin")}/create-account?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${req.headers.get("origin")}/payment-cancel`,
     });

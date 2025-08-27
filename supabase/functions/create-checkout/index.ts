@@ -42,9 +42,9 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated or email not available");
     logStep("User authenticated", { userId: user.id, email: user.email });
 
-    const { planId, billingType } = await req.json();
+    const { planId, billingType, couponCode } = await req.json();
     if (!planId || !billingType) throw new Error("Missing planId or billingType");
-    logStep("Request data received", { planId, billingType });
+    logStep("Request data received", { planId, billingType, couponCode });
 
     // Price IDs mapping
     const STRIPE_PRICE_IDS = {
@@ -83,6 +83,23 @@ serve(async (req) => {
 
     const origin = req.headers.get("origin") || "http://localhost:3000";
     
+    // Validate coupon if provided
+    let discounts = undefined;
+    if (couponCode) {
+      try {
+        const coupon = await stripe.coupons.retrieve(couponCode);
+        if (coupon.valid) {
+          discounts = [{ coupon: couponCode }];
+          logStep("Coupon applied", { couponCode });
+        } else {
+          logStep("Invalid coupon", { couponCode });
+        }
+      } catch (couponError) {
+        logStep("Coupon validation failed", { couponCode, error: couponError });
+        // Continue without coupon rather than failing the entire checkout
+      }
+    }
+    
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
@@ -93,18 +110,21 @@ serve(async (req) => {
         },
       ],
       mode: "subscription",
+      discounts,
       success_url: `${origin}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/payment-cancel`,
       metadata: {
         planId: planId,
         billingType: billingType,
-        userId: user.id
+        userId: user.id,
+        couponCode: couponCode || ''
       },
       subscription_data: {
         metadata: {
           planId: planId,
           billingType: billingType,
-          userId: user.id
+          userId: user.id,
+          couponCode: couponCode || ''
         },
       },
     });

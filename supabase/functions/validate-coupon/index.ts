@@ -1,0 +1,98 @@
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import Stripe from "https://esm.sh/stripe@14.21.0";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+// Helper logging function for debugging
+const logStep = (step: string, details?: any) => {
+  const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
+  console.log(`[VALIDATE-COUPON] ${step}${detailsStr}`);
+};
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    logStep("Function started");
+
+    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+    if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
+    logStep("Stripe key verified");
+
+    const { couponCode } = await req.json();
+    if (!couponCode) throw new Error("Coupon code is required");
+    logStep("Coupon code received", { couponCode });
+
+    const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
+
+    try {
+      // Retrieve coupon from Stripe
+      const coupon = await stripe.coupons.retrieve(couponCode);
+      logStep("Coupon found", { 
+        id: coupon.id, 
+        valid: coupon.valid,
+        percentOff: coupon.percent_off,
+        amountOff: coupon.amount_off,
+        currency: coupon.currency
+      });
+
+      if (!coupon.valid) {
+        return new Response(JSON.stringify({ 
+          valid: false, 
+          error: "Cupom expirado ou inválido" 
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
+      }
+
+      // Calculate discount information
+      const discountInfo = {
+        valid: true,
+        couponId: coupon.id,
+        percentOff: coupon.percent_off,
+        amountOff: coupon.amount_off,
+        currency: coupon.currency,
+        description: coupon.name || `Desconto de ${coupon.percent_off ? `${coupon.percent_off}%` : `R$ ${(coupon.amount_off || 0) / 100}`}`
+      };
+
+      logStep("Coupon validation successful", discountInfo);
+
+      return new Response(JSON.stringify(discountInfo), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+
+    } catch (stripeError: any) {
+      logStep("Stripe error", { error: stripeError.message });
+      
+      if (stripeError.code === 'resource_missing') {
+        return new Response(JSON.stringify({ 
+          valid: false, 
+          error: "Cupom não encontrado" 
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
+      }
+
+      throw stripeError;
+    }
+
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logStep("ERROR in validate-coupon", { message: errorMessage });
+    return new Response(JSON.stringify({ 
+      valid: false, 
+      error: "Erro ao validar cupom" 
+    }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500,
+    });
+  }
+});

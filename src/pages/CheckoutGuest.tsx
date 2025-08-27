@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
-import { Eye, EyeOff, Check, X, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, Check, X, Loader2, Tag } from 'lucide-react';
 
 const passwordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*])/;
 
@@ -24,7 +24,8 @@ const checkoutSchema = z.object({
   password: z.string()
     .min(8, 'Senha deve ter pelo menos 8 caracteres')
     .regex(passwordRegex, 'Senha deve conter pelo menos 1 número e 1 caractere especial'),
-  confirmPassword: z.string()
+  confirmPassword: z.string(),
+  couponCode: z.string().optional()
 }).refine((data) => data.password === data.confirmPassword, {
   message: 'Senhas não coincidem',
   path: ['confirmPassword']
@@ -53,6 +54,10 @@ const CheckoutGuest = () => {
     hasNumber: false,
     hasSpecial: false
   });
+  const [showCouponField, setShowCouponField] = useState(false);
+  const [couponValidating, setCouponValidating] = useState(false);
+  const [couponData, setCouponData] = useState<any>(null);
+  const [couponError, setCouponError] = useState('');
 
   const formatPhoneNumber = (value: string) => {
     // Remove all non-numeric characters
@@ -82,6 +87,7 @@ const CheckoutGuest = () => {
 
   const password = watch('password');
   const confirmPassword = watch('confirmPassword');
+  const couponCode = watch('couponCode');
 
   React.useEffect(() => {
     if (password) {
@@ -99,6 +105,73 @@ const CheckoutGuest = () => {
     }
   }, [password]);
 
+  const validateCoupon = async () => {
+    if (!couponCode?.trim()) return;
+    
+    setCouponValidating(true);
+    setCouponError('');
+    setCouponData(null);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('validate-coupon', {
+        body: { couponCode: couponCode.trim() }
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      if (data?.valid) {
+        setCouponData(data);
+        toast({
+          title: "Cupom aplicado!",
+          description: data.description || "Desconto aplicado com sucesso",
+        });
+      } else {
+        setCouponError(data?.error || 'Cupom inválido');
+      }
+    } catch (error) {
+      console.error('Coupon validation error:', error);
+      setCouponError('Erro ao validar cupom');
+    } finally {
+      setCouponValidating(false);
+    }
+  };
+
+  const removeCoupon = () => {
+    setCouponData(null);
+    setValue('couponCode', '');
+    setCouponError('');
+  };
+
+  const calculateDiscountedPrice = () => {
+    if (!selectedPlanData || !couponData) return selectedPlanData;
+    
+    const originalPrice = billingType === 'yearly' ? selectedPlanData.yearlyPrice : selectedPlanData.monthlyPrice;
+    
+    if (couponData.percentOff) {
+      const discountedPrice = originalPrice * (1 - couponData.percentOff / 100);
+      return {
+        ...selectedPlanData,
+        monthlyPrice: billingType === 'monthly' ? discountedPrice : selectedPlanData.monthlyPrice,
+        yearlyPrice: billingType === 'yearly' ? discountedPrice : selectedPlanData.yearlyPrice,
+        monthlyDisplay: billingType === 'monthly' ? `R$ ${discountedPrice.toLocaleString()}/mês` : selectedPlanData.monthlyDisplay,
+        yearlyDisplay: billingType === 'yearly' ? `R$ ${discountedPrice.toLocaleString()}/ano` : selectedPlanData.yearlyDisplay
+      };
+    } else if (couponData.amountOff) {
+      const discountAmount = (couponData.amountOff / 100); // Convert from cents
+      const discountedPrice = Math.max(0, originalPrice - discountAmount);
+      return {
+        ...selectedPlanData,
+        monthlyPrice: billingType === 'monthly' ? discountedPrice : selectedPlanData.monthlyPrice,
+        yearlyPrice: billingType === 'yearly' ? discountedPrice : selectedPlanData.yearlyPrice,
+        monthlyDisplay: billingType === 'monthly' ? `R$ ${discountedPrice.toLocaleString()}/mês` : selectedPlanData.monthlyDisplay,
+        yearlyDisplay: billingType === 'yearly' ? `R$ ${discountedPrice.toLocaleString()}/ano` : selectedPlanData.yearlyDisplay
+      };
+    }
+    return selectedPlanData;
+  };
+
   const onSubmit = async (data: CheckoutForm) => {
     setIsLoading(true);
     setError(null);
@@ -112,7 +185,8 @@ const CheckoutGuest = () => {
           phoneNumber: data.phoneNumber.replace(/\D/g, ''), // Send only numbers
           password: data.password,
           planId: selectedPlan?.id || 'start-quantico',
-          billingType: billingType || 'monthly'
+          billingType: billingType || 'monthly',
+          couponCode: couponData?.couponId || undefined
         }
       });
 
@@ -169,8 +243,21 @@ const CheckoutGuest = () => {
                 <h3 className="text-lg font-semibold text-brand-dark-blue mb-2">
                   Plano Selecionado: {selectedPlanData.name}
                 </h3>
+                {couponData && (
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground line-through">
+                      {billingType === 'yearly' ? selectedPlanData.yearlyDisplay : selectedPlanData.monthlyDisplay}
+                    </span>
+                    <span className="text-sm text-green-600 font-medium">
+                      {couponData.description}
+                    </span>
+                  </div>
+                )}
                 <p className="text-lg text-brand-green font-bold">
-                  {billingType === 'yearly' ? selectedPlanData.yearlyDisplay : selectedPlanData.monthlyDisplay}
+                  {(() => {
+                    const discountedPlan = calculateDiscountedPrice();
+                    return billingType === 'yearly' ? discountedPlan.yearlyDisplay : discountedPlan.monthlyDisplay;
+                  })()}
                 </p>
                 <p className="text-sm text-brand-dark-blue/70">
                   {billingType === 'yearly' ? 'Pagamento à vista' : 'Pagamento mensal'}
@@ -246,7 +333,86 @@ const CheckoutGuest = () => {
                 )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Coupon Section */}
+              <div className="space-y-3">
+                {!showCouponField && !couponData ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowCouponField(true)}
+                    className="w-full text-left p-3 border border-dashed border-gray-300 rounded-lg hover:border-brand-green transition-colors"
+                  >
+                    <div className="flex items-center text-sm text-muted-foreground hover:text-foreground">
+                      <Tag className="mr-2 h-4 w-4" />
+                      Tem um cupom de desconto? Clique aqui para aplicar
+                    </div>
+                  </button>
+                ) : (
+                  <div className="space-y-2">
+                    {couponData ? (
+                      <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
+                        <div className="flex items-center space-x-2">
+                          <Check className="h-4 w-4 text-green-600" />
+                          <span className="text-sm font-medium text-green-800">
+                            {couponData.description}
+                          </span>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={removeCoupon}
+                          className="text-green-600 hover:text-green-800"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <Label htmlFor="couponCode" className="text-brand-dark-blue font-medium">
+                          Cupom de desconto
+                        </Label>
+                        <div className="flex space-x-2">
+                          <Input
+                            id="couponCode"
+                            placeholder="Digite seu cupom"
+                            {...register('couponCode')}
+                            onBlur={validateCoupon}
+                            className="flex-1 border-gray-500 focus:border-brand-green focus:ring-brand-green"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={validateCoupon}
+                            disabled={!couponCode?.trim() || couponValidating}
+                            className="px-4"
+                          >
+                            {couponValidating ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              'Aplicar'
+                            )}
+                          </Button>
+                        </div>
+                        {couponError && (
+                          <p className="text-sm text-red-600">{couponError}</p>
+                        )}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setShowCouponField(false);
+                            setValue('couponCode', '');
+                            setCouponError('');
+                          }}
+                          className="text-sm text-muted-foreground"
+                        >
+                          Cancelar
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -374,7 +540,10 @@ const CheckoutGuest = () => {
                       Processando...
                     </>
                   ) : (
-                    `Pagar ${billingType === 'yearly' ? selectedPlanData?.yearlyDisplay : selectedPlanData?.monthlyDisplay}`
+                    (() => {
+                      const discountedPlan = calculateDiscountedPrice();
+                      return `Pagar ${billingType === 'yearly' ? discountedPlan.yearlyDisplay : discountedPlan.monthlyDisplay}`;
+                    })()
                   )}
                 </Button>
               </div>
