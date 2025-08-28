@@ -64,11 +64,15 @@ serve(async (req) => {
     const planPrices: Record<string, Record<string, number>> = {
       "start-quantico": { "monthly": 34900, "yearly": 349900 },
       "vortex-neural": { "monthly": 64900, "yearly": 619900 },
+<<<<<<< HEAD
       "nexus-infinito": { "monthly": 124900, "yearly": 1189900 },
       "nexus": { "monthly": 124900, "yearly": 1189900 },
       "basic": { "monthly": 34900, "yearly": 349900 },
       "pro": { "monthly": 64900, "yearly": 619900 },
       "enterprise": { "monthly": 124900, "yearly": 1189900 }
+=======
+      "nexus-infinito": { "monthly": 124900, "yearly": 1189900 }
+>>>>>>> 9761bc3 (Supabase Edge Functions: ajustes em URLs com esquema, validação de planos e alinhamento com v1)
     };
 
     const price = planPrices[planId]?.[billingType];
@@ -84,60 +88,57 @@ serve(async (req) => {
 
     logStep("Using Stripe REST API directly");
 
-    // Validate coupon if provided using the validate-coupon function
-    let couponData = null;
+    // Validate coupon if provided using Stripe directly (promotion code or coupon)
+    let couponData: { type: 'promotion_code' | 'coupon'; id: string } | null = null;
     let finalAmount = price;
 
     if (couponCode) {
-      logStep("Validating coupon", { couponCode });
-      
+      logStep("Validating coupon with Stripe", { couponCode });
+
       try {
-        // Use the validate-coupon function internally
-        const couponResponse = await fetch(`${supabaseUrl}/functions/v1/validate-coupon`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${supabaseServiceKey}`,
-            'apikey': supabaseServiceKey
-          },
-          body: JSON.stringify({ couponCode })
-        });
-        
-        if (!couponResponse.ok) {
-          logStep("Coupon validation failed", { status: couponResponse.status });
-          return new Response(
-            JSON.stringify({ error: "Invalid coupon code" }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+        // First, attempt to find an active promotion code by code
+        const promotionCodes = await stripe.promotionCodes.list({ code: couponCode, limit: 1 });
+        const promo = promotionCodes.data[0];
+
+        if (promo && promo.active && promo.coupon) {
+          // Compute discount from the underlying coupon
+          const c = promo.coupon as any;
+          if (c.percent_off) {
+            finalAmount = Math.round(price * (1 - c.percent_off / 100));
+          } else if (c.amount_off) {
+            finalAmount = Math.max(0, price - c.amount_off);
+          }
+          couponData = { type: 'promotion_code', id: promo.id };
+          logStep("Promotion code applied", { promotion_code: promo.id, finalAmount });
+        } else {
+          // If no promotion code, try direct coupon retrieval (by id or code)
+          try {
+            const directCoupon = await stripe.coupons.retrieve(couponCode);
+            if (directCoupon && directCoupon.valid) {
+              if (directCoupon.percent_off) {
+                finalAmount = Math.round(price * (1 - directCoupon.percent_off / 100));
+              } else if (directCoupon.amount_off) {
+                finalAmount = Math.max(0, price - directCoupon.amount_off);
+              }
+              couponData = { type: 'coupon', id: directCoupon.id };
+              logStep("Direct coupon applied", { coupon: directCoupon.id, finalAmount });
+            } else {
+              logStep("Coupon exists but not valid", { couponCode });
+              return new Response(
+                JSON.stringify({ error: "Invalid coupon code" }),
+                { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+              );
+            }
+          } catch (e) {
+            logStep("No promotion code or direct coupon found", { couponCode, error: (e as Error).message });
+            return new Response(
+              JSON.stringify({ error: "Invalid coupon code" }),
+              { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
         }
-        
-        const couponResult = await couponResponse.json();
-        
-        if (!couponResult.valid) {
-          logStep("Coupon is not valid", couponResult);
-          return new Response(
-            JSON.stringify({ error: "Invalid coupon code" }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-        
-        // Apply discount
-        if (couponResult.percentOff) {
-          finalAmount = Math.round(price * (1 - couponResult.percentOff / 100));
-        } else if (couponResult.amountOff) {
-          finalAmount = Math.max(0, price - couponResult.amountOff);
-        }
-        
-        // Store coupon data for Stripe session
-        couponData = {
-          id: couponResult.couponId,
-          percent_off: couponResult.percentOff,
-          amount_off: couponResult.amountOff
-        };
-        
-        logStep("Coupon applied", { originalAmount: price, finalAmount, coupon: couponData.id });
       } catch (error: any) {
-        logStep("Coupon validation error", { error: error.message });
+        logStep("Coupon validation error (Stripe)", { error: error.message });
         return new Response(
           JSON.stringify({ error: "Invalid coupon code" }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -148,7 +149,7 @@ serve(async (req) => {
     // Create checkout session using Stripe SDK
     logStep("Creating checkout session", { finalAmount, couponCode });
     
-    const sessionParams = {
+    const sessionParams: any = {
       payment_method_types: ['card'],
       line_items: [{
         price_data: {
@@ -161,17 +162,23 @@ serve(async (req) => {
         quantity: 1,
       }],
       mode: 'payment',
-      success_url: `${(() => { const base = Deno.env.get('FRONTEND_URL') || req.headers.get('origin') || 'http://localhost:8080'; return (base.includes('localhost') || base.includes('127.0.0.1')) ? 'http://localhost:8080' : base; })()}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${(() => { const base = Deno.env.get('FRONTEND_URL') || req.headers.get('origin') || 'http://localhost:8080'; return (base.includes('localhost') || base.includes('127.0.0.1')) ? 'http://localhost:8080' : base; })()}/checkout`,
+      success_url: `${Deno.env.get('FRONTEND_URL') || req.headers.get('origin') || 'https://sentiment-cx.vercel.app'}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${Deno.env.get('FRONTEND_URL') || req.headers.get('origin') || 'https://sentiment-cx.vercel.app'}/payment-cancel`,
        metadata: {
         user_email: email,
         original_amount: price.toString(),
-        final_amount: finalAmount.toString()
+        final_amount: finalAmount.toString(),
+        planId,
+        billingType
       }
     };
     
     if (couponData) {
-      sessionParams.discounts = [{ coupon: couponData.id }];
+      sessionParams.discounts = [
+        couponData.type === 'promotion_code'
+          ? { promotion_code: couponData.id }
+          : { coupon: couponData.id }
+      ];
     }
     
     const session = await stripe.checkout.sessions.create(sessionParams);

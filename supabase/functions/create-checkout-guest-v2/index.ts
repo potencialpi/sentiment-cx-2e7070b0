@@ -53,11 +53,10 @@ serve(async (req) => {
 
     // Calculate price based on plan and billing type
     const planPrices: Record<string, Record<string, number>> = {
-      "basic": { "monthly": 4900, "annual": 49000 },
-      "pro": { "monthly": 9900, "annual": 99000 },
-      "enterprise": { "monthly": 19900, "annual": 199000 }
+      "start-quantico": { "monthly": 34900, "yearly": 349900 },
+      "vortex-neural": { "monthly": 64900, "yearly": 619900 },
+      "nexus-infinito": { "monthly": 124900, "yearly": 1189900 }
     };
-
     const price = planPrices[planId]?.[billingType];
     if (!price) {
       logStep("Invalid plan or billing type", { planId, billingType });
@@ -66,30 +65,67 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-
     logStep("Price calculated", { planId, billingType, price });
 
-    const stripe = new Stripe(stripeKey);
+    // Initialize Stripe with explicit API version (same as v1)
+    const stripe = new Stripe(stripeKey, { apiVersion: '2023-10-16' });
+
+    // Helper to normalize the base URL ensuring a scheme is present
+    const getBaseUrl = () => {
+      const raw = (Deno.env.get('FRONTEND_URL') || req.headers.get('origin') || 'https://sentiment-cx.vercel.app').trim();
+      // Ensure scheme for production URLs
+      if (!/^https?:\/\//i.test(raw)) {
+        return `https://${raw}`;
+      }
+      return raw;
+    };
 
     // Validate coupon if provided  
-    let couponData = null;
+    // Validate coupon (promotion code or direct coupon)
+    let couponData: { type: 'promotion_code' | 'coupon'; id: string } | null = null;
     let finalAmount = price;
-
+  
     if (couponCode) {
-      logStep("Validating coupon", { couponCode });
+      logStep("Validating coupon with Stripe", { couponCode });
       try {
-        const coupon = await stripe.coupons.retrieve(couponCode);
-        if (coupon.valid) {
-          couponData = coupon;
-          if (coupon.percent_off) {
-            finalAmount = Math.round(price * (1 - coupon.percent_off / 100));
-          } else if (coupon.amount_off) {
-            finalAmount = Math.max(0, price - coupon.amount_off);
+        const promotionCodes = await stripe.promotionCodes.list({ code: couponCode, limit: 1 });
+        const promo = promotionCodes.data[0];
+        if (promo && promo.active && promo.coupon) {
+          const c: any = promo.coupon;
+          if (c.percent_off) {
+            finalAmount = Math.round(price * (1 - c.percent_off / 100));
+          } else if (c.amount_off) {
+            finalAmount = Math.max(0, price - c.amount_off);
           }
-          logStep("Coupon applied", { originalAmount: price, finalAmount, coupon: coupon.id });
+          couponData = { type: 'promotion_code', id: promo.id };
+          logStep("Promotion code applied", { promotion_code: promo.id, finalAmount });
+        } else {
+          try {
+            const directCoupon = await stripe.coupons.retrieve(couponCode);
+            if (directCoupon && directCoupon.valid) {
+              if (directCoupon.percent_off) {
+                finalAmount = Math.round(price * (1 - directCoupon.percent_off / 100));
+              } else if (directCoupon.amount_off) {
+                finalAmount = Math.max(0, price - directCoupon.amount_off);
+              }
+              couponData = { type: 'coupon', id: directCoupon.id };
+              logStep("Direct coupon applied", { coupon: directCoupon.id, finalAmount });
+            } else {
+              return new Response(
+                JSON.stringify({ error: "Invalid coupon code" }),
+                { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+              );
+            }
+          } catch (e) {
+            logStep("No promotion code or direct coupon found", { couponCode, error: (e as Error).message });
+            return new Response(
+              JSON.stringify({ error: "Invalid coupon code" }),
+              { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
         }
-      } catch (error) {
-        logStep("Invalid coupon", { couponCode, error: error.message });
+      } catch (error: any) {
+        logStep("Coupon validation error (Stripe)", { error: error.message });
         return new Response(
           JSON.stringify({ error: "Invalid coupon code" }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -99,6 +135,7 @@ serve(async (req) => {
 
     // Create Stripe checkout session
     logStep("Creating Stripe checkout session");
+    const baseUrl = getBaseUrl();
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       line_items: [
@@ -114,12 +151,12 @@ serve(async (req) => {
         },
       ],
       mode: "payment",
--      success_url: `${req.headers.get("origin")}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
--      cancel_url: `${req.headers.get("origin")}/checkout`,
-+      success_url: `${(() => { const o = req.headers.get("origin") || 'http://localhost:8080'; return (o.includes('localhost') || o.includes('127.0.0.1')) ? 'http://localhost:8080' : o; })()}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
-+      cancel_url: `${(() => { const o = req.headers.get("origin") || 'http://localhost:8080'; return (o.includes('localhost') || o.includes('127.0.0.1')) ? 'http://localhost:8080' : o; })()}/checkout`,
+      success_url: `${baseUrl}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${baseUrl}/payment-cancel`,
       customer_email: email,
-      discounts: couponData ? [{ coupon: couponData.id }] : undefined,
+      discounts: couponData ? [
+        couponData.type === 'promotion_code' ? { promotion_code: couponData.id } : { coupon: couponData.id }
+      ] : undefined,
     });
 
     logStep("Stripe session created", { sessionId: session.id });
@@ -159,7 +196,7 @@ serve(async (req) => {
   } catch (error) {
     logStep("Unexpected error", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: (error as Error).message }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
