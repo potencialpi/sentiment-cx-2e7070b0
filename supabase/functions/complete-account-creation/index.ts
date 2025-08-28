@@ -31,10 +31,12 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
-    const { sessionId } = await req.json();
-    logStep("Session ID received", { sessionId });
+    const requestBody = await req.json();
+    const { sessionId } = requestBody;
+    logStep("Request received", { sessionId, bodyKeys: Object.keys(requestBody) });
 
     if (!sessionId) {
+      logStep("Validation failed: Session ID missing");
       throw new Error("Session ID is required");
     }
 
@@ -55,7 +57,11 @@ serve(async (req) => {
       email: checkoutData.email, 
       phoneNumber: checkoutData.phone_number,
       planId: checkoutData.plan_id,
-      billingType: checkoutData.billing_type 
+      billingType: checkoutData.billing_type,
+      companyName: checkoutData.company_name,
+      hasPasswordHash: !!checkoutData.password_hash,
+      passwordHashLength: checkoutData.password_hash ? checkoutData.password_hash.length : 0,
+      allFields: Object.keys(checkoutData)
     });
 
     // Verify payment with Stripe
@@ -72,27 +78,69 @@ serve(async (req) => {
 
     logStep("Payment confirmed by Stripe");
 
-    // Create the user account with plain password (Supabase will hash it automatically)
+    // Create the user account
+    logStep("Creating user account", { email: checkoutData.email });
+    
+    // Validate required fields
+    if (!checkoutData.password_hash) {
+      logStep("Validation failed: Password hash missing from checkout data", {
+        availableFields: Object.keys(checkoutData),
+        passwordHashField: checkoutData.password_hash ? 'password_hash found' : 'no password_hash field'
+      });
+      throw new Error("Password hash is required for account creation");
+    }
+    
+    if (!checkoutData.email) {
+      logStep("Validation failed: Email missing");
+      throw new Error("Email is required for account creation");
+    }
+    
+    if (!checkoutData.company_name) {
+      logStep("Validation failed: Company name missing");
+      throw new Error("Company name is required for account creation");
+    }
+    
+    // Generate a temporary password for Supabase Auth since we have the hash stored
+    // We'll use the first 12 characters of the hash as a temporary password
+    const tempPassword = checkoutData.password_hash.substring(0, 12) + 'Temp!';
+    
+    logStep("Creating user with temporary password", { 
+      email: checkoutData.email,
+      tempPasswordLength: tempPassword.length 
+    });
+
     const { data: authData, error: authError } = await supabaseService.auth.admin.createUser({
       email: checkoutData.email,
-      password: checkoutData.password_hash, // This is the plain password from checkout
+      password: tempPassword, // Use temporary password for Supabase Auth
       email_confirm: true, // Auto-confirm email since payment is verified
       user_metadata: {
         company_name: checkoutData.company_name,
         plan_id: checkoutData.plan_id,
-        billing_type: checkoutData.billing_type
+        billing_type: checkoutData.billing_type,
+        phone_number: checkoutData.phone_number,
+        original_password_hash: checkoutData.password_hash // Store original hash in metadata
       }
     });
 
     if (authError) {
-      logStep("Error creating user", authError);
+      logStep("Error creating user", { 
+        error: authError.message, 
+        code: authError.status,
+        details: authError 
+      });
       throw new Error(`Failed to create user: ${authError.message}`);
     }
 
+    if (!authData?.user?.id) {
+      logStep("User creation failed - no user data returned");
+      throw new Error("User creation failed - no user data returned");
+    }
+
     const userId = authData.user.id;
-    logStep("User created successfully", { userId });
+    logStep("User created successfully", { userId, email: authData.user.email });
 
     // Create profile record
+    logStep("Creating profile record", { userId });
     const { error: profileError } = await supabaseService
       .from('profiles')
       .insert({
@@ -104,11 +152,18 @@ serve(async (req) => {
       });
 
     if (profileError) {
-      logStep("Error creating profile", profileError);
+      logStep("Error creating profile", { 
+        error: profileError.message, 
+        code: profileError.code,
+        details: profileError 
+      });
       // Don't fail the whole process for profile creation error
+    } else {
+      logStep("Profile created successfully");
     }
 
     // Create company record
+    logStep("Creating company record", { userId, companyName: checkoutData.company_name });
     const { error: companyError } = await supabaseService
       .from('companies')
       .insert({
@@ -118,8 +173,14 @@ serve(async (req) => {
       });
 
     if (companyError) {
-      logStep("Error creating company", companyError);
+      logStep("Error creating company", { 
+        error: companyError.message, 
+        code: companyError.code,
+        details: companyError 
+      });
       // Don't fail the whole process for company creation error
+    } else {
+      logStep("Company created successfully");
     }
 
     // Mark checkout session as completed
@@ -147,13 +208,18 @@ serve(async (req) => {
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    logStep("ERROR in complete-account-creation", { message: errorMessage });
+    logStep("ERROR in complete-account-creation", { 
+      message: errorMessage,
+      stack: error instanceof Error ? error.stack : undefined
+    });
+    
+    // Return 200 status with success: false to avoid FunctionsHttpError
     return new Response(JSON.stringify({ 
       success: false, 
       error: errorMessage 
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 500,
+      status: 200, // Changed from 500 to 200 to avoid non-2xx error
     });
   }
 });

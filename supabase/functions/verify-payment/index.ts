@@ -53,11 +53,23 @@ serve(async (req) => {
       const customerEmail = session.customer_details?.email;
       const planId = session.metadata?.planId;
       const billingType = session.metadata?.billingType;
-      const userId = session.metadata?.userId;
 
-      if (!customerEmail || !planId || !billingType || !userId) {
+      if (!customerEmail || !planId || !billingType) {
         throw new Error("Missing required metadata from session");
       }
+
+      // Buscar o usuário pelo email, já que ele acabou de ser criado
+      const { data: userData, error: userError } = await supabaseClient.auth.admin.listUsers();
+      if (userError) {
+        throw new Error(`Failed to fetch users: ${userError.message}`);
+      }
+
+      const user = userData.users.find(u => u.email === customerEmail);
+      if (!user) {
+        throw new Error(`User not found with email: ${customerEmail}`);
+      }
+
+      const userId = user.id;
 
       logStep("Payment verified, updating database", {
         customerEmail,

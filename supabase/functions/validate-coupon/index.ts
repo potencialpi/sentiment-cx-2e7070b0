@@ -57,7 +57,11 @@ serve(async (req) => {
         promotionCode = promotionCodes.data[0];
         logStep("Promotion code lookup result", { id: promotionCode.id, active: promotionCode.active });
         if (promotionCode && promotionCode.active) {
-          coupon = await stripe.coupons.retrieve(promotionCode.coupon as string);
+          // promotionCode.coupon can be either a string ID or a coupon object
+          const couponId = typeof promotionCode.coupon === 'string' 
+            ? promotionCode.coupon 
+            : promotionCode.coupon.id;
+          coupon = await stripe.coupons.retrieve(couponId);
           logStep("Promotion code found and coupon retrieved", { 
             promotionCodeId: promotionCode.id,
             couponId: coupon.id,

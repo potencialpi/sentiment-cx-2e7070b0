@@ -64,7 +64,11 @@ serve(async (req) => {
     const planPrices: Record<string, Record<string, number>> = {
       "start-quantico": { "monthly": 34900, "yearly": 349900 },
       "vortex-neural": { "monthly": 64900, "yearly": 619900 },
-      "nexus-infinito": { "monthly": 124900, "yearly": 1189900 }
+      "nexus-infinito": { "monthly": 124900, "yearly": 1189900 },
+      "nexus": { "monthly": 124900, "yearly": 1189900 },
+      "basic": { "monthly": 34900, "yearly": 349900 },
+      "pro": { "monthly": 64900, "yearly": 619900 },
+      "enterprise": { "monthly": 124900, "yearly": 1189900 }
     };
 
     const price = planPrices[planId]?.[billingType];
@@ -141,8 +145,33 @@ serve(async (req) => {
     // Create checkout session using Stripe SDK
     logStep("Creating checkout session", { finalAmount, couponCode });
     
+    // Determine base URL with explicit logging
+    const frontendUrl = Deno.env.get('FRONTEND_URL');
+    const originHeader = req.headers.get('origin');
+    const fallbackUrl = 'https://sentiment-cx.vercel.app';
+    
+    const baseUrl = frontendUrl || originHeader || fallbackUrl;
+    
+    logStep("URL Resolution", {
+      FRONTEND_URL: frontendUrl,
+      origin_header: originHeader,
+      fallback: fallbackUrl,
+      selected_base_url: baseUrl
+    });
+    
+    // Add timestamp to prevent cache issues
+    const timestamp = Date.now();
+    const successUrl = `${baseUrl}/welcome-login?session_id={CHECKOUT_SESSION_ID}&t=${timestamp}`;
+    const cancelUrl = `${baseUrl}/payment-cancel?t=${timestamp}`;
+    
+    logStep("Final URLs", {
+      success_url: successUrl,
+      cancel_url: cancelUrl
+    });
+    
     const sessionParams: any = {
       payment_method_types: ['card'],
+      locale: 'pt-BR',
       line_items: [{
         price_data: {
           currency: 'brl',
@@ -154,14 +183,15 @@ serve(async (req) => {
         quantity: 1,
       }],
       mode: 'payment',
-      success_url: `${Deno.env.get('FRONTEND_URL') || req.headers.get('origin') || 'https://sentiment-cx.vercel.app'}/create-account?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${Deno.env.get('FRONTEND_URL') || req.headers.get('origin') || 'https://sentiment-cx.vercel.app'}/payment-cancel`,
+      success_url: successUrl,
+      cancel_url: cancelUrl,
        metadata: {
         user_email: email,
         original_amount: price.toString(),
         final_amount: finalAmount.toString(),
         planId,
-        billingType
+        billingType,
+        base_url: baseUrl
       }
     };
     
@@ -177,6 +207,15 @@ serve(async (req) => {
 
     logStep("Stripe session created", { sessionId: session.id });
 
+    // Hash the password before storing
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashedPassword = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    
+    logStep("Password hashed for storage", { originalLength: password.length, hashedLength: hashedPassword.length });
+
     // Store checkout session data in Supabase
     const { error: insertError } = await supabase
       .from("checkout_sessions")
@@ -184,7 +223,7 @@ serve(async (req) => {
         stripe_session_id: session.id,
         email,
         company_name: companyName,
-        password_hash: password, // In production, this should be hashed
+        password_hash: hashedPassword, // Store the hashed password
         plan_id: planId,
         billing_type: billingType,
         amount: finalAmount,

@@ -106,6 +106,7 @@ serve(async (req) => {
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
+      locale: 'pt-BR',
       line_items: [
         {
           price_data: {
@@ -121,8 +122,8 @@ serve(async (req) => {
       ],
       mode: billingType === 'yearly' ? "payment" : "subscription",
       discounts,
-      success_url: `${baseUrl}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${baseUrl}/payment-cancel`,
+      success_url: `${baseUrl}/welcome-login?session_id={CHECKOUT_SESSION_ID}&t=${Date.now()}`,
+      cancel_url: `${baseUrl}/payment-cancel?t=${Date.now()}`,
       metadata: {
         planId: planId,
         billingType: billingType,

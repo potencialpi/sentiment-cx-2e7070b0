@@ -138,6 +138,7 @@ serve(async (req) => {
     const baseUrl = getBaseUrl();
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
+      locale: 'pt-BR',
       line_items: [
         {
           price_data: {
@@ -151,8 +152,8 @@ serve(async (req) => {
         },
       ],
       mode: "payment",
-      success_url: `${baseUrl}/create-account?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${baseUrl}/payment-cancel`,
+      success_url: `${baseUrl}/welcome-login?session_id={CHECKOUT_SESSION_ID}&t=${Date.now()}`,
+      cancel_url: `${baseUrl}/payment-cancel?t=${Date.now()}`,
       customer_email: email,
       discounts: couponData ? [
         couponData.type === 'promotion_code' ? { promotion_code: couponData.id } : { coupon: couponData.id }
