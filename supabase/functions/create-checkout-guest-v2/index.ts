@@ -151,7 +151,7 @@ serve(async (req) => {
         },
       ],
       mode: "payment",
-      success_url: `${baseUrl}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${baseUrl}/create-account?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl}/payment-cancel`,
       customer_email: email,
       discounts: couponData ? [

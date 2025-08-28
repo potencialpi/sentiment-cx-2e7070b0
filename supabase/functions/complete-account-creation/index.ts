@@ -72,10 +72,10 @@ serve(async (req) => {
 
     logStep("Payment confirmed by Stripe");
 
-    // Create the user account
+    // Create the user account with plain password (Supabase will hash it automatically)
     const { data: authData, error: authError } = await supabaseService.auth.admin.createUser({
       email: checkoutData.email,
-      password: checkoutData.password_hash, // This is actually the plain password, we'll hash it properly
+      password: checkoutData.password_hash, // This is the plain password from checkout
       email_confirm: true, // Auto-confirm email since payment is verified
       user_metadata: {
         company_name: checkoutData.company_name,

@@ -162,7 +162,7 @@ serve(async (req) => {
         quantity: 1,
       }],
       mode: 'payment',
-      success_url: `${Deno.env.get('FRONTEND_URL') || req.headers.get('origin') || 'https://sentiment-cx.vercel.app'}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${Deno.env.get('FRONTEND_URL') || req.headers.get('origin') || 'https://sentiment-cx.vercel.app'}/create-account?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${Deno.env.get('FRONTEND_URL') || req.headers.get('origin') || 'https://sentiment-cx.vercel.app'}/payment-cancel`,
        metadata: {
         user_email: email,

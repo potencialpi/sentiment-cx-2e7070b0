@@ -23,10 +23,54 @@ const WelcomeLogin = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         navigate('/dashboard');
+        return;
+      }
+      
+      // If there's a session_id, automatically complete account creation
+      if (sessionId) {
+        completeAccountCreation();
       }
     };
     checkUser();
-  }, [navigate]);
+  }, [navigate, sessionId]);
+
+  const completeAccountCreation = async () => {
+    if (!sessionId) return;
+    
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('complete-account-creation', {
+        body: { sessionId }
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      if (data?.success) {
+        toast({
+          title: 'Conta criada com sucesso!',
+          description: `Bem-vindo! Sua conta foi criada para o plano ${data.planId}. Faça login com suas credenciais.`,
+        });
+        
+        // Set the email in the form if available
+        if (data.email) {
+          setEmail(data.email);
+        }
+      } else {
+        throw new Error(data?.error || 'Erro ao criar conta');
+      }
+    } catch (error) {
+      console.error('Erro ao completar criação da conta:', error);
+      toast({
+        title: 'Erro na criação da conta',
+        description: 'Não foi possível completar a criação da conta. Entre em contato com o suporte.',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
