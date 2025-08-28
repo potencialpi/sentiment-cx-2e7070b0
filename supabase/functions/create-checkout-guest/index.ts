@@ -64,15 +64,7 @@ serve(async (req) => {
     const planPrices: Record<string, Record<string, number>> = {
       "start-quantico": { "monthly": 34900, "yearly": 349900 },
       "vortex-neural": { "monthly": 64900, "yearly": 619900 },
-<<<<<<< HEAD
-      "nexus-infinito": { "monthly": 124900, "yearly": 1189900 },
-      "nexus": { "monthly": 124900, "yearly": 1189900 },
-      "basic": { "monthly": 34900, "yearly": 349900 },
-      "pro": { "monthly": 64900, "yearly": 619900 },
-      "enterprise": { "monthly": 124900, "yearly": 1189900 }
-=======
       "nexus-infinito": { "monthly": 124900, "yearly": 1189900 }
->>>>>>> 9761bc3 (Supabase Edge Functions: ajustes em URLs com esquema, validação de planos e alinhamento com v1)
     };
 
     const price = planPrices[planId]?.[billingType];
