@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
-import Stripe from "https://esm.sh/stripe@18.4.0";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.52.1";
+import Stripe from "https://esm.sh/stripe@14.25.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -60,7 +60,7 @@ serve(async (req) => {
 
     logStep("Price calculated", { planId, billingType, price });
 
-    const stripe = new Stripe(stripeKey, { apiVersion: "2024-12-18" });
+    const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
     
     // Check if customer already exists
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
