@@ -12,6 +12,7 @@ import Login from "./pages/Login";
 import Admin from "./pages/Admin";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentCancel from "./pages/PaymentCancel";
+import WelcomeLogin from "./pages/WelcomeLogin";
 
 import AdminQuestionarios from "./pages/AdminQuestionarios";
 import AdminVortex from "./pages/AdminVortex";
@@ -43,8 +44,9 @@ const App = () => (
           <Route path="/choose-plan" element={<ChoosePlan />} />
           <Route path="/create-account" element={<CreateAccount />} />
           <Route path="/login" element={<Login />} />
-        <Route path="/payment-success" element={<PaymentSuccess />} />
-        <Route path="/payment-cancel" element={<PaymentCancel />} />
+          <Route path="/welcome-login" element={<WelcomeLogin />} />
+          <Route path="/payment-success" element={<PaymentSuccess />} />
+          <Route path="/payment-cancel" element={<PaymentCancel />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/admin" element={<Admin />} />
 
