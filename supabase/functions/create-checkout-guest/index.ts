@@ -161,8 +161,8 @@ serve(async (req) => {
         quantity: 1,
       }],
       mode: 'payment',
-      success_url: `${Deno.env.get('FRONTEND_URL') || 'http://localhost:5173'}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${Deno.env.get('FRONTEND_URL') || 'http://localhost:5173'}/checkout`,
+      success_url: `${Deno.env.get('FRONTEND_URL') || 'http://localhost:8080'}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${Deno.env.get('FRONTEND_URL') || 'http://localhost:8080'}/checkout`,
       metadata: {
         user_email: email,
         original_amount: price.toString(),

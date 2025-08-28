@@ -72,7 +72,7 @@ serve(async (req) => {
       logStep("No existing customer found");
     }
 
-    const origin = req.headers.get("origin") || "http://localhost:3000";
+    const origin = req.headers.get("origin") || "http://localhost:8080";
     
     // Validate coupon if provided
     let discounts = undefined;
@@ -121,8 +121,9 @@ serve(async (req) => {
       ],
       mode: billingType === 'yearly' ? "payment" : "subscription",
       discounts,
-      success_url: `${origin}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/payment-cancel`,
+      success_url: `${(origin.includes('localhost') ? 'http://localhost:8080' : origin)}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${(origin.includes('localhost') ? 'http://localhost:8080' : origin)}/payment-cancel`,
+      customer_email: email,
       metadata: {
         planId: planId,
         billingType: billingType,
