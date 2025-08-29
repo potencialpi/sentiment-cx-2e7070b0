@@ -84,6 +84,8 @@ export async function getUserPlan(supabase: any, userId: string): Promise<string
   let planCode = 'start-quantico'; // fallback padrão
 
   try {
+    console.log(`[getUserPlan] INICIANDO busca para USER: ${userId}`);
+    
     // Buscar planos em ambas as tabelas
     const [companyResult, profileResult] = await Promise.all([
       supabase
@@ -100,10 +102,18 @@ export async function getUserPlan(supabase: any, userId: string): Promise<string
 
     const companyPlan = companyResult.data?.plan_name;
     const profilePlan = profileResult.data?.plan_name;
+    const companyError = companyResult.error;
+    const profileError = profileResult.error;
 
-    console.log(`[getUserPlan] USER: ${userId}`);
-    console.log(`[getUserPlan] Company plan: ${companyPlan}`);
-    console.log(`[getUserPlan] Profile plan: ${profilePlan}`);
+    console.log(`[getUserPlan] Company result:`, { plan: companyPlan, error: companyError?.message });
+    console.log(`[getUserPlan] Profile result:`, { plan: profilePlan, error: profileError?.message });
+
+    // Se houve erro de autenticação (401), logar e usar fallback
+    if (companyError?.code === '401' || profileError?.code === '401') {
+      console.warn(`[getUserPlan] RLS/Auth error detected - using authenticated user data fallback`);
+      // Para casos onde a sessão não tem permissões RLS, tentar usar user metadata se disponível
+      return 'start-quantico'; // Para agora sempre usar fallback em caso de erro RLS
+    }
 
     // NOVA LÓGICA DE PRIORIZAÇÃO: Hierarquia de planos (maior valor primeiro)
     // Prioridade: nexus-infinito > vortex-neural > start-quantico
@@ -126,11 +136,12 @@ export async function getUserPlan(supabase: any, userId: string): Promise<string
       console.log(`[getUserPlan] Plano de maior hierarquia encontrado: ${planCode}`);
       console.log(`[getUserPlan] Fonte: ${companyPlan === planCode ? 'company' : 'profile'}`);
     } else {
-      console.log(`[getUserPlan] Nenhum plano encontrado, usando fallback: ${planCode}`);
+      console.log(`[getUserPlan] Nenhum plano encontrado nas tabelas, usando fallback: ${planCode}`);
     }
 
   } catch (error) {
     console.error('[getUserPlan] Erro ao buscar plano do usuário:', error);
+    console.log(`[getUserPlan] Exception caught, usando fallback: ${planCode}`);
   }
 
   console.log(`[getUserPlan] RESULTADO FINAL: ${planCode}`);

@@ -128,7 +128,7 @@ serve(async (req) => {
 
     logStep("User authenticated successfully", { userId: user.id, method: authMethod });
 
-    // Generate a session token for the user
+    // Generate an access token for the user using admin API
     const { data: sessionData, error: sessionError } = await supabase.auth.admin.generateLink({
       type: 'magiclink',
       email: user.email!,
@@ -147,6 +147,17 @@ serve(async (req) => {
 
     logStep("Session generated successfully");
 
+    // Extract the access token from the magic link
+    const actionLink = sessionData.properties?.action_link;
+    let accessToken = null;
+    let refreshToken = null;
+    
+    if (actionLink) {
+      const url = new URL(actionLink);
+      accessToken = url.searchParams.get('access_token');
+      refreshToken = url.searchParams.get('refresh_token');
+    }
+
     return new Response(
       JSON.stringify({ 
         success: true, 
@@ -155,7 +166,12 @@ serve(async (req) => {
           email: user.email,
           user_metadata: user.user_metadata
         },
-        session_url: sessionData.properties?.action_link
+        session: {
+          access_token: accessToken,
+          refresh_token: refreshToken,
+          user: user
+        },
+        session_url: actionLink
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
