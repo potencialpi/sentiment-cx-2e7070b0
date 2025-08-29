@@ -44,14 +44,20 @@ export function getPlanDisplayName(planCode: string): string {
 export function getPlanAdminRoute(planCode: string): string {
   const normalizedCode = normalizePlanCode(planCode);
   
+  console.log(`[getPlanAdminRoute] Input: ${planCode} -> Normalized: ${normalizedCode}`);
+  
   switch (normalizedCode) {
     case 'start-quantico':
+      console.log(`[getPlanAdminRoute] Redirecting to: /admin/start`);
       return '/admin/start';
     case 'vortex-neural':
+      console.log(`[getPlanAdminRoute] Redirecting to: /admin/vortex`);
       return '/admin/vortex';
     case 'nexus-infinito':
+      console.log(`[getPlanAdminRoute] Redirecting to: /admin/nexus`);
       return '/admin/nexus';
     default:
+      console.log(`[getPlanAdminRoute] Unknown plan, redirecting to: /dashboard`);
       // Se não conseguir identificar o plano, redirecionar para dashboard
       // que fará a verificação correta do plano do usuário
       return '/dashboard';
@@ -95,28 +101,38 @@ export async function getUserPlan(supabase: any, userId: string): Promise<string
     const companyPlan = companyResult.data?.plan_name;
     const profilePlan = profileResult.data?.plan_name;
 
-    console.log('getUserPlan - Company plan:', companyPlan);
-    console.log('getUserPlan - Profile plan:', profilePlan);
+    console.log(`[getUserPlan] USER: ${userId}`);
+    console.log(`[getUserPlan] Company plan: ${companyPlan}`);
+    console.log(`[getUserPlan] Profile plan: ${profilePlan}`);
 
-    // Lógica de priorização:
-    // 1. Se o profile tem um plano diferente de 'start-quantico', usar ele (plano escolhido pelo usuário)
-    // 2. Caso contrário, usar o plano da company
-    // 3. Fallback para 'start-quantico'
-    if (profilePlan && profilePlan !== 'start-quantico') {
-      planCode = profilePlan;
-      console.log('getUserPlan - Usando plano do profile (escolhido pelo usuário):', planCode);
-    } else if (companyPlan) {
-      planCode = companyPlan;
-      console.log('getUserPlan - Usando plano da company:', planCode);
-    } else if (profilePlan) {
-      planCode = profilePlan;
-      console.log('getUserPlan - Usando plano do profile (fallback):', planCode);
+    // NOVA LÓGICA DE PRIORIZAÇÃO: Hierarquia de planos (maior valor primeiro)
+    // Prioridade: nexus-infinito > vortex-neural > start-quantico
+    const planHierarchy = {
+      'nexus-infinito': 3,
+      'vortex-neural': 2, 
+      'start-quantico': 1
+    };
+
+    const plans = [companyPlan, profilePlan].filter(Boolean);
+    
+    if (plans.length > 0) {
+      // Escolher o plano de maior hierarquia entre company e profile
+      planCode = plans.reduce((highest, current) => {
+        const currentValue = planHierarchy[current as keyof typeof planHierarchy] || 0;
+        const highestValue = planHierarchy[highest as keyof typeof planHierarchy] || 0;
+        return currentValue > highestValue ? current : highest;
+      });
+      
+      console.log(`[getUserPlan] Plano de maior hierarquia encontrado: ${planCode}`);
+      console.log(`[getUserPlan] Fonte: ${companyPlan === planCode ? 'company' : 'profile'}`);
+    } else {
+      console.log(`[getUserPlan] Nenhum plano encontrado, usando fallback: ${planCode}`);
     }
 
   } catch (error) {
-    console.error('Erro ao buscar plano do usuário:', error);
+    console.error('[getUserPlan] Erro ao buscar plano do usuário:', error);
   }
 
-  console.log('getUserPlan - Plano final determinado:', planCode);
+  console.log(`[getUserPlan] RESULTADO FINAL: ${planCode}`);
   return planCode;
 }
