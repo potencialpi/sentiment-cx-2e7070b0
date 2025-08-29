@@ -92,12 +92,12 @@ export async function getUserPlan(supabase: any, userId: string): Promise<string
         .from('companies')
         .select('plan_name')
         .eq('user_id', userId)
-        .single(),
+        .maybeSingle(),
       supabase
         .from('profiles')
         .select('plan_name')
         .eq('user_id', userId)
-        .single()
+        .maybeSingle()
     ]);
 
     const companyPlan = companyResult.data?.plan_name;
@@ -108,11 +108,43 @@ export async function getUserPlan(supabase: any, userId: string): Promise<string
     console.log(`[getUserPlan] Company result:`, { plan: companyPlan, error: companyError?.message });
     console.log(`[getUserPlan] Profile result:`, { plan: profilePlan, error: profileError?.message });
 
-    // Se houve erro de autenticação (401), logar e usar fallback
-    if (companyError?.code === '401' || profileError?.code === '401') {
-      console.warn(`[getUserPlan] RLS/Auth error detected - using authenticated user data fallback`);
-      // Para casos onde a sessão não tem permissões RLS, tentar usar user metadata se disponível
-      return 'start-quantico'; // Para agora sempre usar fallback em caso de erro RLS
+    // Se houve erro de autenticação (401/42501), usar fallback do user_metadata
+    if ((companyError?.code === '42501' || profileError?.code === '42501') || 
+        (companyError?.message?.includes('permission denied') || profileError?.message?.includes('permission denied'))) {
+      console.warn(`[getUserPlan] RLS/Auth error detected - using user_metadata fallback`);
+      
+      // Tentar obter dados da sessão atual para user_metadata
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const userMetadataPlan = session?.user?.user_metadata?.plan_name;
+        
+        if (userMetadataPlan) {
+          console.log(`[getUserPlan] Found plan in user_metadata: ${userMetadataPlan}`);
+          return normalizePlanCode(userMetadataPlan);
+        }
+      } catch (metadataError) {
+        console.warn(`[getUserPlan] Failed to get user metadata:`, metadataError);
+      }
+      
+      // Fallback: usar dados armazenados localmente do custom-login
+      try {
+        const fallbackData = localStorage.getItem('fallback_user_data');
+        if (fallbackData) {
+          const userData = JSON.parse(fallbackData);
+          const isDataFresh = (Date.now() - userData.timestamp) < (24 * 60 * 60 * 1000); // 24 horas
+          
+          if (isDataFresh && userData.user_id === userId && userData.plan_name) {
+            console.log(`[getUserPlan] Using fallback data from localStorage: ${userData.plan_name}`);
+            return normalizePlanCode(userData.plan_name);
+          }
+        }
+      } catch (fallbackError) {
+        console.warn(`[getUserPlan] Failed to use fallback data:`, fallbackError);
+      }
+      
+      // Se não conseguiu dos metadados, manter fallback
+      console.log(`[getUserPlan] Using final fallback: ${planCode}`);
+      return planCode;
     }
 
     // NOVA LÓGICA DE PRIORIZAÇÃO: Hierarquia de planos (maior valor primeiro)

@@ -160,38 +160,57 @@ export const signInSecurely = async (email: string, password: string) => {
       throw new Error(customAuthData?.error || 'Login failed');
     }
     
-    // 4. Se a autenticação customizada passou, usar os tokens retornados
-    if (customAuthData.session_url && customAuthData.session) {
-      console.log('[AUTH] Custom authentication successful, setting session');
+    // 4. Se a autenticação customizada passou, usar os dados do usuário
+    if (customAuthData.session_url && customAuthData.user) {
+      console.log('[AUTH] Custom authentication successful, creating session');
       
-      // Tentar estabelecer uma sessão válida no Supabase usando o access token
-      if (customAuthData.session.access_token && customAuthData.session.refresh_token) {
-        const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
-          access_token: customAuthData.session.access_token,
-          refresh_token: customAuthData.session.refresh_token
-        });
-        
-        if (sessionError) {
-          console.warn('[AUTH] Failed to set session with tokens, using fallback:', sessionError);
-        } else {
-          console.log('[AUTH] Session established successfully with tokens');
-          return { data: sessionData, error: null };
-        }
-      }
-      
-      // Fallback: criar dados de sessão básicos
+      // Criar uma "sessão" que inclui os dados do user_metadata
       const userData = {
         user: customAuthData.user,
         session: {
-          access_token: customAuthData.session.access_token || 'custom-auth-token',
+          access_token: 'custom-auth-token',
           user: customAuthData.user
         }
       };
       
-      console.log('[AUTH] Login successful with fallback session:', {
+      // Tentar setar uma sessão real se tokens estiverem disponíveis
+      if (customAuthData.session?.access_token && customAuthData.session?.refresh_token) {
+        try {
+          const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+            access_token: customAuthData.session.access_token,
+            refresh_token: customAuthData.session.refresh_token
+          });
+          
+          if (!sessionError && sessionData) {
+            console.log('[AUTH] Real session established successfully');
+            return { data: sessionData, error: null };
+          }
+        } catch (sessionErr) {
+          console.warn('[AUTH] Failed to establish real session:', sessionErr);
+        }
+      }
+      
+      console.log('[AUTH] Login successful with user metadata:', {
         userId: customAuthData.user.id,
-        email: customAuthData.user.email
+        email: customAuthData.user.email,
+        planFromMetadata: customAuthData.user.user_metadata?.plan_name
       });
+      
+      // Armazenar dados do usuário para fallback quando RLS falhar
+      if (customAuthData.user.user_metadata) {
+        try {
+          localStorage.setItem('fallback_user_data', JSON.stringify({
+            user_id: customAuthData.user.id,
+            email: customAuthData.user.email,
+            plan_name: customAuthData.user.user_metadata.plan_name,
+            company_name: customAuthData.user.user_metadata.company_name,
+            timestamp: Date.now()
+          }));
+          console.log('[AUTH] Fallback user data stored for RLS failures');
+        } catch (storageErr) {
+          console.warn('[AUTH] Failed to store fallback user data:', storageErr);
+        }
+      }
       
       return { data: userData, error: null };
     }
