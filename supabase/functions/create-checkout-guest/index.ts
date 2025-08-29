@@ -216,6 +216,37 @@ serve(async (req) => {
     
     logStep("Password hashed for storage", { originalLength: password.length, hashedLength: hashedPassword.length });
 
+    // Check for existing checkout sessions with the same email
+    const { data: existingSessions, error: checkError } = await supabase
+      .from("checkout_sessions")
+      .select("id, stripe_session_id, status, created_at")
+      .eq("email", email)
+      .eq("status", "pending")
+      .order("created_at", { ascending: false });
+
+    if (checkError) {
+      logStep("Error checking existing sessions", checkError);
+    } else if (existingSessions && existingSessions.length > 0) {
+      logStep("Found existing pending sessions for email", { 
+        email, 
+        count: existingSessions.length,
+        sessions: existingSessions.map(s => ({ id: s.id, stripe_session_id: s.stripe_session_id, created_at: s.created_at }))
+      });
+      
+      // Delete old pending sessions for this email to prevent duplicates
+      const { error: deleteError } = await supabase
+        .from("checkout_sessions")
+        .delete()
+        .eq("email", email)
+        .eq("status", "pending");
+        
+      if (deleteError) {
+        logStep("Error deleting old sessions", deleteError);
+      } else {
+        logStep("Deleted old pending sessions", { email, deletedCount: existingSessions.length });
+      }
+    }
+
     // Store checkout session data in Supabase
     const { error: insertError } = await supabase
       .from("checkout_sessions")

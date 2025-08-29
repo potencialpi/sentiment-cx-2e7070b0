@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Checkout</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <h1>Debug Checkout Function</h1>
+    <button onclick="testCheckout()">Test Checkout</button>
+    <div id="result"></div>
+
+    <script>
+        const supabaseUrl = 'https://mjuxvppexydaeuoernxa.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1qdXh2cHBleHlkYWV1b2VybnhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM0NDAzNjYsImV4cCI6MjA2OTAxNjM2Nn0.ECVfL7CLqJj4wSPBY7g5yu_zdfBqbUTCK18MAXHjeTg';
+        
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        async function testCheckout() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Testing...';
+
+            try {
+                const testData = {
+                    email: 'test@example.com',
+                    companyName: 'Test Company',
+                    phoneNumber: '+5511999999999',
+                    password: 'testpassword123',
+                    planId: 'basic',
+                    billingType: 'monthly',
+                    couponCode: ''
+                };
+
+                console.log('Sending data:', testData);
+
+                const { data, error } = await supabase.functions.invoke('create-checkout-guest', {
+                    body: testData
+                });
+
+                console.log('Response data:', data);
+                console.log('Response error:', error);
+
+                if (error) {
+                    resultDiv.innerHTML = `
+                        <h3>Error Details:</h3>
+                        <p><strong>Message:</strong> ${error.message}</p>
+                        <p><strong>Context:</strong> ${JSON.stringify(error.context || {}, null, 2)}</p>
+                        <pre>${JSON.stringify(error, null, 2)}</pre>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <h3>Success:</h3>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+            } catch (err) {
+                console.error('Caught error:', err);
+                resultDiv.innerHTML = `
+                    <h3>Caught Error:</h3>
+                    <p><strong>Message:</strong> ${err.message}</p>
+                    <pre>${JSON.stringify(err, null, 2)}</pre>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

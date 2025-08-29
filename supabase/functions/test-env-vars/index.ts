@@ -1,53 +1,70 @@
-import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
 };
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
-    
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+    const frontendUrl = Deno.env.get("FRONTEND_URL");
+
     const envVars = {
-      STRIPE_SECRET_KEY: {
-        exists: !!stripeKey,
-        length: stripeKey ? stripeKey.length : 0,
-        firstChars: stripeKey ? stripeKey.substring(0, 10) + "..." : "not set"
-      },
+      NODE_ENV: Deno.env.get("NODE_ENV"),
       SUPABASE_URL: {
         exists: !!supabaseUrl,
-        value: supabaseUrl || "not set"
+        value: supabaseUrl ? `${supabaseUrl.substring(0, 20)}...` : null
       },
-      SUPABASE_ANON_KEY: {
-        exists: !!supabaseAnonKey,
-        length: supabaseAnonKey ? supabaseAnonKey.length : 0,
-        firstChars: supabaseAnonKey ? supabaseAnonKey.substring(0, 10) + "..." : "not set"
+      SUPABASE_SERVICE_ROLE_KEY: {
+        exists: !!supabaseServiceKey,
+        value: supabaseServiceKey ? `${supabaseServiceKey.substring(0, 20)}...` : null
+      },
+      STRIPE_SECRET_KEY: {
+        exists: !!stripeKey,
+        value: stripeKey ? `${stripeKey.substring(0, 20)}...` : null
+      },
+      FRONTEND_URL: {
+        exists: !!frontendUrl,
+        value: frontendUrl
       }
     };
 
-    return new Response(JSON.stringify({
-      success: true,
-      environmentVariables: envVars,
-      timestamp: new Date().toISOString()
-    }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 200,
-    });
+    const missingVars = [];
+    if (!supabaseUrl) missingVars.push("SUPABASE_URL");
+    if (!supabaseServiceKey) missingVars.push("SUPABASE_SERVICE_ROLE_KEY");
+    if (!stripeKey) missingVars.push("STRIPE_SECRET_KEY");
 
-  } catch (error) {
-    return new Response(JSON.stringify({
-      success: false,
-      error: error instanceof Error ? error.message : String(error)
-    }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 200,
-    });
+    return new Response(
+      JSON.stringify({
+        status: "Environment variables check",
+        environment_variables: envVars,
+        missing_variables: missingVars,
+        all_required_present: missingVars.length === 0
+      }),
+      {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      }
+    );
+
+  } catch (error: any) {
+    return new Response(
+      JSON.stringify({ 
+        error: "Test function error", 
+        message: error.message 
+      }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      }
+    );
   }
 });

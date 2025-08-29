@@ -1,0 +1,28 @@
+{
+  "timestamp": "2025-08-29T16:23:21.549Z",
+  "user_id": "c1d9c62f-f181-4a97-8fe7-d357d740f599",
+  "user_email": "anderson@potencialpi.com.br",
+  "issues_found": 2,
+  "issues": [
+    {
+      "type": "SECURITY_CRITICAL",
+      "field": "user_metadata.original_password_hash",
+      "problem": "Hash de senha exposto nos metadados",
+      "current": "050e063bf779e29eaa724e268c5df6f525e07ecb9762968558751cfc53db628b",
+      "fix": "Remover campo completamente"
+    },
+    {
+      "type": "COMPATIBILITY",
+      "field": "user_metadata.plan_id",
+      "problem": "Plano inexistente no sistema",
+      "current": "nexus-infinito",
+      "fix": "Alterar para nexus-premium"
+    }
+  ],
+  "recommendations": [
+    "Executar fix-user-json-issues.cjs para correção automática",
+    "Verificar outros usuários com problemas similares",
+    "Implementar validação para evitar problemas futuros",
+    "Auditar sistema de criação de usuários"
+  ]
+}

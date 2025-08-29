@@ -50,7 +50,7 @@ serve(async (req) => {
     
     logStep("Password hashed for comparison", { hashedLength: hashedPassword.length });
 
-    // Check if user exists in checkout_sessions with matching email and password hash
+    // First, try to authenticate via checkout_sessions (original method)
     const { data: checkoutData, error: checkoutError } = await supabase
       .from("checkout_sessions")
       .select("*")
@@ -58,38 +58,75 @@ serve(async (req) => {
       .eq("password_hash", hashedPassword)
       .single();
 
-    if (checkoutError || !checkoutData) {
-      logStep("Authentication failed", { error: checkoutError?.message });
-      return new Response(
-        JSON.stringify({ success: false, error: "Invalid email or password" }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    let user = null;
+    let authMethod = "";
+
+    if (!checkoutError && checkoutData) {
+      // User found in checkout_sessions - use original method
+      logStep("Authentication via checkout_sessions successful");
+      authMethod = "checkout_sessions";
+      
+      // Get the user from Supabase Auth using email
+      const { data: { users }, error: getUserError } = await supabase.auth.admin.listUsers();
+      
+      if (getUserError) {
+        logStep("Error fetching users", { error: getUserError.message });
+        return new Response(
+          JSON.stringify({ success: false, error: "Authentication error" }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      user = users.find(u => u.email === email);
+      
+      if (!user) {
+        logStep("User not found in auth system", { email });
+        return new Response(
+          JSON.stringify({ success: false, error: "User not found" }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    } else {
+      // User not found in checkout_sessions - try direct Supabase Auth
+      logStep("User not found in checkout_sessions, trying direct auth", { checkoutError: checkoutError?.message });
+      
+      try {
+        // Try direct authentication with Supabase Auth
+        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+          email,
+          password
+        });
+
+        if (authError || !authData.user) {
+          logStep("Direct authentication failed", { error: authError?.message });
+          return new Response(
+            JSON.stringify({ success: false, error: "Invalid email or password" }),
+            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        user = authData.user;
+        authMethod = "direct_auth";
+        logStep("Direct authentication successful", { userId: user.id });
+        
+      } catch (directAuthError) {
+        logStep("Direct authentication error", { error: directAuthError });
+        return new Response(
+          JSON.stringify({ success: false, error: "Invalid email or password" }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
-    logStep("Password hash verified successfully");
-
-    // Get the user from Supabase Auth using email
-    const { data: { users }, error: getUserError } = await supabase.auth.admin.listUsers();
-    
-    if (getUserError) {
-      logStep("Error fetching users", { error: getUserError.message });
-      return new Response(
-        JSON.stringify({ success: false, error: "Authentication error" }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const user = users.find(u => u.email === email);
-    
     if (!user) {
-      logStep("User not found in auth system", { email });
+      logStep("No user found after all authentication attempts");
       return new Response(
-        JSON.stringify({ success: false, error: "User not found" }),
+        JSON.stringify({ success: false, error: "Authentication failed" }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    logStep("User found in auth system", { userId: user.id });
+    logStep("User authenticated successfully", { userId: user.id, method: authMethod });
 
     // Generate a session token for the user
     const { data: sessionData, error: sessionError } = await supabase.auth.admin.generateLink({

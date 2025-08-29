@@ -1,20 +1,34 @@
 export const planDisplayNames = {
   'start-quantico': 'Start Quântico',
-  'vortex-neural': 'Vortex Neural', 
-  'nexus-infinito': 'Nexus Infinito'
+  'vortex-neural': 'Vortex Neural',
+  'vortex-pro': 'Vortex Neural', // Alias para vortex-neural
+  'nexus-infinito': 'Nexus Infinito',
+  'basico': 'Start Quântico' // Alias para start-quantico
 } as const;
 
 export type PlanCode = keyof typeof planDisplayNames;
 
-// Função para normalizar códigos de plano (converte underscore para hífen)
+// Função para normalizar códigos de plano (converte underscore para hífen e mapeia aliases)
 export function normalizePlanCode(planCode: string): string {
   if (!planCode) return 'start-quantico';
   
   // Converter underscores para hífens para manter consistência
   const normalized = planCode.replace(/_/g, '-');
   
-  // Verificar se é um código válido
-  if (normalized in planDisplayNames) {
+  // Mapear aliases para planos principais
+  const planMapping: Record<string, string> = {
+    'vortex-pro': 'vortex-neural',
+    'basico': 'start-quantico'
+  };
+  
+  // Se é um alias, retornar o plano principal
+  if (planMapping[normalized]) {
+    return planMapping[normalized];
+  }
+  
+  // Verificar se é um código válido dos planos principais
+  const mainPlans = ['start-quantico', 'vortex-neural', 'nexus-infinito'];
+  if (mainPlans.includes(normalized)) {
     return normalized;
   }
   
@@ -64,31 +78,45 @@ export async function getUserPlan(supabase: any, userId: string): Promise<string
   let planCode = 'start-quantico'; // fallback padrão
 
   try {
-    // Tentar buscar o plano na tabela companies primeiro
-    const { data: companyData } = await supabase
-      .from('companies')
-      .select('plan_name')
-      .eq('user_id', userId)
-      .single();
-
-    if (companyData?.plan_name) {
-      planCode = companyData.plan_name;
-    } else {
-      // Se não encontrar na companies, tentar na profiles
-      const { data: profileData } = await supabase
-        .from('profiles')
+    // Buscar planos em ambas as tabelas
+    const [companyResult, profileResult] = await Promise.all([
+      supabase
+        .from('companies')
         .select('plan_name')
         .eq('user_id', userId)
-        .single();
-      
-      if (profileData?.plan_name) {
-        planCode = profileData.plan_name;
-      }
+        .single(),
+      supabase
+        .from('profiles')
+        .select('plan_name')
+        .eq('id', userId)
+        .single()
+    ]);
+
+    const companyPlan = companyResult.data?.plan_name;
+    const profilePlan = profileResult.data?.plan_name;
+
+    console.log('getUserPlan - Company plan:', companyPlan);
+    console.log('getUserPlan - Profile plan:', profilePlan);
+
+    // Lógica de priorização:
+    // 1. Se o profile tem um plano diferente de 'start-quantico', usar ele (plano escolhido pelo usuário)
+    // 2. Caso contrário, usar o plano da company
+    // 3. Fallback para 'start-quantico'
+    if (profilePlan && profilePlan !== 'start-quantico') {
+      planCode = profilePlan;
+      console.log('getUserPlan - Usando plano do profile (escolhido pelo usuário):', planCode);
+    } else if (companyPlan) {
+      planCode = companyPlan;
+      console.log('getUserPlan - Usando plano da company:', planCode);
+    } else if (profilePlan) {
+      planCode = profilePlan;
+      console.log('getUserPlan - Usando plano do profile (fallback):', planCode);
     }
+
   } catch (error) {
     console.error('Erro ao buscar plano do usuário:', error);
   }
 
-  console.log('getUserPlan - Plano encontrado:', planCode);
+  console.log('getUserPlan - Plano final determinado:', planCode);
   return planCode;
 }
