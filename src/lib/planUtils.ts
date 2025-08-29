@@ -88,7 +88,7 @@ export async function getUserPlan(supabase: any, userId: string): Promise<string
       supabase
         .from('profiles')
         .select('plan_name')
-        .eq('id', userId)
+        .eq('user_id', userId)
         .single()
     ]);
 
