@@ -55,38 +55,16 @@ export interface ProcessedRealData {
 export async function fetchRealSurveyData(surveyId: string): Promise<ProcessedRealData> {
   console.log('🔍 Iniciando fetchRealSurveyData para survey:', surveyId);
   
-  // Verificação robusta de autenticação com retry
-  let session = null;
-  let retries = 3;
+  // Verificação simples de autenticação
+  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
   
-  while (retries > 0 && !session) {
-    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-    
-    if (sessionError) {
-      console.error('❌ Erro ao obter sessão:', sessionError);
-      if (retries === 1) {
-        throw new Error('Erro de autenticação: ' + sessionError.message);
-      }
-      retries--;
-      await new Promise(resolve => setTimeout(resolve, 500));
-      continue;
-    }
-    
-    session = sessionData.session;
-    
-    if (!session || !session.user) {
-      console.log(`⚠️ Sessão não encontrada, tentativas restantes: ${retries - 1}`);
-      retries--;
-      if (retries > 0) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
-    } else {
-      break;
-    }
+  if (sessionError) {
+    console.error('❌ Erro ao obter sessão:', sessionError);
+    throw new Error('Erro de autenticação: ' + sessionError.message);
   }
   
   if (!session || !session.user) {
-    console.error('❌ Usuário não autenticado após todas as tentativas');
+    console.error('❌ Usuário não autenticado');
     throw new Error('Você precisa estar logado para acessar estes dados. Faça login e tente novamente.');
   }
   
@@ -113,34 +91,16 @@ export async function fetchRealSurveyData(surveyId: string): Promise<ProcessedRe
 
   try {
 
-    // Buscar respostas da pesquisa com retry se necessário
+    // Buscar respostas da pesquisa
     console.log('📊 Buscando respostas da survey...');
-    let responses = null;
-    let responsesError = null;
-    
-    for (let attempt = 1; attempt <= 2; attempt++) {
-      const result = await supabase
-        .from('responses')
-        .select('*')
-        .eq('survey_id', surveyId)
-        .order('created_at', { ascending: true });
-        
-      responses = result.data;
-      responsesError = result.error;
-      
-      if (!responsesError) break;
-      
-      console.log(`⚠️ Tentativa ${attempt} falhou, erro:`, responsesError);
-      if (attempt === 1) {
-        // Refresh da sessão antes da segunda tentativa
-        await supabase.auth.refreshSession();
-        await new Promise(resolve => setTimeout(resolve, 500));
-      }
-    }
+    const { data: responses, error: responsesError } = await supabase
+      .from('responses')
+      .select('*')
+      .eq('survey_id', surveyId)
+      .order('created_at', { ascending: true });
 
     if (responsesError) {
-      console.error('❌ Erro ao buscar respostas após todas as tentativas:', responsesError);
-      // Verificar se é erro de permissão
+      console.error('❌ Erro ao buscar respostas:', responsesError);
       if (responsesError.message.includes('permission denied') || 
           responsesError.message.includes('RLS') ||
           responsesError.code === 'PGRST116') {

@@ -186,21 +186,25 @@ export const NexusInfinitoAnalytics: React.FC<{ surveyId: string }> = ({ surveyI
   const [brandIndex, setBrandIndex] = useState<BrandIndex | null>(null);
   const [sentimentAnalysis, setSentimentAnalysis] = useState<SentimentAnalysis | null>(null);
 
-  const [authRetries, setAuthRetries] = useState(0);
-
-  // Hook para verificar autenticação
+  // Hook unificado para autenticação e carregamento de dados
   useEffect(() => {
     let isMounted = true;
 
-    const checkAuth = async () => {
+    const initializeComponent = async () => {
+      if (!surveyId) return;
+      
       try {
-        // Aguardar um pouco para garantir que a sessão esteja estabelecida
-        await new Promise(resolve => setTimeout(resolve, 100));
+        // Primeira etapa: Verificar autenticação
+        setIsAuthenticating(true);
+        setError(null);
         
-        const { data: { session }, error } = await supabase.auth.getSession();
+        // Aguardar para garantir que a sessão esteja estabelecida
+        await new Promise(resolve => setTimeout(resolve, 300));
         
-        if (error) {
-          console.error('❌ Erro ao verificar sessão:', error);
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error('❌ Erro ao verificar sessão:', sessionError);
           if (isMounted) {
             setIsAuthenticated(false);
             setIsAuthenticating(false);
@@ -211,29 +215,86 @@ export const NexusInfinitoAnalytics: React.FC<{ surveyId: string }> = ({ surveyI
         
         console.log('📋 Sessão atual:', session ? `Encontrada (${session.user?.id})` : 'Não encontrada');
         
+        if (!session?.user) {
+          if (isMounted) {
+            setIsAuthenticated(false);
+            setIsAuthenticating(false);
+            setError('Você precisa estar logado para acessar estes dados. Faça login e tente novamente.');
+          }
+          return;
+        }
+        
+        // Segunda etapa: Verificar se o token está funcionando
+        const { error: testError } = await supabase
+          .from('surveys')
+          .select('id')
+          .limit(1);
+          
+        if (testError && testError.message.includes('permission denied')) {
+          console.log('⚠️ Token não está funcionando, fazendo refresh...');
+          await supabase.auth.refreshSession();
+          await new Promise(resolve => setTimeout(resolve, 200));
+        }
+        
         if (isMounted) {
-          if (session?.user) {
-            // Verificação adicional: tentar uma consulta simples para verificar se o token está funcionando
-            const { error: testError } = await supabase
-              .from('surveys')
-              .select('id')
-              .limit(1);
+          setIsAuthenticated(true);
+          setIsAuthenticating(false);
+          
+          // Terceira etapa: Carregar dados da pesquisa
+          console.log('📊 Iniciando carregamento de dados para survey:', surveyId);
+          setLoading(true);
+          
+          try {
+            const realData = await fetchRealSurveyData(surveyId);
+            
+            if (isMounted) {
+              setRealData(realData);
               
-            if (testError && testError.message.includes('permission denied')) {
-              console.log('⚠️ Token não está funcionando, tentando refresh...');
-              await supabase.auth.refreshSession();
+              // Converter dados para formato compatível com Nexus
+              const surveyResponses = realData.responses.map(response => ({
+                id: response.id,
+                surveyId: response.survey_id,
+                respondentId: response.respondent_id,
+                responses: response.responses || {},
+                sentimentScore: response.sentiment_score,
+                sentimentCategory: response.sentiment_category,
+                createdAt: response.created_at
+              }));
+              
+              setResponses(surveyResponses);
+              
+              // Executar todas as análises em paralelo
+              await Promise.all([
+                calculateStatisticalMetrics(surveyResponses),
+                calculateCorrelations(surveyResponses),
+                performANOVA(surveyResponses),
+                performClustering(surveyResponses),
+                performConjointAnalysis(surveyResponses),
+                generateTimeSeriesAnalysis(surveyResponses),
+                buildPredictiveModels(surveyResponses),
+                calculateBrandIndex(surveyResponses),
+                performSentimentAnalysis(surveyResponses)
+              ]);
+            }
+          } catch (dataError: any) {
+            console.error('❌ Erro ao carregar dados:', dataError);
+            if (isMounted) {
+              const errorMessage = dataError.message || 'Erro ao carregar dados da pesquisa';
+              setError(errorMessage);
+            }
+          } finally {
+            if (isMounted) {
+              setLoading(false);
             }
           }
-          
-          setIsAuthenticated(!!session?.user);
-          setIsAuthenticating(false);
         }
+        
       } catch (error) {
-        console.error('❌ Erro na verificação de autenticação:', error);
+        console.error('❌ Erro na inicialização:', error);
         if (isMounted) {
           setIsAuthenticated(false);
           setIsAuthenticating(false);
-          setError('Erro ao verificar autenticação. Tente fazer login novamente.');
+          setError('Erro ao inicializar componente. Tente recarregar a página.');
         }
       }
     };
@@ -243,17 +304,14 @@ export const NexusInfinitoAnalytics: React.FC<{ surveyId: string }> = ({ surveyI
       console.log('🔄 Mudança de autenticação:', event, session ? 'Logado' : 'Deslogado');
       
       if (isMounted) {
-        if (event === 'SIGNED_IN' && session) {
-          // Aguardar um pouco mais quando logar para garantir que tudo esteja pronto
-          await new Promise(resolve => setTimeout(resolve, 200));
-        }
-        
-        setIsAuthenticated(!!session?.user);
-        setIsAuthenticating(false);
-        setAuthRetries(0);
-        
-        // Se o usuário fez logout, limpar dados
-        if (!session?.user) {
+        if (session?.user) {
+          setIsAuthenticated(true);
+          setIsAuthenticating(false);
+          setError(null);
+          // Dados serão carregados pelo initializeComponent quando necessário
+        } else {
+          setIsAuthenticated(false);
+          setIsAuthenticating(false);
           setRealData(null);
           setResponses([]);
           setError('Sessão expirada. Faça login novamente.');
@@ -261,90 +319,13 @@ export const NexusInfinitoAnalytics: React.FC<{ surveyId: string }> = ({ surveyI
       }
     });
 
-    checkAuth();
+    initializeComponent();
 
     return () => {
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, []);
-
-  // Carregar dados da pesquisa
-  useEffect(() => {
-    const loadSurveyData = async () => {
-      if (!surveyId || !isAuthenticated || authRetries >= 3) return;
-      
-      setLoading(true);
-      setError(null);
-      
-      try {
-        console.log('📊 Iniciando carregamento de dados para survey:', surveyId);
-        const realData = await fetchRealSurveyData(surveyId);
-        setRealData(realData);
-        
-        // Converter dados para formato compatível com Nexus
-        const surveyResponses = realData.responses.map(response => ({
-          id: response.id,
-          surveyId: response.survey_id,
-          respondentId: response.respondent_id,
-          responses: response.responses || {},
-          sentimentScore: response.sentiment_score,
-          sentimentCategory: response.sentiment_category,
-          createdAt: response.created_at
-        }));
-        
-        setResponses(surveyResponses);
-        setAuthRetries(0); // Reset retries on success
-        
-        // Executar todas as análises em paralelo
-        await Promise.all([
-          calculateStatisticalMetrics(surveyResponses),
-          calculateCorrelations(surveyResponses),
-          performANOVA(surveyResponses),
-          performClustering(surveyResponses),
-          performConjointAnalysis(surveyResponses),
-          generateTimeSeriesAnalysis(surveyResponses),
-          buildPredictiveModels(surveyResponses),
-          calculateBrandIndex(surveyResponses),
-          performSentimentAnalysis(surveyResponses)
-        ]);
-
-      } catch (err: any) {
-        console.error('❌ Erro ao carregar dados:', err);
-        const errorMessage = err.message || 'Erro ao carregar dados da pesquisa';
-        
-        // Se for erro de autenticação e ainda temos tentativas, tentar novamente
-        if (errorMessage.includes('logado') && authRetries < 2) {
-          console.log(`🔄 Tentando novamente... (tentativa ${authRetries + 1})`);
-          setAuthRetries(prev => prev + 1);
-          
-          // Aguardar um pouco e tentar refresh da sessão
-          setTimeout(async () => {
-            await supabase.auth.refreshSession();
-            // Recarregar dados será feito pelo useEffect quando authRetries mudar
-          }, 1000);
-          
-          return;
-        }
-        
-        // Tratar diferentes tipos de erro
-        if (errorMessage.includes('não autenticado') || errorMessage.includes('Acesso negado')) {
-          setError('Você precisa estar logado para acessar estes dados. Faça login e tente novamente.');
-        } else if (errorMessage.includes('permission denied')) {
-          setError('Acesso negado. Verifique se você tem permissão para acessar esta pesquisa.');
-        } else {
-          setError(errorMessage);
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    // Só carregar dados se estiver autenticado e não estiver verificando autenticação
-    if (surveyId && isAuthenticated && !isAuthenticating) {
-      loadSurveyData();
-    }
-  }, [surveyId, isAuthenticated, isAuthenticating, authRetries]);
+  }, [surveyId]);
 
   // Função para calcular métricas estatísticas básicas
   const calculateStatisticalMetrics = async (data: SurveyResponseNexus[]) => {
@@ -754,16 +735,13 @@ export const NexusInfinitoAnalytics: React.FC<{ surveyId: string }> = ({ surveyI
     return convertRealDataToAnalysisFormat(realData);
   }, [realData]);
 
-  // Refresh function
+  // Função de refresh simplificada
   const handleRefresh = async () => {
-    // Verificar autenticação antes de atualizar
-    if (!isAuthenticated) {
-      setError('Você precisa estar logado para atualizar os dados.');
-      return;
-    }
+    if (!isAuthenticated || refreshing) return;
 
     setRefreshing(true);
     setError(null);
+    console.log('🔄 Refresh manual iniciado...');
     
     try {
       const data = await fetchRealSurveyData(surveyId);
