@@ -88,6 +88,28 @@ serve(async (req) => {
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     const passwordHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 
+    // Clean up expired sessions for this email first
+    const { error: cleanupError } = await supabaseService
+      .from('checkout_sessions')
+      .delete()
+      .eq('email', email)
+      .lt('expires_at', new Date().toISOString());
+
+    if (cleanupError) {
+      logStep("Warning: Could not clean expired sessions", cleanupError);
+    }
+
+    // Delete any pending sessions for this email
+    const { error: deletePendingError } = await supabaseService
+      .from('checkout_sessions')
+      .delete()
+      .eq('email', email)
+      .eq('status', 'pending');
+
+    if (deletePendingError) {
+      logStep("Warning: Could not delete pending sessions", deletePendingError);
+    }
+
     // Store checkout session data temporarily
     const { error: insertError } = await supabaseService
       .from('checkout_sessions')
