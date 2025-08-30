@@ -136,7 +136,7 @@ const CustomLabel = ({ x, y, width, height, value, orientation }: any) => {
       y={y - 5}
       fill="hsl(var(--muted-foreground))"
       textAnchor="middle"
-      dominantBaseline="bottom"
+      dominantBaseline="middle"
       fontSize={12}
       fontWeight={500}
     >

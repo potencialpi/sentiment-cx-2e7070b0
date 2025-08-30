@@ -2,7 +2,7 @@ import Stripe from 'stripe';
 
 // Inicializar Stripe com a chave secreta
 const stripe = new Stripe(import.meta.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2025-07-30.basil',
+  apiVersion: '2025-08-27.basil',
 });
 
 // Função para criar sessão de checkout

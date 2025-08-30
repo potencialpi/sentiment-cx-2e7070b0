@@ -76,16 +76,17 @@ export const useSurveyManager = (): UseSurveyManagerReturn => {
   const fetchActiveSurveys = useCallback(async () => {
     try {
       setIsLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
       
-      if (!user) {
-        toast({
-          title: "Erro",
-          description: "Usuário não autenticado",
-          variant: "destructive"
-        });
+      // Verificar se há sessão ativa primeiro
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.user) {
+        console.warn("Usuário não autenticado - não é possível buscar pesquisas");
+        setActiveSurveys([]);
         return;
       }
+      
+      const user = session.user;
 
       const { data: surveys, error } = await supabase
         .from('surveys')
@@ -142,15 +143,18 @@ export const useSurveyManager = (): UseSurveyManagerReturn => {
         return;
       }
 
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      // Verificar se há sessão ativa
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
         toast({
           title: "Erro",
-          description: "Usuário não autenticado",
+          description: "Usuário não autenticado. Faça login novamente.",
           variant: "destructive"
         });
         return;
       }
+      
+      const user = session.user;
 
       // Obter informações do plano
       const userPlan = await getUserPlan(user.id, 'start-quantico');
