@@ -54,6 +54,20 @@ export interface ProcessedRealData {
  */
 export async function fetchRealSurveyData(surveyId: string): Promise<ProcessedRealData> {
   try {
+    // Verificar se o usuário está autenticado
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    
+    if (sessionError) {
+      throw new Error(`Erro de autenticação: ${sessionError.message}`);
+    }
+    
+    if (!session || !session.user) {
+      throw new Error('Usuário não autenticado. Faça login para acessar os dados.');
+    }
+
+    // Aguardar um momento para garantir que a sessão está estabelecida
+    await new Promise(resolve => setTimeout(resolve, 100));
+
     // Buscar respostas da pesquisa
     const { data: responses, error: responsesError } = await supabase
       .from('responses')
@@ -62,6 +76,12 @@ export async function fetchRealSurveyData(surveyId: string): Promise<ProcessedRe
       .order('created_at', { ascending: true });
 
     if (responsesError) {
+      // Verificar se é erro de permissão
+      if (responsesError.message.includes('permission denied') || 
+          responsesError.message.includes('RLS') ||
+          responsesError.code === 'PGRST116') {
+        throw new Error('Acesso negado. Verifique se você está logado e tem permissão para acessar esta pesquisa.');
+      }
       throw new Error(`Erro ao buscar respostas: ${responsesError.message}`);
     }
 

@@ -24,6 +24,7 @@ import {
   Cpu
 } from 'lucide-react';
 import { fetchRealSurveyData, convertRealDataToAnalysisFormat, ProcessedRealData } from '@/utils/realDataFetcher';
+import { supabase } from '@/integrations/supabase/client';
 
 // Interfaces específicas para Nexus Infinito
 interface SurveyResponseNexus {
@@ -167,6 +168,8 @@ export const NexusInfinitoAnalytics: React.FC<{ surveyId: string }> = ({ surveyI
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [isAuthenticating, setIsAuthenticating] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   
   // Estados dos dados
   const [responses, setResponses] = useState<SurveyResponseNexus[]>([]);
@@ -183,10 +186,55 @@ export const NexusInfinitoAnalytics: React.FC<{ surveyId: string }> = ({ surveyI
   const [brandIndex, setBrandIndex] = useState<BrandIndex | null>(null);
   const [sentimentAnalysis, setSentimentAnalysis] = useState<SentimentAnalysis | null>(null);
 
+  // Hook para verificar autenticação
+  useEffect(() => {
+    let isMounted = true;
+
+    const checkAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (isMounted) {
+          setIsAuthenticated(!!session?.user);
+          setIsAuthenticating(false);
+        }
+      } catch (error) {
+        console.error('Erro ao verificar autenticação:', error);
+        if (isMounted) {
+          setIsAuthenticated(false);
+          setIsAuthenticating(false);
+          setError('Erro ao verificar autenticação. Tente fazer login novamente.');
+        }
+      }
+    };
+
+    // Configurar listener para mudanças de autenticação
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (isMounted) {
+        setIsAuthenticated(!!session?.user);
+        setIsAuthenticating(false);
+        
+        // Se o usuário fez logout, limpar dados
+        if (!session?.user) {
+          setRealData(null);
+          setResponses([]);
+          setError('Sessão expirada. Faça login novamente.');
+        }
+      }
+    });
+
+    checkAuth();
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
   // Carregar dados da pesquisa
   useEffect(() => {
     const loadSurveyData = async () => {
-      if (!surveyId) return;
+      if (!surveyId || !isAuthenticated) return;
       
       setLoading(true);
       setError(null);
@@ -221,18 +269,27 @@ export const NexusInfinitoAnalytics: React.FC<{ surveyId: string }> = ({ surveyI
           performSentimentAnalysis(surveyResponses)
         ]);
 
-      } catch (err) {
+      } catch (err: any) {
         console.error('Erro ao carregar dados da pesquisa:', err);
-        setError('Erro ao carregar dados da pesquisa. Tente novamente.');
+        
+        // Tratar diferentes tipos de erro
+        if (err.message?.includes('não autenticado') || err.message?.includes('Acesso negado')) {
+          setError('Você precisa estar logado para acessar estes dados. Faça login e tente novamente.');
+        } else if (err.message?.includes('permission denied')) {
+          setError('Acesso negado. Verifique se você tem permissão para acessar esta pesquisa.');
+        } else {
+          setError(err.message || 'Erro ao carregar dados da pesquisa. Tente novamente.');
+        }
       } finally {
         setLoading(false);
       }
     };
 
-    if (surveyId) {
+    // Só carregar dados se estiver autenticado e não estiver verificando autenticação
+    if (surveyId && isAuthenticated && !isAuthenticating) {
       loadSurveyData();
     }
-  }, [surveyId]);
+  }, [surveyId, isAuthenticated, isAuthenticating]);
 
   // Função para calcular métricas estatísticas básicas
   const calculateStatisticalMetrics = async (data: SurveyResponseNexus[]) => {
@@ -644,18 +701,84 @@ export const NexusInfinitoAnalytics: React.FC<{ surveyId: string }> = ({ surveyI
 
   // Refresh function
   const handleRefresh = async () => {
+    // Verificar autenticação antes de atualizar
+    if (!isAuthenticated) {
+      setError('Você precisa estar logado para atualizar os dados.');
+      return;
+    }
+
     setRefreshing(true);
+    setError(null);
+    
     try {
       const data = await fetchRealSurveyData(surveyId);
       setRealData(data);
-      setError(null);
-    } catch (err) {
+      
+      // Re-executar análises
+      const surveyResponses = data.responses.map(response => ({
+        id: response.id,
+        surveyId: response.survey_id,
+        respondentId: response.respondent_id,
+        responses: response.responses || {},
+        sentimentScore: response.sentiment_score,
+        sentimentCategory: response.sentiment_category,
+        createdAt: response.created_at
+      }));
+      
+      setResponses(surveyResponses);
+      
+      // Executar análises em paralelo
+      await Promise.all([
+        calculateStatisticalMetrics(surveyResponses),
+        calculateCorrelations(surveyResponses),
+        performANOVA(surveyResponses),
+        performClustering(surveyResponses),
+        performConjointAnalysis(surveyResponses),
+        generateTimeSeriesAnalysis(surveyResponses),
+        buildPredictiveModels(surveyResponses),
+        calculateBrandIndex(surveyResponses),
+        performSentimentAnalysis(surveyResponses)
+      ]);
+      
+    } catch (err: any) {
       console.error('Erro ao atualizar dados:', err);
-      setError('Erro ao atualizar dados da pesquisa.');
+      
+      if (err.message?.includes('não autenticado') || err.message?.includes('Acesso negado')) {
+        setError('Sessão expirada. Faça login novamente para acessar os dados.');
+      } else {
+        setError(err.message || 'Erro ao atualizar dados da pesquisa.');
+      }
     } finally {
       setRefreshing(false);
     }
   };
+
+  // Estado de verificação de autenticação
+  if (isAuthenticating) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="text-muted-foreground">Verificando autenticação...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Estado de não autenticado
+  if (!isAuthenticated) {
+    return (
+      <Alert className="m-4">
+        <AlertTriangle className="h-4 w-4" />
+        <AlertDescription>
+          Você precisa estar logado para acessar as análises avançadas. 
+          <Button variant="link" className="p-0 h-auto ml-2" onClick={() => window.location.href = '/login'}>
+            Fazer login
+          </Button>
+        </AlertDescription>
+      </Alert>
+    );
+  }
 
   if (loading) {
     return (
