@@ -219,7 +219,7 @@ export async function checkUserSubscription(userId: string) {
     const { data: user, error } = await supabase
       .from('profiles')
       .select('subscription_status, plan_type, billing_type')
-      .eq('user_id', userId)
+      .eq('id', userId)
       .single();
 
     if (error) {

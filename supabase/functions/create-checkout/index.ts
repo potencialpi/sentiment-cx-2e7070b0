@@ -1,5 +1,5 @@
-import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
-import Stripe from "https://esm.sh/stripe@14.25.0";
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
@@ -42,23 +42,32 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated or email not available");
     logStep("User authenticated", { userId: user.id, email: user.email });
 
-    const { planId, billingType, couponCode } = await req.json();
+    const { planId, billingType } = await req.json();
     if (!planId || !billingType) throw new Error("Missing planId or billingType");
-    logStep("Request data received", { planId, billingType, couponCode });
+    logStep("Request data received", { planId, billingType });
 
-    // Calculate price based on plan and billing type (using same logic as create-checkout-guest)
-    const planPrices = {
-      'start-quantico': { monthly: 34900, yearly: 349900 }, // R$ 349/mês, R$ 3.499/ano
-      'vortex-neural': { monthly: 64900, yearly: 619900 },  // R$ 649/mês, R$ 6.199/ano
-      'nexus-infinito': { monthly: 124900, yearly: 1189900 } // R$ 1.249/mês, R$ 11.899/ano
+    // Price IDs mapping
+    const STRIPE_PRICE_IDS = {
+      'start-quantico': {
+        monthly: 'price_1RlEVbBN5utVkHFQRKE6lpoF',
+        yearly: 'price_1RlEVbBN5utVkHFQ7gHYz6mN'
+      },
+      'vortex-neural': {
+        monthly: 'price_1RlEZ2BN5utVkHFQfF7tK4nA',
+        yearly: 'price_1RlEZ2BN5utVkHFQ0lfV3BT3'
+      },
+      'nexus-infinito': {
+        monthly: 'price_1RlEaiBN5utVkHFQI9vfPqDb',
+        yearly: 'price_1RlEaiBN5utVkHFQyHQzmooL'
+      }
     };
 
-    const price = planPrices[planId as keyof typeof planPrices]?.[billingType as 'monthly' | 'yearly'];
-    if (!price) {
-      throw new Error("Invalid plan or billing type");
-    }
-
-    logStep("Price calculated", { planId, billingType, price });
+    const priceIds = STRIPE_PRICE_IDS[planId as keyof typeof STRIPE_PRICE_IDS];
+    if (!priceIds) throw new Error(`Invalid plan: ${planId}`);
+    
+    const priceId = priceIds[billingType as 'monthly' | 'yearly'];
+    if (!priceId) throw new Error(`Invalid billing type: ${billingType}`);
+    logStep("Price ID resolved", { priceId });
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
     
@@ -72,74 +81,32 @@ serve(async (req) => {
       logStep("No existing customer found");
     }
 
-    const baseUrl = Deno.env.get('FRONTEND_URL') || req.headers.get("origin") || "https://sentiment-cx.vercel.app";
-    
-    // Validate coupon if provided
-    let discounts = undefined;
-    if (couponCode) {
-      try {
-        // Try as promotion code first, then as direct coupon
-        try {
-          const promotionCode = await stripe.promotionCodes.retrieve(couponCode);
-          if (promotionCode && promotionCode.active) {
-            discounts = [{ promotion_code: promotionCode.id }];
-            logStep("Promotion code applied", { promotionId: promotionCode.id });
-          }
-        } catch (promoError) {
-          // Try as direct coupon
-          const coupon = await stripe.coupons.retrieve(couponCode);
-          if (coupon.valid) {
-            discounts = [{ coupon: coupon.id }];
-            logStep("Direct coupon applied", { couponId: coupon.id });
-          }
-        }
-        
-        if (!discounts) {
-          logStep("No valid coupon found", { couponCode });
-        }
-      } catch (error) {
-        logStep("Coupon validation failed", { couponCode, error });
-        // Continue without coupon rather than failing the entire checkout
-      }
-    }
+    const origin = req.headers.get("origin") || "http://localhost:3000";
     
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
-      locale: 'pt-BR',
       line_items: [
         {
-          price_data: {
-            currency: "brl",
-            product_data: { 
-              name: `${planId === 'start-quantico' ? 'Start Quântico' : planId === 'vortex-neural' ? 'Vortex Neural' : 'Nexus Infinito'} - ${billingType === 'monthly' ? 'Mensal' : 'Anual'}` 
-            },
-            unit_amount: price,
-            ...(billingType === 'yearly' ? {} : { recurring: { interval: "month" } })
-          },
+          price: priceId,
           quantity: 1,
         },
       ],
-      mode: billingType === 'yearly' ? "payment" : "subscription",
-      discounts,
-      success_url: `${baseUrl}/welcome-login?session_id={CHECKOUT_SESSION_ID}&t=${Date.now()}`,
-      cancel_url: `${baseUrl}/payment-cancel?t=${Date.now()}`,
+      mode: "subscription",
+      success_url: `${origin}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${origin}/payment-cancel`,
       metadata: {
         planId: planId,
         billingType: billingType,
-        userId: user.id,
-        couponCode: couponCode || ''
+        userId: user.id
       },
-      ...(billingType === 'monthly' ? {
-        subscription_data: {
-          metadata: {
-            planId: planId,
-            billingType: billingType,
-            userId: user.id,
-            couponCode: couponCode || ''
-          },
-        }
-      } : {})
+      subscription_data: {
+        metadata: {
+          planId: planId,
+          billingType: billingType,
+          userId: user.id
+        },
+      },
     });
 
     logStep("Checkout session created", { sessionId: session.id, url: session.url });

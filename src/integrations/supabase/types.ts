@@ -517,13 +517,6 @@ export type Database = {
         Args: { _survey_id: string }
         Returns: string
       }
-      get_remote_migrations: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          name: string
-          version: string
-        }[]
-      }
       get_user_plan: {
         Args: { _user_id: string }
         Returns: string
@@ -532,23 +525,11 @@ export type Database = {
         Args: { _survey_id: string; _user_id: string }
         Returns: boolean
       }
-      sync_profile_data: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
       test_anonymous_response_insertion: {
         Args: Record<PropertyKey, never>
         Returns: {
           message: string
           test_result: boolean
-        }[]
-      }
-      test_rls_isolation: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          details: string
-          result: string
-          test_name: string
         }[]
       }
       test_user_data_isolation: {
@@ -557,14 +538,6 @@ export type Database = {
           details: string
           result: boolean
           test_name: string
-        }[]
-      }
-      validate_account_integrity: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          check_name: string
-          details: string
-          status: string
         }[]
       }
       validate_response_policies: {

@@ -1,5 +1,5 @@
-import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
-import Stripe from "https://esm.sh/stripe@14.25.0";
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
@@ -53,23 +53,11 @@ serve(async (req) => {
       const customerEmail = session.customer_details?.email;
       const planId = session.metadata?.planId;
       const billingType = session.metadata?.billingType;
+      const userId = session.metadata?.userId;
 
-      if (!customerEmail || !planId || !billingType) {
+      if (!customerEmail || !planId || !billingType || !userId) {
         throw new Error("Missing required metadata from session");
       }
-
-      // Buscar o usuário pelo email, já que ele acabou de ser criado
-      const { data: userData, error: userError } = await supabaseClient.auth.admin.listUsers();
-      if (userError) {
-        throw new Error(`Failed to fetch users: ${userError.message}`);
-      }
-
-      const user = userData.users.find(u => u.email === customerEmail);
-      if (!user) {
-        throw new Error(`User not found with email: ${customerEmail}`);
-      }
-
-      const userId = user.id;
 
       logStep("Payment verified, updating database", {
         customerEmail,

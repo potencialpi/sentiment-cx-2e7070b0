@@ -120,108 +120,36 @@ export const clearAuthStorage = () => {
 
 /**
  * Função para login seguro com limpeza prévia - PREVINE VAZAMENTO ENTRE USUÁRIOS
- * Agora usa autenticação customizada com hash de senha
  */
 export const signInSecurely = async (email: string, password: string) => {
   try {
-    console.log('[AUTH] Starting secure login process', { email, passwordLength: password.length });
-    
     // 1. Limpar estado anterior ANTES do login
     clearAuthStorage();
     
     // 2. Tentar logout global para garantir limpeza de sessões ativas
     try {
       await supabase.auth.signOut({ scope: 'global' });
-      console.log('[AUTH] Pre-login logout successful');
     } catch (err) {
       // Continuar mesmo se falhar - o importante é tentar
       console.warn('[AUTH] Pre-login logout failed, continuing:', err);
     }
     
-    // 3. Fazer login usando função customizada
-    console.log('[AUTH] Attempting custom login with hash verification');
-    const { data: customAuthData, error: customAuthError } = await supabase.functions.invoke('custom-login', {
-      body: { email, password }
+    // 3. Fazer login
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
     });
     
-    if (customAuthError) {
-      console.error('[AUTH] Custom login error:', {
-        message: customAuthError.message,
-        email: email
-      });
-      throw customAuthError;
+    if (error) throw error;
+    
+    if (data.user) {
+      console.log('[AUTH] Login successful, user isolated:', data.user.id);
+      return { data, error: null };
     }
     
-    if (!customAuthData?.success) {
-      console.error('[AUTH] Custom login failed:', {
-        error: customAuthData?.error,
-        email: email
-      });
-      throw new Error(customAuthData?.error || 'Login failed');
-    }
-    
-    // 4. Se a autenticação customizada passou, usar os dados do usuário
-    if (customAuthData.session_url && customAuthData.user) {
-      console.log('[AUTH] Custom authentication successful, creating session');
-      
-      // Criar uma "sessão" que inclui os dados do user_metadata
-      const userData = {
-        user: customAuthData.user,
-        session: {
-          access_token: 'custom-auth-token',
-          user: customAuthData.user
-        }
-      };
-      
-      // Tentar setar uma sessão real se tokens estiverem disponíveis
-      if (customAuthData.session?.access_token && customAuthData.session?.refresh_token) {
-        try {
-          const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
-            access_token: customAuthData.session.access_token,
-            refresh_token: customAuthData.session.refresh_token
-          });
-          
-          if (!sessionError && sessionData) {
-            console.log('[AUTH] Real session established successfully');
-            return { data: sessionData, error: null };
-          }
-        } catch (sessionErr) {
-          console.warn('[AUTH] Failed to establish real session:', sessionErr);
-        }
-      }
-      
-      console.log('[AUTH] Login successful with user metadata:', {
-        userId: customAuthData.user.id,
-        email: customAuthData.user.email,
-        planFromMetadata: customAuthData.user.user_metadata?.plan_name
-      });
-      
-      // Armazenar dados do usuário para fallback quando RLS falhar
-      if (customAuthData.user.user_metadata) {
-        try {
-          localStorage.setItem('fallback_user_data', JSON.stringify({
-            user_id: customAuthData.user.id,
-            email: customAuthData.user.email,
-            plan_name: customAuthData.user.user_metadata.plan_name,
-            company_name: customAuthData.user.user_metadata.company_name,
-            timestamp: Date.now()
-          }));
-          console.log('[AUTH] Fallback user data stored for RLS failures');
-        } catch (storageErr) {
-          console.warn('[AUTH] Failed to store fallback user data:', storageErr);
-        }
-      }
-      
-      return { data: userData, error: null };
-    }
-    
-    console.error('[AUTH] Login failed - no session URL returned');
-    return { data: null, error: new Error('Login failed - no session created') };
+    return { data: null, error: new Error('Login failed - no user returned') };
   } catch (error) {
-    console.error('[AUTH] Secure login failed:', {
-      error: error instanceof Error ? error.message : String(error),
-      email: email
-    });
+    console.error('[AUTH] Secure login failed:', error);
     return { data: null, error };
   }
 };

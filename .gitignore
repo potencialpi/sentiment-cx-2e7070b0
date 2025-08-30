@@ -44,13 +44,6 @@ Thumbs.db
 docker-compose.override.yml
 .docker/
 
-# Test files
-test-*.cjs
-test-*.js
-
-# Supabase temporary files
-supabase/.temp/
-
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
