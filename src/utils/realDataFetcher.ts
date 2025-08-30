@@ -53,29 +53,93 @@ export interface ProcessedRealData {
  * Busca todas as respostas reais de uma pesquisa específica
  */
 export async function fetchRealSurveyData(surveyId: string): Promise<ProcessedRealData> {
-  try {
-    // Verificar se o usuário está autenticado
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+  console.log('🔍 Iniciando fetchRealSurveyData para survey:', surveyId);
+  
+  // Verificação robusta de autenticação com retry
+  let session = null;
+  let retries = 3;
+  
+  while (retries > 0 && !session) {
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
     
     if (sessionError) {
-      throw new Error(`Erro de autenticação: ${sessionError.message}`);
+      console.error('❌ Erro ao obter sessão:', sessionError);
+      if (retries === 1) {
+        throw new Error('Erro de autenticação: ' + sessionError.message);
+      }
+      retries--;
+      await new Promise(resolve => setTimeout(resolve, 500));
+      continue;
     }
     
+    session = sessionData.session;
+    
     if (!session || !session.user) {
-      throw new Error('Usuário não autenticado. Faça login para acessar os dados.');
+      console.log(`⚠️ Sessão não encontrada, tentativas restantes: ${retries - 1}`);
+      retries--;
+      if (retries > 0) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    } else {
+      break;
+    }
+  }
+  
+  if (!session || !session.user) {
+    console.error('❌ Usuário não autenticado após todas as tentativas');
+    throw new Error('Você precisa estar logado para acessar estes dados. Faça login e tente novamente.');
+  }
+  
+  console.log('✅ Usuário autenticado:', session.user.id);
+  
+  // Verificar se o usuário é proprietário da survey
+  const { data: surveyOwnership, error: ownershipError } = await supabase
+    .from('surveys')
+    .select('user_id, title')
+    .eq('id', surveyId)
+    .single();
+    
+  if (ownershipError) {
+    console.error('❌ Erro ao verificar proprietário da survey:', ownershipError);
+    throw new Error('Erro ao verificar permissões da pesquisa.');
+  }
+  
+  if (!surveyOwnership || surveyOwnership.user_id !== session.user.id) {
+    console.error('❌ Usuário não é proprietário da survey');
+    throw new Error('Você não tem permissão para acessar os dados desta pesquisa.');
+  }
+  
+  console.log('✅ Usuário é proprietário da survey:', surveyOwnership.title);
+
+  try {
+
+    // Buscar respostas da pesquisa com retry se necessário
+    console.log('📊 Buscando respostas da survey...');
+    let responses = null;
+    let responsesError = null;
+    
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      const result = await supabase
+        .from('responses')
+        .select('*')
+        .eq('survey_id', surveyId)
+        .order('created_at', { ascending: true });
+        
+      responses = result.data;
+      responsesError = result.error;
+      
+      if (!responsesError) break;
+      
+      console.log(`⚠️ Tentativa ${attempt} falhou, erro:`, responsesError);
+      if (attempt === 1) {
+        // Refresh da sessão antes da segunda tentativa
+        await supabase.auth.refreshSession();
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
     }
 
-    // Aguardar um momento para garantir que a sessão está estabelecida
-    await new Promise(resolve => setTimeout(resolve, 100));
-
-    // Buscar respostas da pesquisa
-    const { data: responses, error: responsesError } = await supabase
-      .from('responses')
-      .select('*')
-      .eq('survey_id', surveyId)
-      .order('created_at', { ascending: true });
-
     if (responsesError) {
+      console.error('❌ Erro ao buscar respostas após todas as tentativas:', responsesError);
       // Verificar se é erro de permissão
       if (responsesError.message.includes('permission denied') || 
           responsesError.message.includes('RLS') ||
