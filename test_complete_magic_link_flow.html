@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste Completo do Fluxo Magic Link</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .step {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        .step h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .success {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background-color: #d1ecf1;
+            border-color: #bee5eb;
+            color: #0c5460;
+        }
+        .warning {
+            background-color: #fff3cd;
+            border-color: #ffeaa7;
+            color: #856404;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        .log {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .json {
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .url-display {
+            background-color: #e9ecef;
+            padding: 10px;
+            border-radius: 4px;
+            word-break: break-all;
+            font-family: monospace;
+        }
+    </style>
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>🔗 Teste Completo do Fluxo Magic Link</h1>
+        <p>Este teste simula exatamente o que acontece quando um usuário clica no magic link e é redirecionado.</p>
+        
+        <div class="step info">
+            <h3>📋 Configuração</h3>
+            <p><strong>Supabase URL:</strong> <span id="supabaseUrl">Carregando...</span></p>
+            <p><strong>Anon Key:</strong> <span id="anonKey">Carregando...</span></p>
+            <p><strong>Email de Teste:</strong> <input type="email" id="testEmail" value="" placeholder="Email para teste" style="width: 200px;"></p>
+            <p><strong>Survey ID:</strong> <input type="text" id="surveyId" value="2e068f19-0b82-449a-9430-62429e17e3a3" style="width: 300px;"></p>
+        </div>
+
+        <div class="step">
+            <h3>🚀 Controles</h3>
+            <button onclick="runCompleteTest()">Executar Teste Completo</button>
+            <button onclick="clearLogs()">Limpar Logs</button>
+            <button onclick="testStep1()">1. Gerar Magic Link</button>
+            <button onclick="testStep2()">2. Validar Token</button>
+            <button onclick="testStep3()">3. Usar Token (Autenticar)</button>
+            <button onclick="testStep4()">4. Acessar Pesquisa</button>
+            <button onclick="testStep5()">5. Verificar RLS</button>
+        </div>
+
+        <div id="results"></div>
+        
+        <div class="container">
+            <h2>📊 Logs Detalhados</h2>
+            <div id="logs" class="log"></div>
+        </div>
+    </div>
+
+    <script>
+        // Configuração do Supabase
+        const SUPABASE_URL = 'https://mjuxvppexydaeuoernxa.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1qdXh2cHBleHlkYWV1b2VybnhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM0NDAzNjYsImV4cCI6MjA2OTAxNjM2Nn0.ECVfL7CLqJj4wSPBY7g5yu_zdfBqbUTCK18MAXHjeTg';
+        
+        let currentToken = null;
+        let currentUser = null;
+        let testResults = {};
+
+        // Função para gerar email único
+        function generateUniqueEmail() {
+            const timestamp = Date.now();
+            const randomId = Math.random().toString(36).substring(2, 8);
+            return `teste-${timestamp}-${randomId}@exemplo.com`;
+        }
+        
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('supabaseUrl').textContent = SUPABASE_URL;
+            document.getElementById('anonKey').textContent = SUPABASE_ANON_KEY.substring(0, 50) + '...';
+            log('🔧 Sistema inicializado');
+            
+            // Gerar email único para o teste
+            const uniqueEmail = generateUniqueEmail();
+            document.getElementById('testEmail').value = uniqueEmail;
+            log(`📧 Email único gerado: ${uniqueEmail}`);
+            
+            // Aguardar carregamento da biblioteca Supabase e executar teste
+            if (typeof window.supabase === 'undefined') {
+                log('⏳ Aguardando carregamento da biblioteca Supabase...');
+                setTimeout(() => {
+                    if (typeof window.supabase !== 'undefined') {
+                        log('✅ Biblioteca Supabase carregada');
+                        // Executar teste automaticamente
+                         setTimeout(() => {
+                             log('🚀 Iniciando teste automático do magic link...');
+                             runCompleteTest();
+                         }, 1000);
+                    } else {
+                        log('❌ Erro: Biblioteca Supabase não foi carregada');
+                    }
+                }, 2000);
+            } else {
+                log('✅ Biblioteca Supabase já carregada');
+                // Executar teste automaticamente
+                 setTimeout(() => {
+                     log('🚀 Iniciando teste automático do magic link...');
+                     runCompleteTest();
+                 }, 1000);
+            }
+        });
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logElement = document.getElementById('logs');
+            const logEntry = `[${timestamp}] ${message}\n`;
+            logElement.textContent += logEntry;
+            logElement.scrollTop = logElement.scrollHeight;
+            console.log(message);
+        }
+
+        function clearLogs() {
+            document.getElementById('logs').textContent = '';
+            document.getElementById('results').innerHTML = '';
+            testResults = {};
+            log('🧹 Logs limpos');
+        }
+
+        function addResult(stepId, title, success, data, error = null) {
+            const resultsDiv = document.getElementById('results');
+            const stepDiv = document.createElement('div');
+            stepDiv.className = `step ${success ? 'success' : 'error'}`;
+            stepDiv.id = `result-${stepId}`;
+            
+            let content = `<h3>${success ? '✅' : '❌'} ${title}</h3>`;
+            
+            if (data) {
+                content += `<div class="json">${JSON.stringify(data, null, 2)}</div>`;
+            }
+            
+            if (error) {
+                content += `<p><strong>Erro:</strong> ${error}</p>`;
+            }
+            
+            stepDiv.innerHTML = content;
+            
+            // Remove resultado anterior se existir
+            const existing = document.getElementById(`result-${stepId}`);
+            if (existing) {
+                existing.remove();
+            }
+            
+            resultsDiv.appendChild(stepDiv);
+            testResults[stepId] = { success, data, error };
+        }
+
+        async function runCompleteTest() {
+            log('🚀 Iniciando teste completo do fluxo magic link');
+            clearLogs();
+            
+            try {
+                await testStep1(); // Gerar magic link
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                await testStep2(); // Validar token
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                await testStep3(); // Usar token (autenticar)
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                await testStep4(); // Acessar pesquisa
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                await testStep5(); // Verificar RLS
+                
+                log('🎉 Teste completo finalizado!');
+                analyzeResults();
+            } catch (error) {
+                log(`❌ Erro durante teste completo: ${error.message}`, 'error');
+            }
+        }
+
+        async function testStep1() {
+            log('📧 Passo 1: Gerando magic link...');
+            
+            try {
+                const email = document.getElementById('testEmail').value;
+                const surveyId = document.getElementById('surveyId').value;
+                
+                const response = await fetch(`${SUPABASE_URL}/functions/v1/magic-link`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    },
+                    body: JSON.stringify({
+                        action: 'generate',
+                        email: email,
+                        surveyId: surveyId
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    currentToken = data.data.token;
+                    log(`✅ Magic link gerado com sucesso! Token: ${currentToken}`);
+                    addResult('step1', 'Geração do Magic Link', true, {
+                        token: currentToken,
+                        magicLinkUrl: data.data.magicLinkUrl,
+                        email: email,
+                        surveyId: surveyId
+                    });
+                    return data;
+                } else {
+                    throw new Error(`Falha na geração: ${data.error || 'Erro desconhecido'}`);
+                }
+            } catch (error) {
+                log(`❌ Erro na geração do magic link: ${error.message}`);
+                addResult('step1', 'Geração do Magic Link', false, null, error.message);
+                throw error;
+            }
+        }
+
+        async function testStep2() {
+            log('🔍 Passo 2: Validando token...');
+            
+            if (!currentToken) {
+                throw new Error('Token não disponível. Execute o Passo 1 primeiro.');
+            }
+            
+            try {
+                const surveyId = document.getElementById('surveyId').value;
+                
+                const response = await fetch(`${SUPABASE_URL}/functions/v1/magic-link`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    },
+                    body: JSON.stringify({
+                        action: 'validate',
+                        token: currentToken,
+                        surveyId: surveyId
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    log(`✅ Token validado com sucesso!`);
+                    addResult('step2', 'Validação do Token', true, data);
+                    return data;
+                } else {
+                    throw new Error(`Falha na validação: ${data.error || 'Token inválido'}`);
+                }
+            } catch (error) {
+                log(`❌ Erro na validação do token: ${error.message}`);
+                addResult('step2', 'Validação do Token', false, null, error.message);
+                throw error;
+            }
+        }
+
+        async function testStep3() {
+            log('🔐 Passo 3: Usando token para autenticação...');
+            
+            if (!currentToken) {
+                throw new Error('Token não disponível. Execute o Passo 1 primeiro.');
+            }
+            
+            try {
+                const surveyId = document.getElementById('surveyId').value;
+                
+                const response = await fetch(`${SUPABASE_URL}/functions/v1/magic-link`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    },
+                    body: JSON.stringify({
+                        action: 'use',
+                        token: currentToken,
+                        surveyId: surveyId
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    currentUser = data.data.session.user;
+                    log(`✅ Autenticação realizada com sucesso! Usuário: ${currentUser?.id}`);
+                    addResult('step3', 'Autenticação via Token', true, {
+                        user: currentUser,
+                        session: data.data.session,
+                        email: data.data.email,
+                        surveyId: data.data.surveyId
+                    });
+                    return data;
+                } else {
+                    throw new Error(`Falha na autenticação: ${data.error || 'Erro na autenticação'}`);
+                }
+            } catch (error) {
+                log(`❌ Erro na autenticação: ${error.message}`);
+                addResult('step3', 'Autenticação via Token', false, null, error.message);
+                throw error;
+            }
+        }
+
+        async function testStep4() {
+            log('📋 Passo 4: Testando acesso à pesquisa...');
+            
+            if (!currentUser) {
+                throw new Error('Usuário não autenticado. Execute o Passo 3 primeiro.');
+            }
+            
+            try {
+                const surveyId = document.getElementById('surveyId').value;
+                
+                // Simular chamada para buscar dados da pesquisa
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/surveys?id=eq.${surveyId}&select=*`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                        'apikey': SUPABASE_ANON_KEY
+                    }
+                });
+
+                const surveys = await response.json();
+                
+                if (response.ok && surveys.length > 0) {
+                    log(`✅ Pesquisa acessada com sucesso!`);
+                    addResult('step4', 'Acesso à Pesquisa', true, {
+                        survey: surveys[0],
+                        surveyCount: surveys.length
+                    });
+                    return surveys[0];
+                } else if (response.ok && surveys.length === 0) {
+                    throw new Error('Pesquisa não encontrada');
+                } else {
+                    throw new Error(`Erro HTTP ${response.status}: ${response.statusText}`);
+                }
+            } catch (error) {
+                log(`❌ Erro no acesso à pesquisa: ${error.message}`);
+                addResult('step4', 'Acesso à Pesquisa', false, null, error.message);
+                throw error;
+            }
+        }
+
+        async function testStep5() {
+            log('🛡️ Passo 5: Verificando políticas RLS...');
+            
+            try {
+                const surveyId = document.getElementById('surveyId').value;
+                
+                // Testar acesso às questões da pesquisa
+                const questionsResponse = await fetch(`${SUPABASE_URL}/rest/v1/survey_questions?survey_id=eq.${surveyId}&select=*`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                        'apikey': SUPABASE_ANON_KEY
+                    }
+                });
+
+                const questions = await questionsResponse.json();
+                
+                // Testar criação de resposta (simulação)
+                const testResponseData = {
+                    survey_id: surveyId,
+                    user_id: currentUser?.id || 'anonymous',
+                    responses: { test: 'response' },
+                    sentiment_analysis: { overall: 'neutral' }
+                };
+                
+                const responseTest = await fetch(`${SUPABASE_URL}/rest/v1/survey_responses`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Prefer': 'return=minimal'
+                    },
+                    body: JSON.stringify(testResponseData)
+                });
+                
+                const rlsResults = {
+                    questionsAccess: {
+                        success: questionsResponse.ok,
+                        status: questionsResponse.status,
+                        count: questions.length || 0,
+                        error: questionsResponse.ok ? null : `HTTP ${questionsResponse.status}`
+                    },
+                    responseCreation: {
+                        success: responseTest.ok,
+                        status: responseTest.status,
+                        error: responseTest.ok ? null : `HTTP ${responseTest.status}`
+                    }
+                };
+                
+                const overallSuccess = rlsResults.questionsAccess.success;
+                
+                log(`${overallSuccess ? '✅' : '❌'} Verificação RLS: Questões=${rlsResults.questionsAccess.success}, Respostas=${rlsResults.responseCreation.success}`);
+                addResult('step5', 'Verificação de Políticas RLS', overallSuccess, rlsResults);
+                
+                return rlsResults;
+            } catch (error) {
+                log(`❌ Erro na verificação RLS: ${error.message}`);
+                addResult('step5', 'Verificação de Políticas RLS', false, null, error.message);
+                throw error;
+            }
+        }
+
+        function analyzeResults() {
+            log('🔍 Analisando resultados do teste...');
+            
+            const steps = ['step1', 'step2', 'step3', 'step4', 'step5'];
+            const stepNames = {
+                step1: 'Geração do Magic Link',
+                step2: 'Validação do Token', 
+                step3: 'Autenticação via Token',
+                step4: 'Acesso à Pesquisa',
+                step5: 'Verificação RLS'
+            };
+            
+            let analysis = '\n📊 ANÁLISE DOS RESULTADOS:\n';
+            analysis += '================================\n';
+            
+            let allSuccess = true;
+            let firstFailure = null;
+            
+            steps.forEach(stepId => {
+                const result = testResults[stepId];
+                if (result) {
+                    const status = result.success ? '✅ SUCESSO' : '❌ FALHA';
+                    analysis += `${stepNames[stepId]}: ${status}\n`;
+                    
+                    if (!result.success) {
+                        allSuccess = false;
+                        if (!firstFailure) {
+                            firstFailure = stepId;
+                        }
+                        analysis += `   Erro: ${result.error}\n`;
+                    }
+                } else {
+                    analysis += `${stepNames[stepId]}: ⏭️ NÃO EXECUTADO\n`;
+                }
+            });
+            
+            analysis += '\n🎯 DIAGNÓSTICO:\n';
+            if (allSuccess) {
+                analysis += '✅ Todos os passos foram executados com sucesso!\n';
+                analysis += 'O fluxo do magic link está funcionando corretamente.\n';
+            } else {
+                analysis += `❌ Falha detectada no passo: ${stepNames[firstFailure]}\n`;
+                analysis += 'Verifique os logs detalhados acima para mais informações.\n';
+                
+                // Sugestões específicas baseadas no passo que falhou
+                switch(firstFailure) {
+                    case 'step1':
+                        analysis += '💡 Sugestão: Verifique se a Edge Function está deployada e funcionando.\n';
+                        break;
+                    case 'step2':
+                        analysis += '💡 Sugestão: Verifique se o token foi gerado corretamente no passo anterior.\n';
+                        break;
+                    case 'step3':
+                        analysis += '💡 Sugestão: Verifique a configuração de autenticação anônima no Supabase.\n';
+                        break;
+                    case 'step4':
+                        analysis += '💡 Sugestão: Verifique se a pesquisa existe e as políticas RLS permitem acesso.\n';
+                        break;
+                    case 'step5':
+                        analysis += '💡 Sugestão: Verifique as políticas RLS das tabelas survey_questions e survey_responses.\n';
+                        break;
+                }
+            }
+            
+            log(analysis);
+        }
+    </script>
+</body>
+</html>

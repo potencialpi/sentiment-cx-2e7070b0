@@ -12,7 +12,7 @@ const PaymentCancel = () => {
   };
 
   const handleTryAgain = () => {
-    navigate(-1); // Volta para a página anterior
+    navigate('/'); // Volta para a página inicial
   };
 
   return (

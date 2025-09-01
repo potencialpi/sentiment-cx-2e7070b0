@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { StarRating } from '@/components/ui/star-rating';
 import { Plus, Minus, ArrowLeft, LogOut, Eye, BarChart3, PieChart, TrendingUp, Copy, Activity } from 'lucide-react';
+import { getUserPlan, getPlanDisplayName } from '@/lib/planUtils';
 
 interface Question {
   id: string;
@@ -57,6 +58,7 @@ const CreateSurveyVortex = () => {
   const [currentSurveyCount, setCurrentSurveyCount] = useState(0);
   const [activeSurveys, setActiveSurveys] = useState<Survey[]>([]);
   const [isLoadingSurveys, setIsLoadingSurveys] = useState(false);
+  const [userPlan, setUserPlan] = useState<string>('vortex-neural');
 
   const initializePage = useCallback(async () => {
     try {
@@ -66,6 +68,12 @@ const CreateSurveyVortex = () => {
         return;
       }
       setUser(user);
+
+      // Obter plano real do usuário
+      const actualPlan = await getUserPlan(user.id);
+      if (actualPlan) {
+        setUserPlan(actualPlan);
+      }
 
       // Verificar quantidade de pesquisas do mês atual
       const { data: surveys, error } = await supabase
@@ -344,7 +352,7 @@ const CreateSurveyVortex = () => {
             <h1 className="text-nav font-semibold mb-4">Sentiment CX</h1>
             <h2 className="text-hero font-bold mb-4 flex items-center justify-center gap-2">
               <TrendingUp className="h-8 w-8" />
-              Criar e Gerenciar Pesquisas - Vortex Neural
+              Criar e Gerenciar Pesquisas - {getPlanDisplayName(userPlan)}
             </h2>
             <p className="text-subtitle text-brand-white/80 max-w-3xl mx-auto">
               Configure até 10 questões e 250 respostas ({currentSurveyCount}/{PLAN_CONFIG.maxSurveysPerMonth} pesquisas este mês)
@@ -367,7 +375,7 @@ const CreateSurveyVortex = () => {
                 <CardHeader>
                   <CardTitle className="text-brand-dark-gray flex items-center gap-2">
                     <TrendingUp className="h-5 w-5" />
-                    Nova Pesquisa - Vortex Neural
+                    Nova Pesquisa - {getPlanDisplayName(userPlan)}
                   </CardTitle>
                   <CardDescription className="text-brand-dark-gray/70">
                     Crie pesquisas com até 10 questões e 250 respostas

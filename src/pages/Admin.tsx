@@ -2,10 +2,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { BarChart3, Users, FileText, Settings, ArrowLeft } from 'lucide-react';
+import { BarChart3, Users, FileText, Settings, ArrowLeft, UserPlus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { getPlanDisplayName, getPlanCreateSurveyRoute, getUserPlan } from '@/lib/planUtils';
+import { getPlanDisplayName, getPlanCreateSurveyRoute, getPlanRespondentsRoute, getUserPlan } from '@/lib/planUtils';
 
 interface UserData {
   plan_name: string;
@@ -50,7 +50,7 @@ const Admin = () => {
   };
 
   const handleGoBack = () => {
-    navigate(-1);
+    navigate('/');
   };
 
   if (loading) {
@@ -228,15 +228,28 @@ const Admin = () => {
               <p className="text-brand-gray mb-6 leading-relaxed">
                 Comece criando um novo questionário para coletar insights valiosos e analisar o sentimento dos seus clientes.
               </p>
-              <Button 
-                className="btn-gradient w-full glow-effect group-hover:shadow-[var(--shadow-elevated)]"
-                onClick={() => {
-                  const planCode = userData?.plan_name || 'start-quantico';
-                  navigate(getPlanCreateSurveyRoute(planCode));
-                }}
-              >
-                ✨ Criar Pesquisa
-              </Button>
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                <Button 
+                  className="btn-gradient flex-1 glow-effect group-hover:shadow-[var(--shadow-elevated)]"
+                  onClick={() => {
+                    const planCode = userData?.plan_name || 'start-quantico';
+                    navigate(getPlanCreateSurveyRoute(planCode));
+                  }}
+                >
+                  ✨ Criar Pesquisa
+                </Button>
+                <Button 
+                  variant="outline"
+                  className="border-brand-green text-brand-green hover:bg-brand-green hover:text-brand-white flex-1 transition-all duration-300"
+                  onClick={() => {
+                    const planCode = userData?.plan_name || 'start-quantico';
+                    navigate(getPlanRespondentsRoute(planCode));
+                  }}
+                >
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  Respondentes
+                </Button>
+              </div>
             </div>
           </div>
 

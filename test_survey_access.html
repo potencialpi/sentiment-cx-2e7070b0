@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste Acesso à Pesquisa</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <h1>Teste Acesso à Pesquisa</h1>
+    <div id="result"></div>
+    
+    <script>
+        const supabaseUrl = 'https://mjuxvppexydaeuoernxa.supabase.co';
+        const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1qdXh2cHBleHlkYWV1b2VybnhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM0NDAzNjYsImV4cCI6MjA2OTAxNjM2Nn0.ECVfL7CLqJj4wSPBY7g5yu_zdfBqbUTCK18MAXHjeTg';
+        
+        const { createClient } = supabase;
+        const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
+        
+        async function testSurveyAccess() {
+            const resultDiv = document.getElementById('result');
+            
+            try {
+                console.log('Testando acesso direto à pesquisa...');
+                
+                // Primeiro, vamos listar as pesquisas disponíveis
+                const { data: surveys, error: surveysError } = await supabaseClient
+                    .from('surveys')
+                    .select('id, title, status, unique_link')
+                    .limit(5);
+                
+                if (surveysError) {
+                    console.error('Erro ao buscar pesquisas:', surveysError);
+                    resultDiv.innerHTML += `<p style="color: red;">Erro ao buscar pesquisas: ${JSON.stringify(surveysError)}</p>`;
+                } else {
+                    console.log('Pesquisas encontradas:', surveys);
+                    resultDiv.innerHTML += `<h3>Pesquisas encontradas:</h3><pre>${JSON.stringify(surveys, null, 2)}</pre>`;
+                    
+                    if (surveys && surveys.length > 0) {
+                        // Tentar acessar a primeira pesquisa
+                        const firstSurvey = surveys[0];
+                        console.log('Testando acesso à primeira pesquisa:', firstSurvey.id);
+                        
+                        const { data: surveyData, error: surveyError } = await supabaseClient
+                            .from('surveys')
+                            .select(`
+                                id, title, description, status, unique_link,
+                                questions(id, question_text, question_type, options)
+                            `)
+                            .eq('id', firstSurvey.id)
+                            .single();
+                        
+                        if (surveyError) {
+                            console.error('Erro ao acessar pesquisa:', surveyError);
+                            resultDiv.innerHTML += `<p style="color: red;">Erro ao acessar pesquisa: ${JSON.stringify(surveyError)}</p>`;
+                        } else {
+                            console.log('Dados da pesquisa:', surveyData);
+                            resultDiv.innerHTML += `<h3>Dados da pesquisa:</h3><pre>${JSON.stringify(surveyData, null, 2)}</pre>`;
+                        }
+                    }
+                }
+                
+            } catch (err) {
+                console.error('Erro capturado:', err);
+                resultDiv.innerHTML += `<p style="color: red;">Erro capturado: ${err.message}</p>`;
+            }
+        }
+        
+        // Executar teste quando a página carregar
+        window.onload = testSurveyAccess;
+    </script>
+</body>
+</html>

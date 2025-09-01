@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug SurveyResponse - Magic Link</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .test-section {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        .warning { background-color: #fff3cd; border-color: #ffeaa7; }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background-color: #0056b3; }
+        pre {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 3px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .status {
+            font-weight: bold;
+            padding: 5px 10px;
+            border-radius: 3px;
+            display: inline-block;
+            margin: 5px 0;
+        }
+        .status.success { background-color: #28a745; color: white; }
+        .status.error { background-color: #dc3545; color: white; }
+        .status.warning { background-color: #ffc107; color: black; }
+        .debug-info {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Debug SurveyResponse - Magic Link</h1>
+        <p>Este teste simula exatamente o que acontece no componente SurveyResponse após autenticação via magic link.</p>
+        
+        <div class="test-section info">
+            <h3>📋 Configuração</h3>
+            <p><strong>Supabase URL:</strong> <span id="supabase-url">Carregando...</span></p>
+            <p><strong>Status:</strong> <span id="connection-status">Verificando...</span></p>
+            <button onclick="initialize()">🔄 Inicializar</button>
+        </div>
+
+        <div class="test-section" id="step-1">
+            <h3>1️⃣ Simular Magic Link Flow</h3>
+            <p>Gerando magic link e autenticando usuário.</p>
+            <button onclick="simulateMagicLink()">▶️ Executar Magic Link</button>
+            <div id="magic-link-results"></div>
+        </div>
+
+        <div class="test-section" id="step-2">
+            <h3>2️⃣ Testar loadSurveyData</h3>
+            <p>Simulando exatamente a função loadSurveyData do componente SurveyResponse.</p>
+            <button onclick="testLoadSurveyData()">▶️ Testar loadSurveyData</button>
+            <div id="load-survey-results"></div>
+        </div>
+
+        <div class="test-section" id="step-3">
+            <h3>3️⃣ Debug Detalhado</h3>
+            <p>Análise detalhada de cada etapa do carregamento.</p>
+            <button onclick="detailedDebug()">▶️ Debug Detalhado</button>
+            <div id="debug-results"></div>
+        </div>
+
+        <div class="test-section" id="step-4">
+            <h3>4️⃣ Verificar Políticas RLS</h3>
+            <p>Testando políticas RLS específicas para o cenário.</p>
+            <button onclick="testRLSPolicies()">▶️ Testar RLS</button>
+            <div id="rls-results"></div>
+        </div>
+
+        <div class="test-section" id="summary">
+            <h3>📊 Diagnóstico Final</h3>
+            <div id="final-diagnosis">Execute os testes acima para ver o diagnóstico.</div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { createClient } from 'https://cdn.skypack.dev/@supabase/supabase-js@2'
+        
+        const SUPABASE_URL = 'https://mjuxvppexydaeuoernxa.supabase.co'
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1qdXh2cHBleHlkYWV1b2VybnhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM0NDAzNjYsImV4cCI6MjA2OTAxNjM2Nn0.ECVfL7CLqJj4wSPBY7g5yu_zdfBqbUTCK18MAXHjeTg'
+        
+        let supabase
+        let authenticatedSupabase
+        let testSurveyId
+        let debugLog = []
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString()
+            debugLog.push({ timestamp, message, type })
+            console.log(`[${timestamp}] ${type.toUpperCase()}: ${message}`)
+        }
+
+        window.initialize = async function() {
+            try {
+                supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+                document.getElementById('supabase-url').textContent = SUPABASE_URL
+                
+                // Testar conexão
+                const { data, error } = await supabase.from('surveys').select('count').limit(1)
+                
+                if (error) {
+                    document.getElementById('connection-status').innerHTML = 
+                        '<span class="status error">❌ Erro: ' + error.message + '</span>'
+                    log('Erro de conexão: ' + error.message, 'error')
+                } else {
+                    document.getElementById('connection-status').innerHTML = 
+                        '<span class="status success">✅ Conectado</span>'
+                    log('Conexão estabelecida com sucesso', 'success')
+                }
+            } catch (error) {
+                document.getElementById('connection-status').innerHTML = 
+                    '<span class="status error">❌ Erro: ' + error.message + '</span>'
+                log('Erro na inicialização: ' + error.message, 'error')
+            }
+        }
+
+        window.simulateMagicLink = async function() {
+            const resultsDiv = document.getElementById('magic-link-results')
+            resultsDiv.innerHTML = '<p>🔄 Executando fluxo magic link...</p>'
+            log('Iniciando simulação do magic link', 'info')
+            
+            try {
+                // 1. Buscar uma pesquisa ativa para teste
+                log('Buscando pesquisa ativa para teste', 'info')
+                const { data: surveys, error: surveyError } = await supabase
+                    .from('surveys')
+                    .select('id, title, status, unique_link')
+                    .eq('status', 'active')
+                    .not('unique_link', 'is', null)
+                    .limit(1)
+                
+                if (surveyError || !surveys || surveys.length === 0) {
+                    throw new Error('Nenhuma pesquisa ativa encontrada: ' + (surveyError?.message || 'Lista vazia'))
+                }
+                
+                testSurveyId = surveys[0].id
+                log(`Pesquisa encontrada: ${surveys[0].title} (ID: ${testSurveyId})`, 'success')
+                
+                // 2. Gerar magic link
+                log('Gerando magic link', 'info')
+                const generateResponse = await fetch(`${SUPABASE_URL}/functions/v1/magic-link`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    },
+                    body: JSON.stringify({
+                        action: 'generate',
+                        email: 'test@example.com',
+                        surveyId: testSurveyId
+                    })
+                })
+                
+                if (!generateResponse.ok) {
+                    throw new Error(`Erro ao gerar magic link: ${generateResponse.status}`)
+                }
+                
+                const magicLinkData = await generateResponse.json()
+                log(`Magic link gerado: token=${magicLinkData.token}`, 'success')
+                
+                // 3. Usar magic link (autenticar)
+                log('Autenticando via magic link', 'info')
+                const useResponse = await fetch(`${SUPABASE_URL}/functions/v1/magic-link`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    },
+                    body: JSON.stringify({
+                        action: 'use',
+                        token: magicLinkData.token,
+                        surveyId: testSurveyId
+                    })
+                })
+                
+                if (!useResponse.ok) {
+                    throw new Error(`Erro ao usar magic link: ${useResponse.status}`)
+                }
+                
+                const authData = await useResponse.json()
+                log(`Autenticação bem-sucedida: user=${authData.user?.email || 'anônimo'}`, 'success')
+                
+                // 4. Criar cliente autenticado
+                if (authData.access_token) {
+                    authenticatedSupabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+                        global: {
+                            headers: {
+                                Authorization: `Bearer ${authData.access_token}`
+                            }
+                        }
+                    })
+                    log('Cliente Supabase autenticado criado', 'success')
+                } else {
+                    authenticatedSupabase = supabase
+                    log('Usando cliente anônimo (sem access_token)', 'warning')
+                }
+                
+                let results = `<p class="status success">✅ Magic link executado com sucesso!</p>`
+                results += `<div class="debug-info">`
+                results += `<strong>Survey ID:</strong> ${testSurveyId}<br>`
+                results += `<strong>Token:</strong> ${magicLinkData.token}<br>`
+                results += `<strong>User:</strong> ${authData.user?.email || 'anônimo'}<br>`
+                results += `<strong>Access Token:</strong> ${authData.access_token ? 'Presente' : 'Ausente'}`
+                results += `</div>`
+                
+                resultsDiv.innerHTML = results
+                
+            } catch (error) {
+                log('Erro no fluxo magic link: ' + error.message, 'error')
+                resultsDiv.innerHTML = `<p class="status error">❌ Erro: ${error.message}</p>`
+            }
+        }
+
+        window.testLoadSurveyData = async function() {
+            const resultsDiv = document.getElementById('load-survey-results')
+            resultsDiv.innerHTML = '<p>🔄 Testando loadSurveyData...</p>'
+            
+            if (!testSurveyId || !authenticatedSupabase) {
+                resultsDiv.innerHTML = '<p class="status warning">⚠️ Execute primeiro o teste de magic link</p>'
+                return
+            }
+            
+            log('Iniciando teste loadSurveyData', 'info')
+            
+            try {
+                // Simular exatamente o que o componente SurveyResponse faz
+                log(`Carregando pesquisa com ID: ${testSurveyId}`, 'info')
+                
+                // 1. Carregar dados da pesquisa
+                const { data: survey, error: surveyError } = await authenticatedSupabase
+                    .from('surveys')
+                    .select('*')
+                    .eq('id', testSurveyId)
+                    .single()
+                
+                if (surveyError) {
+                    log('Erro ao carregar pesquisa: ' + surveyError.message, 'error')
+                    throw new Error('Erro ao carregar pesquisa: ' + surveyError.message)
+                }
+                
+                log('Pesquisa carregada com sucesso', 'success')
+                
+                // 2. Verificar status da pesquisa
+                if (survey.status !== 'active') {
+                    log(`Pesquisa não está ativa: status=${survey.status}`, 'warning')
+                    throw new Error('Pesquisa não está ativa')
+                }
+                
+                log('Status da pesquisa verificado: ativa', 'success')
+                
+                // 3. Carregar questões
+                log('Carregando questões da pesquisa', 'info')
+                const { data: questions, error: questionsError } = await authenticatedSupabase
+                    .from('questions')
+                    .select('*')
+                    .eq('survey_id', testSurveyId)
+                    .order('order_index')
+                
+                if (questionsError) {
+                    log('Erro ao carregar questões: ' + questionsError.message, 'error')
+                    throw new Error('Erro ao carregar questões: ' + questionsError.message)
+                }
+                
+                log(`Questões carregadas: ${questions.length} questões encontradas`, 'success')
+                
+                // 4. Verificar se há questões
+                if (!questions || questions.length === 0) {
+                    log('Nenhuma questão encontrada para esta pesquisa', 'warning')
+                    throw new Error('Nenhuma questão encontrada')
+                }
+                
+                let results = `<p class="status success">✅ loadSurveyData executado com sucesso!</p>`
+                results += `<div class="debug-info">`
+                results += `<strong>Survey:</strong> ${survey.title}<br>`
+                results += `<strong>Status:</strong> ${survey.status}<br>`
+                results += `<strong>Unique Link:</strong> ${survey.unique_link || 'N/A'}<br>`
+                results += `<strong>Questões:</strong> ${questions.length}<br>`
+                results += `<strong>Primeira Questão:</strong> ${questions[0]?.question_text?.substring(0, 50)}...`
+                results += `</div>`
+                
+                results += `<h5>Questões Encontradas:</h5><ul>`
+                questions.forEach((q, i) => {
+                    results += `<li><strong>Q${i+1}:</strong> ${q.question_text} (${q.question_type})</li>`
+                })
+                results += `</ul>`
+                
+                resultsDiv.innerHTML = results
+                
+            } catch (error) {
+                log('Erro em loadSurveyData: ' + error.message, 'error')
+                resultsDiv.innerHTML = `<p class="status error">❌ Erro: ${error.message}</p>`
+                
+                // Mostrar detalhes do erro
+                let errorDetails = `<div class="debug-info">`
+                errorDetails += `<strong>Erro:</strong> ${error.message}<br>`
+                errorDetails += `<strong>Survey ID:</strong> ${testSurveyId}<br>`
+                errorDetails += `<strong>Cliente:</strong> ${authenticatedSupabase ? 'Autenticado' : 'Anônimo'}`
+                errorDetails += `</div>`
+                
+                resultsDiv.innerHTML += errorDetails
+            }
+        }
+
+        window.detailedDebug = async function() {
+            const resultsDiv = document.getElementById('debug-results')
+            resultsDiv.innerHTML = '<p>🔄 Executando debug detalhado...</p>'
+            
+            if (!testSurveyId) {
+                resultsDiv.innerHTML = '<p class="status warning">⚠️ Execute primeiro o teste de magic link</p>'
+                return
+            }
+            
+            log('Iniciando debug detalhado', 'info')
+            
+            let debugResults = '<h4>🔍 Debug Detalhado:</h4>'
+            
+            try {
+                // 1. Testar acesso anônimo
+                log('Testando acesso anônimo à pesquisa', 'info')
+                const { data: anonSurvey, error: anonSurveyError } = await supabase
+                    .from('surveys')
+                    .select('*')
+                    .eq('id', testSurveyId)
+                    .single()
+                
+                debugResults += `<p><strong>1. Acesso Anônimo à Survey:</strong> `
+                if (anonSurveyError) {
+                    debugResults += `❌ Erro: ${anonSurveyError.message}</p>`
+                    log('Acesso anônimo à pesquisa falhou: ' + anonSurveyError.message, 'error')
+                } else {
+                    debugResults += `✅ Sucesso</p>`
+                    log('Acesso anônimo à pesquisa bem-sucedido', 'success')
+                }
+                
+                // 2. Testar acesso anônimo às questões
+                log('Testando acesso anônimo às questões', 'info')
+                const { data: anonQuestions, error: anonQuestionsError } = await supabase
+                    .from('questions')
+                    .select('*')
+                    .eq('survey_id', testSurveyId)
+                
+                debugResults += `<p><strong>2. Acesso Anônimo às Questions:</strong> `
+                if (anonQuestionsError) {
+                    debugResults += `❌ Erro: ${anonQuestionsError.message}</p>`
+                    log('Acesso anônimo às questões falhou: ' + anonQuestionsError.message, 'error')
+                } else {
+                    debugResults += `✅ Sucesso (${anonQuestions.length} questões)</p>`
+                    log(`Acesso anônimo às questões bem-sucedido: ${anonQuestions.length} questões`, 'success')
+                }
+                
+                // 3. Testar acesso autenticado (se disponível)
+                if (authenticatedSupabase) {
+                    log('Testando acesso autenticado à pesquisa', 'info')
+                    const { data: authSurvey, error: authSurveyError } = await authenticatedSupabase
+                        .from('surveys')
+                        .select('*')
+                        .eq('id', testSurveyId)
+                        .single()
+                    
+                    debugResults += `<p><strong>3. Acesso Autenticado à Survey:</strong> `
+                    if (authSurveyError) {
+                        debugResults += `❌ Erro: ${authSurveyError.message}</p>`
+                        log('Acesso autenticado à pesquisa falhou: ' + authSurveyError.message, 'error')
+                    } else {
+                        debugResults += `✅ Sucesso</p>`
+                        log('Acesso autenticado à pesquisa bem-sucedido', 'success')
+                    }
+                    
+                    log('Testando acesso autenticado às questões', 'info')
+                    const { data: authQuestions, error: authQuestionsError } = await authenticatedSupabase
+                        .from('questions')
+                        .select('*')
+                        .eq('survey_id', testSurveyId)
+                    
+                    debugResults += `<p><strong>4. Acesso Autenticado às Questions:</strong> `
+                    if (authQuestionsError) {
+                        debugResults += `❌ Erro: ${authQuestionsError.message}</p>`
+                        log('Acesso autenticado às questões falhou: ' + authQuestionsError.message, 'error')
+                    } else {
+                        debugResults += `✅ Sucesso (${authQuestions.length} questões)</p>`
+                        log(`Acesso autenticado às questões bem-sucedido: ${authQuestions.length} questões`, 'success')
+                    }
+                }
+                
+                // 4. Mostrar log completo
+                debugResults += `<h5>📋 Log Completo:</h5>`
+                debugResults += `<pre>`
+                debugLog.forEach(entry => {
+                    debugResults += `[${entry.timestamp}] ${entry.type.toUpperCase()}: ${entry.message}\n`
+                })
+                debugResults += `</pre>`
+                
+                resultsDiv.innerHTML = debugResults
+                
+            } catch (error) {
+                log('Erro no debug detalhado: ' + error.message, 'error')
+                resultsDiv.innerHTML = `<p class="status error">❌ Erro: ${error.message}</p>`
+            }
+        }
+
+        window.testRLSPolicies = async function() {
+            const resultsDiv = document.getElementById('rls-results')
+            resultsDiv.innerHTML = '<p>🔄 Testando políticas RLS...</p>'
+            
+            log('Iniciando teste de políticas RLS', 'info')
+            
+            try {
+                let rlsResults = '<h4>🔒 Teste de Políticas RLS:</h4>'
+                
+                // Testar diferentes cenários de acesso
+                const testCases = [
+                    {
+                        name: 'Surveys com status ativo',
+                        query: () => supabase.from('surveys').select('*').eq('status', 'active')
+                    },
+                    {
+                        name: 'Surveys com unique_link',
+                        query: () => supabase.from('surveys').select('*').not('unique_link', 'is', null)
+                    },
+                    {
+                        name: 'Questions de surveys ativas',
+                        query: () => supabase.from('questions').select('*, surveys!inner(status)').eq('surveys.status', 'active')
+                    },
+                    {
+                        name: 'Inserção de responses',
+                        query: () => supabase.from('responses').insert({
+                            survey_id: testSurveyId,
+                            question_id: 'test-id',
+                            response_text: 'test response'
+                        })
+                    }
+                ]
+                
+                for (const testCase of testCases) {
+                    log(`Testando: ${testCase.name}`, 'info')
+                    try {
+                        const { data, error } = await testCase.query()
+                        if (error) {
+                            rlsResults += `<p>❌ <strong>${testCase.name}:</strong> ${error.message}</p>`
+                            log(`${testCase.name} falhou: ${error.message}`, 'error')
+                        } else {
+                            rlsResults += `<p>✅ <strong>${testCase.name}:</strong> Sucesso (${Array.isArray(data) ? data.length : 'OK'})</p>`
+                            log(`${testCase.name} bem-sucedido`, 'success')
+                        }
+                    } catch (e) {
+                        rlsResults += `<p>❌ <strong>${testCase.name}:</strong> Exceção: ${e.message}</p>`
+                        log(`${testCase.name} exceção: ${e.message}`, 'error')
+                    }
+                }
+                
+                resultsDiv.innerHTML = rlsResults
+                
+            } catch (error) {
+                log('Erro no teste de RLS: ' + error.message, 'error')
+                resultsDiv.innerHTML = `<p class="status error">❌ Erro: ${error.message}</p>`
+            }
+        }
+
+        function updateDiagnosis() {
+            const diagnosisDiv = document.getElementById('final-diagnosis')
+            
+            let diagnosis = '<h4>🩺 Diagnóstico:</h4>'
+            
+            const errors = debugLog.filter(entry => entry.type === 'error')
+            const warnings = debugLog.filter(entry => entry.type === 'warning')
+            const successes = debugLog.filter(entry => entry.type === 'success')
+            
+            diagnosis += `<p><strong>Resumo:</strong> ${successes.length} sucessos, ${warnings.length} avisos, ${errors.length} erros</p>`
+            
+            if (errors.length > 0) {
+                diagnosis += '<h5>❌ Erros Encontrados:</h5><ul>'
+                errors.forEach(error => {
+                    diagnosis += `<li>${error.message}</li>`
+                })
+                diagnosis += '</ul>'
+            }
+            
+            if (warnings.length > 0) {
+                diagnosis += '<h5>⚠️ Avisos:</h5><ul>'
+                warnings.forEach(warning => {
+                    diagnosis += `<li>${warning.message}</li>`
+                })
+                diagnosis += '</ul>'
+            }
+            
+            // Análise específica
+            const hasAuthError = errors.some(e => e.message.includes('questões'))
+            const hasSurveyAccess = successes.some(s => s.message.includes('pesquisa'))
+            
+            if (hasAuthError && hasSurveyAccess) {
+                diagnosis += '<div class="status error">🔍 <strong>Problema Identificado:</strong> Acesso à pesquisa funciona, mas questões estão bloqueadas. Verifique políticas RLS para a tabela questions.</div>'
+            } else if (errors.length === 0 && successes.length > 0) {
+                diagnosis += '<div class="status success">🎉 <strong>Tudo Funcionando:</strong> Não foram encontrados problemas nas políticas RLS. O problema pode estar na implementação do frontend.</div>'
+            }
+            
+            diagnosisDiv.innerHTML = diagnosis
+        }
+
+        // Atualizar diagnóstico a cada log
+        const originalLog = log
+        log = function(message, type = 'info') {
+            originalLog(message, type)
+            setTimeout(updateDiagnosis, 100)
+        }
+
+        // Inicializar automaticamente
+        window.addEventListener('load', () => {
+            initialize()
+        })
+    </script>
+</body>
+</html>

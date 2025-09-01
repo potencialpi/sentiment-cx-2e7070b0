@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste Final - Magic Link Completo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        .warning { background-color: #fff3cd; border-color: #ffeaa7; }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background-color: #0056b3; }
+        .highlight {
+            background-color: #ffeb3b;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+        .step {
+            border-left: 4px solid #007bff;
+            padding-left: 15px;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Teste Final - Magic Link Completo</h1>
+        <p>Este teste simula o fluxo completo do magic link após a correção</p>
+        
+        <button onclick="runCompleteTest()">🚀 Executar Teste Completo</button>
+        <button onclick="testSurveyAccess()">📋 Testar Acesso à Pesquisa</button>
+        <button onclick="clearResults()">🗑️ Limpar</button>
+        
+        <div id="results"></div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://mjuxvppexydaeuoernxa.supabase.co'
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1qdXh2cHBleHlkYWV1b2VybnhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM0NDAzNjYsImV4cCI6MjA2OTAxNjM2Nn0.ECVfL7CLqJj4wSPBY7g5yu_zdfBqbUTCK18MAXHjeTg'
+        
+        function addResult(message, type = 'info') {
+            const resultsDiv = document.getElementById('results')
+            const resultDiv = document.createElement('div')
+            resultDiv.className = `result ${type}`
+            resultDiv.innerHTML = message
+            resultsDiv.appendChild(resultDiv)
+            console.log(`[${type.toUpperCase()}] ${message}`)
+        }
+        
+        function clearResults() {
+            document.getElementById('results').innerHTML = ''
+        }
+        
+        async function runCompleteTest() {
+            clearResults()
+            addResult('🚀 Iniciando teste completo do magic link...', 'info')
+            
+            try {
+                const { createClient } = await import('https://cdn.skypack.dev/@supabase/supabase-js@2')
+                const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+                
+                // Passo 1: Gerar Magic Link
+                addResult('<div class="step"><h3>📧 Passo 1: Gerar Magic Link</h3></div>', 'info')
+                
+                const generateResponse = await fetch('/api/magic-link', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'generate',
+                        email: 'teste@exemplo.com',
+                        surveyId: 'test-survey-id'
+                    })
+                })
+                
+                if (!generateResponse.ok) {
+                    addResult(`❌ Erro ao gerar magic link: ${generateResponse.status}`, 'error')
+                    return
+                }
+                
+                const generateData = await generateResponse.json()
+                addResult(`✅ Magic link gerado: <span class="highlight">${generateData.magicLink}</span>`, 'success')
+                
+                // Extrair token da URL
+                const url = new URL(generateData.magicLink)
+                const token = url.searchParams.get('token')
+                const surveyId = url.searchParams.get('surveyId')
+                
+                addResult(`🔑 Token extraído: <span class="highlight">${token}</span>`, 'info')
+                addResult(`📋 Survey ID: <span class="highlight">${surveyId}</span>`, 'info')
+                
+                // Passo 2: Validar e Autenticar
+                addResult('<div class="step"><h3>🔐 Passo 2: Validar e Autenticar</h3></div>', 'info')
+                
+                const authResponse = await fetch('/api/magic-link', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'use',
+                        token: token
+                    })
+                })
+                
+                if (!authResponse.ok) {
+                    addResult(`❌ Erro na autenticação: ${authResponse.status}`, 'error')
+                    return
+                }
+                
+                const authData = await authResponse.json()
+                addResult(`✅ Autenticação realizada com sucesso`, 'success')
+                addResult(`👤 Usuário: ${authData.user?.email || 'Anônimo'}`, 'success')
+                
+                // Passo 3: Testar Acesso à Pesquisa (simulando SurveyResponse corrigido)
+                addResult('<div class="step"><h3>📋 Passo 3: Testar Acesso à Pesquisa (Método Corrigido)</h3></div>', 'info')
+                
+                await testSurveyAccessWithId(surveyId)
+                
+                addResult('<h3>🎉 Teste completo finalizado!</h3>', 'success')
+                
+            } catch (error) {
+                addResult(`❌ Erro geral: ${error.message}`, 'error')
+            }
+        }
+        
+        async function testSurveyAccessWithId(testSurveyId = null) {
+            try {
+                const { createClient } = await import('https://cdn.skypack.dev/@supabase/supabase-js@2')
+                const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+                
+                // Se não foi fornecido um surveyId, buscar uma pesquisa ativa
+                let surveyId = testSurveyId
+                if (!surveyId) {
+                    addResult('🔍 Buscando pesquisa ativa para teste...', 'info')
+                    const { data: surveys } = await supabase
+                        .from('surveys')
+                        .select('id')
+                        .eq('status', 'active')
+                        .limit(1)
+                    
+                    if (!surveys || surveys.length === 0) {
+                        addResult('⚠️ Nenhuma pesquisa ativa encontrada', 'warning')
+                        return
+                    }
+                    
+                    surveyId = surveys[0].id
+                }
+                
+                addResult(`🎯 Testando acesso à pesquisa ID: <span class="highlight">${surveyId}</span>`, 'info')
+                
+                // Simular o que o SurveyResponse faz agora (CORRIGIDO)
+                addResult('🔍 Buscando pesquisa por ID (método corrigido)...', 'info')
+                const { data: surveyData, error: surveyError } = await supabase
+                    .from('surveys')
+                    .select('id, title, description, status, current_responses, max_responses')
+                    .eq('id', surveyId) // ✅ CORREÇÃO: buscar por ID em vez de unique_link
+                    .eq('status', 'active')
+                    .maybeSingle()
+                
+                if (surveyError) {
+                    addResult(`❌ Erro ao buscar pesquisa: ${surveyError.message}`, 'error')
+                    return
+                }
+                
+                if (!surveyData) {
+                    addResult(`❌ Pesquisa não encontrada ou inativa`, 'error')
+                    return
+                }
+                
+                addResult(`✅ <strong>SUCESSO!</strong> Pesquisa encontrada: <span class="highlight">${surveyData.title}</span>`, 'success')
+                
+                // Testar carregamento das questões
+                addResult('📝 Carregando questões...', 'info')
+                const { data: questions, error: questionsError } = await supabase
+                    .from('questions')
+                    .select('id, question_text, question_type, options, question_order')
+                    .eq('survey_id', surveyData.id)
+                    .order('question_order', { ascending: true })
+                
+                if (questionsError) {
+                    addResult(`❌ Erro ao carregar questões: ${questionsError.message}`, 'error')
+                    return
+                }
+                
+                addResult(`✅ <strong>QUESTÕES CARREGADAS!</strong> ${questions.length} questões encontradas`, 'success')
+                
+                if (questions.length > 0) {
+                    addResult(`📋 Primeira questão: "${questions[0].question_text}"`, 'success')
+                    addResult(`🎯 Tipo: ${questions[0].question_type}`, 'info')
+                }
+                
+                addResult('<h4>🎉 Acesso à pesquisa funcionando perfeitamente!</h4>', 'success')
+                
+            } catch (error) {
+                addResult(`❌ Erro no teste de acesso: ${error.message}`, 'error')
+            }
+        }
+        
+        async function testSurveyAccess() {
+            clearResults()
+            addResult('📋 Testando acesso direto à pesquisa...', 'info')
+            await testSurveyAccessWithId()
+        }
+        
+        // Executar teste automaticamente
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                addResult('🔄 Executando teste automático em 2 segundos...', 'info')
+                setTimeout(testSurveyAccess, 2000)
+            }, 1000)
+        })
+    </script>
+</body>
+</html>

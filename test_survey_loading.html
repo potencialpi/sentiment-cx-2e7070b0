@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste de Carregamento da Pesquisa</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .success { background-color: #d4edda; }
+        .error { background-color: #f8d7da; }
+        .info { background-color: #d1ecf1; }
+        button {
+            padding: 10px 15px;
+            margin: 5px;
+            cursor: pointer;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 3px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Teste de Carregamento da Pesquisa</h1>
+    
+    <div class="section info">
+        <h2>1. Configuração do Supabase</h2>
+        <div id="supabase-config">Carregando configuração...</div>
+    </div>
+    
+    <div class="section">
+        <h2>2. Teste de Acesso Direto à Pesquisa</h2>
+        <button onclick="testDirectSurveyAccess()">Testar Acesso Direto</button>
+        <div id="direct-access-result"></div>
+    </div>
+    
+    <div class="section">
+        <h2>3. Geração e Teste do Magic Link</h2>
+        <button onclick="generateMagicLink()">Gerar Magic Link</button>
+        <div id="magic-link-result"></div>
+        <button onclick="testMagicLink()" id="test-magic-btn" style="display:none;">Testar Magic Link</button>
+        <div id="magic-test-result"></div>
+    </div>
+    
+    <div class="section">
+        <h2>4. Logs de Depuração</h2>
+        <pre id="debug-logs"></pre>
+    </div>
+
+    <script>
+        // Configuração do Supabase
+        const SUPABASE_URL = 'https://mjuxvppexydaeuoernxa.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1qdXh2cHBleHlkYWV1b2VybnhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM0NDAzNjYsImV4cCI6MjA2OTAxNjM2Nn0.ECVfL7CLqJj4wSPBY7g5yu_zdfBqbUTCK18MAXHjeTg';
+        
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        let generatedMagicLink = null;
+        
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logElement = document.getElementById('debug-logs');
+            logElement.textContent += `[${timestamp}] ${message}\n`;
+            console.log(message);
+        }
+        
+        function showResult(elementId, content, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.innerHTML = content;
+            element.className = `section ${type}`;
+        }
+        
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', function() {
+            log('Página carregada');
+            
+            // Verificar configuração do Supabase
+            const configDiv = document.getElementById('supabase-config');
+            configDiv.innerHTML = `
+                <strong>URL:</strong> ${SUPABASE_URL}<br>
+                <strong>Anon Key:</strong> ${SUPABASE_ANON_KEY.substring(0, 50)}...<br>
+                <strong>Status:</strong> Configurado
+            `;
+            
+            log('Supabase configurado');
+        });
+        
+        async function testDirectSurveyAccess() {
+            log('Testando acesso direto à pesquisa...');
+            
+            try {
+                // Tentar buscar pesquisas ativas
+                 const { data: surveys, error: surveyError } = await supabase
+                     .from('surveys')
+                     .select('*')
+                     .eq('status', 'active')
+                     .limit(1);
+                
+                if (surveyError) {
+                    log(`Erro ao buscar pesquisas: ${surveyError.message}`);
+                    showResult('direct-access-result', 
+                        `<strong>Erro:</strong> ${surveyError.message}`, 'error');
+                    return;
+                }
+                
+                if (!surveys || surveys.length === 0) {
+                    log('Nenhuma pesquisa ativa encontrada');
+                    showResult('direct-access-result', 
+                        '<strong>Resultado:</strong> Nenhuma pesquisa ativa encontrada', 'info');
+                    return;
+                }
+                
+                const survey = surveys[0];
+                log(`Pesquisa encontrada: ${survey.title}`);
+                
+                // Tentar buscar questões da pesquisa
+                const { data: questions, error: questionsError } = await supabase
+                    .from('questions')
+                    .select('*')
+                    .eq('survey_id', survey.id);
+                
+                if (questionsError) {
+                    log(`Erro ao buscar questões: ${questionsError.message}`);
+                    showResult('direct-access-result', 
+                        `<strong>Erro ao buscar questões:</strong> ${questionsError.message}`, 'error');
+                    return;
+                }
+                
+                log(`${questions.length} questões encontradas`);
+                
+                showResult('direct-access-result', `
+                    <strong>Sucesso!</strong><br>
+                    <strong>Pesquisa:</strong> ${survey.title}<br>
+                    <strong>ID:</strong> ${survey.id}<br>
+                    <strong>Questões:</strong> ${questions.length}<br>
+                    <strong>Unique Link:</strong> ${survey.unique_link || 'Não definido'}
+                `, 'success');
+                
+            } catch (error) {
+                log(`Erro inesperado: ${error.message}`);
+                showResult('direct-access-result', 
+                    `<strong>Erro inesperado:</strong> ${error.message}`, 'error');
+            }
+        }
+        
+        async function generateMagicLink() {
+            log('Gerando magic link...');
+            
+            try {
+                const response = await fetch('/api/magic-link', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: 'test@example.com',
+                        survey_id: 1
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (!response.ok) {
+                    log(`Erro na geração do magic link: ${result.error}`);
+                    showResult('magic-link-result', 
+                        `<strong>Erro:</strong> ${result.error}`, 'error');
+                    return;
+                }
+                
+                generatedMagicLink = result.magic_link;
+                log(`Magic link gerado: ${generatedMagicLink}`);
+                
+                showResult('magic-link-result', `
+                    <strong>Magic Link Gerado!</strong><br>
+                    <strong>Link:</strong> <a href="${generatedMagicLink}" target="_blank">${generatedMagicLink}</a><br>
+                    <strong>Token:</strong> ${result.token}
+                `, 'success');
+                
+                document.getElementById('test-magic-btn').style.display = 'inline-block';
+                
+            } catch (error) {
+                log(`Erro inesperado na geração: ${error.message}`);
+                showResult('magic-link-result', 
+                    `<strong>Erro inesperado:</strong> ${error.message}`, 'error');
+            }
+        }
+        
+        async function testMagicLink() {
+            if (!generatedMagicLink) {
+                showResult('magic-test-result', 
+                    '<strong>Erro:</strong> Nenhum magic link gerado', 'error');
+                return;
+            }
+            
+            log('Testando magic link...');
+            
+            try {
+                // Simular o clique no magic link
+                const url = new URL(generatedMagicLink);
+                const token = url.searchParams.get('token');
+                
+                if (!token) {
+                    log('Token não encontrado no magic link');
+                    showResult('magic-test-result', 
+                        '<strong>Erro:</strong> Token não encontrado no magic link', 'error');
+                    return;
+                }
+                
+                log(`Token extraído: ${token}`);
+                
+                // Validar o token
+                const validateResponse = await fetch('/api/validate-magic-link', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ token })
+                });
+                
+                const validateResult = await validateResponse.json();
+                
+                if (!validateResponse.ok) {
+                    log(`Erro na validação: ${validateResult.error}`);
+                    showResult('magic-test-result', 
+                        `<strong>Erro na validação:</strong> ${validateResult.error}`, 'error');
+                    return;
+                }
+                
+                log('Token validado com sucesso');
+                
+                // Tentar acessar a pesquisa após validação
+                const surveyId = validateResult.survey_id;
+                log(`Tentando acessar pesquisa ID: ${surveyId}`);
+                
+                const { data: survey, error: surveyError } = await supabase
+                    .from('surveys')
+                    .select('*')
+                    .eq('id', surveyId)
+                    .single();
+                
+                if (surveyError) {
+                    log(`Erro ao acessar pesquisa: ${surveyError.message}`);
+                    showResult('magic-test-result', 
+                        `<strong>Erro ao acessar pesquisa:</strong> ${surveyError.message}`, 'error');
+                    return;
+                }
+                
+                log(`Pesquisa acessada: ${survey.title}`);
+                
+                showResult('magic-test-result', `
+                    <strong>Magic Link Funcionando!</strong><br>
+                    <strong>Token validado:</strong> ✓<br>
+                    <strong>Pesquisa acessada:</strong> ${survey.title}<br>
+                    <strong>ID da pesquisa:</strong> ${surveyId}
+                `, 'success');
+                
+            } catch (error) {
+                log(`Erro inesperado no teste: ${error.message}`);
+                showResult('magic-test-result', 
+                    `<strong>Erro inesperado:</strong> ${error.message}`, 'error');
+            }
+        }
+    </script>
+</body>
+</html>

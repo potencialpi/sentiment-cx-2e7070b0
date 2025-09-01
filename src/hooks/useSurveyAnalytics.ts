@@ -56,6 +56,19 @@ export const useSurveyAnalytics = (surveyId: string) => {
       setLoading(true);
       setError(null);
 
+      // Verificar sessão antes de buscar dados protegidos por RLS
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) {
+        // Não bloquear, mas registrar e continuar; erros de sessão serão capturados nas consultas
+        console.warn('Aviso ao obter sessão:', sessionError.message || sessionError);
+      }
+      const session = sessionData?.session;
+      if (!session) {
+        setError('Você precisa estar logado para visualizar as análises desta pesquisa.');
+        setLoading(false);
+        return;
+      }
+
       // Fetch survey data
       const { data: survey, error: surveyError } = await supabase
         .from('surveys')
@@ -88,11 +101,21 @@ export const useSurveyAnalytics = (surveyId: string) => {
       setAnalytics(processedAnalytics);
     } catch (err: any) {
       console.error('Error fetching analytics:', err);
-      setError(err.message || 'Erro ao carregar análises');
+
+      // Mensagens de erro mais claras para cenários de RLS/permissão
+      const msg = (err?.message || '').toLowerCase();
+      if (msg.includes('permission denied') || msg.includes('rls') || msg.includes('not authorized')) {
+        setError('Você não possui permissão para visualizar as respostas desta pesquisa. Entre com a conta proprietária da pesquisa.');
+      } else if (msg.includes('jwt') || msg.includes('invalid token') || msg.includes('auth')) {
+        setError('Sua sessão expirou ou é inválida. Faça login novamente para continuar.');
+      } else {
+        setError(err.message || 'Erro ao carregar análises');
+      }
+
       toast({
-        title: "Erro",
-        description: "Não foi possível carregar as análises da pesquisa.",
-        variant: "destructive",
+        title: 'Erro',
+        description: 'Não foi possível carregar as análises da pesquisa.',
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
@@ -248,10 +271,5 @@ export const useSurveyAnalytics = (surveyId: string) => {
     fetchAnalytics();
   }, [fetchAnalytics]);
 
-  return {
-    analytics,
-    loading,
-    error,
-    refreshAnalytics
-  };
+  return { analytics, loading, error, refreshAnalytics };
 };

@@ -263,7 +263,7 @@ const RealTimeCharts: React.FC<RealTimeChartsProps> = ({ className }) => {
           </ResponsiveContainer>
         );
       
-      case 'treemap':
+      case 'treemap': {
           const currentTreemapData = data === chartData ? treemapData : processTreemapData(data);
           return (
             <ResponsiveContainer width="100%" height={300}>
@@ -275,6 +275,7 @@ const RealTimeCharts: React.FC<RealTimeChartsProps> = ({ className }) => {
               />
             </ResponsiveContainer>
           );
+        }
       
       case 'line':
         return (

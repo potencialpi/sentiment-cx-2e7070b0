@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Teste Simples Edge Function</title>
+</head>
+<body>
+    <h1>Teste Edge Function Magic Link</h1>
+    <div id="result"></div>
+    
+    <script>
+        console.log('Iniciando teste da Edge Function...');
+        
+        const EDGE_FUNCTION_URL = 'https://mjuxvppexydaeuoernxa.supabase.co/functions/v1/magic-link';
+        
+        async function testEdgeFunction() {
+            try {
+                console.log('Testando Edge Function:', EDGE_FUNCTION_URL);
+                
+                const response = await fetch(EDGE_FUNCTION_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        action: 'generate',
+                        email: 'teste@exemplo.com',
+                        surveyId: '1'
+                    })
+                });
+                
+                console.log('Response status:', response.status);
+                console.log('Response headers:', [...response.headers.entries()]);
+                
+                const responseText = await response.text();
+                console.log('Response text:', responseText);
+                
+                document.getElementById('result').innerHTML = `
+                    <p>Status: ${response.status}</p>
+                    <p>Response: ${responseText}</p>
+                `;
+                
+            } catch (error) {
+                console.error('Erro:', error);
+                document.getElementById('result').innerHTML = `<p>Erro: ${error.message}</p>`;
+            }
+        }
+        
+        // Executar teste após 2 segundos
+        setTimeout(testEdgeFunction, 2000);
+    </script>
+</body>
+</html>

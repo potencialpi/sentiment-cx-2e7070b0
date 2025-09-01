@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste Magic Link</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <h1>Teste Magic Link</h1>
+    <div id="result"></div>
+    
+    <script>
+        const supabaseUrl = 'https://mjuxvppexydaeuoernxa.supabase.co';
+        const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1qdXh2cHBleHlkYWV1b2VybnhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM0NDAzNjYsImV4cCI6MjA2OTAxNjM2Nn0.ECVfL7CLqJj4wSPBY7g5yu_zdfBqbUTCK18MAXHjeTg';
+        
+        const { createClient } = supabase;
+        const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
+        
+        async function testMagicLink() {
+            const resultDiv = document.getElementById('result');
+            
+            try {
+                console.log('Testando geração de magic link...');
+                
+                // Testar geração de magic link
+                const { data, error } = await supabaseClient.functions.invoke('magic-link', {
+                    body: {
+                        action: 'generate',
+                        email: 'test@example.com',
+                        surveyId: 'd813cf8d-c1bf-41a3-a425-60bb80a9d947'
+                    }
+                });
+                
+                if (error) {
+                    console.error('Erro completo:', error);
+                    resultDiv.innerHTML = `<p style="color: red;">Erro: ${error.message}<br>Detalhes: ${JSON.stringify(error)}</p>`;
+                } else {
+                    console.log('Sucesso:', data);
+                    resultDiv.innerHTML = `<h3>Magic Link gerado com sucesso!</h3><pre>${JSON.stringify(data, null, 2)}</pre>`;
+                }
+                
+            } catch (err) {
+                console.error('Erro capturado:', err);
+                resultDiv.innerHTML = `<p style="color: red;">Erro capturado: ${err.message}</p>`;
+            }
+        }
+        
+        // Executar teste quando a página carregar
+        window.onload = testMagicLink;
+    </script>
+</body>
+</html>

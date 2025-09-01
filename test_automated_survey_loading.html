@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste Automatizado - Carregamento da Pesquisa</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .success { background-color: #d4edda; }
+        .error { background-color: #f8d7da; }
+        .info { background-color: #d1ecf1; }
+        .warning { background-color: #fff3cd; }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 3px;
+            overflow-x: auto;
+            max-height: 400px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Teste Automatizado - Carregamento da Pesquisa</h1>
+    
+    <div class="section info">
+        <h2>Status dos Testes</h2>
+        <div id="test-status">Iniciando testes...</div>
+    </div>
+    
+    <div class="section">
+        <h2>Resultados dos Testes</h2>
+        <div id="test-results"></div>
+    </div>
+    
+    <div class="section">
+        <h2>Logs Detalhados</h2>
+        <pre id="debug-logs"></pre>
+    </div>
+
+    <script>
+        // Configuração do Supabase
+        const SUPABASE_URL = 'https://mjuxvppexydaeuoernxa.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1qdXh2cHBleHlkYWV1b2VybnhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM0NDAzNjYsImV4cCI6MjA2OTAxNjM2Nn0.ECVfL7CLqJj4wSPBY7g5yu_zdfBqbUTCK18MAXHjeTg';
+        
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logElement = document.getElementById('debug-logs');
+            logElement.textContent += `[${timestamp}] ${message}\n`;
+            console.log(message);
+        }
+        
+        function updateStatus(message, type = 'info') {
+            const statusElement = document.getElementById('test-status');
+            statusElement.innerHTML = message;
+            statusElement.className = `section ${type}`;
+        }
+        
+        function addResult(title, content, type = 'info') {
+            const resultsElement = document.getElementById('test-results');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `section ${type}`;
+            resultDiv.innerHTML = `<h3>${title}</h3>${content}`;
+            resultsElement.appendChild(resultDiv);
+        }
+        
+        async function runTests() {
+            log('=== INICIANDO TESTES AUTOMATIZADOS ===');
+            updateStatus('Executando testes...', 'info');
+            
+            // Teste 1: Verificar conexão com Supabase
+            try {
+                log('Teste 1: Verificando conexão com Supabase...');
+                const { data, error } = await supabase.from('surveys').select('count', { count: 'exact', head: true });
+                
+                if (error) {
+                    log(`Erro na conexão: ${error.message}`);
+                    addResult('1. Conexão Supabase', `❌ Erro: ${error.message}`, 'error');
+                } else {
+                    log(`Conexão OK. Total de surveys: ${data}`);
+                    addResult('1. Conexão Supabase', `✅ Conectado. Total de surveys: ${data}`, 'success');
+                }
+            } catch (error) {
+                log(`Erro inesperado na conexão: ${error.message}`);
+                addResult('1. Conexão Supabase', `❌ Erro inesperado: ${error.message}`, 'error');
+            }
+            
+            // Teste 2: Buscar pesquisas ativas
+            try {
+                log('Teste 2: Buscando pesquisas ativas...');
+                const { data: surveys, error: surveyError } = await supabase
+                    .from('surveys')
+                    .select('*')
+                    .eq('status', 'active')
+                    .limit(5);
+                
+                if (surveyError) {
+                    log(`Erro ao buscar pesquisas: ${surveyError.message}`);
+                    addResult('2. Pesquisas Ativas', `❌ Erro: ${surveyError.message}`, 'error');
+                } else {
+                    log(`Encontradas ${surveys.length} pesquisas ativas`);
+                    if (surveys.length > 0) {
+                        const surveyList = surveys.map(s => `ID: ${s.id}, Título: ${s.title}, Link: ${s.unique_link || 'N/A'}`).join('<br>');
+                        addResult('2. Pesquisas Ativas', `✅ ${surveys.length} pesquisas encontradas:<br>${surveyList}`, 'success');
+                    } else {
+                        addResult('2. Pesquisas Ativas', '⚠️ Nenhuma pesquisa ativa encontrada', 'warning');
+                    }
+                }
+            } catch (error) {
+                log(`Erro inesperado ao buscar pesquisas: ${error.message}`);
+                addResult('2. Pesquisas Ativas', `❌ Erro inesperado: ${error.message}`, 'error');
+            }
+            
+            // Teste 3: Buscar questões
+            try {
+                log('Teste 3: Buscando questões...');
+                const { data: questions, error: questionsError } = await supabase
+                    .from('questions')
+                    .select('*')
+                    .limit(5);
+                
+                if (questionsError) {
+                    log(`Erro ao buscar questões: ${questionsError.message}`);
+                    addResult('3. Questões', `❌ Erro: ${questionsError.message}`, 'error');
+                } else {
+                    log(`Encontradas ${questions.length} questões`);
+                    if (questions.length > 0) {
+                        const questionList = questions.map(q => `ID: ${q.id}, Survey: ${q.survey_id}, Tipo: ${q.type}`).join('<br>');
+                        addResult('3. Questões', `✅ ${questions.length} questões encontradas:<br>${questionList}`, 'success');
+                    } else {
+                        addResult('3. Questões', '⚠️ Nenhuma questão encontrada', 'warning');
+                    }
+                }
+            } catch (error) {
+                log(`Erro inesperado ao buscar questões: ${error.message}`);
+                addResult('3. Questões', `❌ Erro inesperado: ${error.message}`, 'error');
+            }
+            
+            // Teste 4: Testar geração de magic link
+            try {
+                log('Teste 4: Testando geração de magic link...');
+                const response = await fetch('/api/magic-link', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: 'test@example.com',
+                        survey_id: 1
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (!response.ok) {
+                    log(`Erro na geração do magic link: ${result.error}`);
+                    addResult('4. Magic Link', `❌ Erro: ${result.error}`, 'error');
+                } else {
+                    log(`Magic link gerado: ${result.magic_link}`);
+                    addResult('4. Magic Link', `✅ Magic link gerado:<br>Link: ${result.magic_link}<br>Token: ${result.token}`, 'success');
+                }
+            } catch (error) {
+                log(`Erro inesperado na geração do magic link: ${error.message}`);
+                addResult('4. Magic Link', `❌ Erro inesperado: ${error.message}`, 'error');
+            }
+            
+            // Teste 5: Verificar políticas RLS
+            try {
+                log('Teste 5: Verificando políticas RLS...');
+                
+                // Tentar acessar uma pesquisa específica com unique_link
+                const { data: surveyWithLink, error: linkError } = await supabase
+                    .from('surveys')
+                    .select('*')
+                    .not('unique_link', 'is', null)
+                    .limit(1);
+                
+                if (linkError) {
+                    log(`Erro ao buscar pesquisa com unique_link: ${linkError.message}`);
+                    addResult('5. Políticas RLS', `❌ Erro ao acessar pesquisa com unique_link: ${linkError.message}`, 'error');
+                } else if (surveyWithLink && surveyWithLink.length > 0) {
+                    log(`Pesquisa com unique_link acessível: ${surveyWithLink[0].title}`);
+                    addResult('5. Políticas RLS', `✅ Acesso a pesquisa com unique_link funcionando:<br>Título: ${surveyWithLink[0].title}<br>Link: ${surveyWithLink[0].unique_link}`, 'success');
+                } else {
+                    log('Nenhuma pesquisa com unique_link encontrada');
+                    addResult('5. Políticas RLS', '⚠️ Nenhuma pesquisa com unique_link encontrada', 'warning');
+                }
+            } catch (error) {
+                log(`Erro inesperado ao verificar RLS: ${error.message}`);
+                addResult('5. Políticas RLS', `❌ Erro inesperado: ${error.message}`, 'error');
+            }
+            
+            log('=== TESTES CONCLUÍDOS ===');
+            updateStatus('Testes concluídos! Verifique os resultados acima.', 'success');
+        }
+        
+        // Inicializar testes quando a página carregar
+        document.addEventListener('DOMContentLoaded', function() {
+            log('Página carregada, iniciando testes em 2 segundos...');
+            setTimeout(runTests, 2000);
+        });
+    </script>
+</body>
+</html>

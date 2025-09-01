@@ -77,28 +77,28 @@ export async function handleStripeWebhook(payload: string, signature: string) {
 
     switch (event.type) {
       case 'checkout.session.completed':
-        const session = event.data.object as Stripe.Checkout.Session;
-        console.log('Pagamento completado:', session.id);
-        // Aqui você pode atualizar o status do usuário no banco de dados
-        break;
+        { const session = event.data.object as Stripe.Checkout.Session;
+          console.log('Pagamento completado:', session.id);
+          // Aqui você pode atualizar o status do usuário no banco de dados
+          break; }
 
       case 'invoice.payment_succeeded':
-        const invoice = event.data.object as Stripe.Invoice;
-        console.log('Pagamento de fatura bem-sucedido:', invoice.id);
-        // Aqui você pode renovar a assinatura do usuário
-        break;
+        { const invoice = event.data.object as Stripe.Invoice;
+          console.log('Pagamento de fatura bem-sucedido:', invoice.id);
+          // Aqui você pode renovar a assinatura do usuário
+          break; }
 
       case 'invoice.payment_failed':
-        const failedInvoice = event.data.object as Stripe.Invoice;
-        console.log('Falha no pagamento da fatura:', failedInvoice.id);
-        // Aqui você pode notificar o usuário sobre a falha no pagamento
-        break;
+        { const failedInvoice = event.data.object as Stripe.Invoice;
+          console.log('Falha no pagamento da fatura:', failedInvoice.id);
+          // Aqui você pode notificar o usuário sobre a falha no pagamento
+          break; }
 
       case 'customer.subscription.deleted':
-        const subscription = event.data.object as Stripe.Subscription;
-        console.log('Assinatura cancelada:', subscription.id);
-        // Aqui você pode desativar o acesso do usuário
-        break;
+        { const subscription = event.data.object as Stripe.Subscription;
+          console.log('Assinatura cancelada:', subscription.id);
+          // Aqui você pode desativar o acesso do usuário
+          break; }
 
       default:
         console.log(`Evento não tratado: ${event.type}`);

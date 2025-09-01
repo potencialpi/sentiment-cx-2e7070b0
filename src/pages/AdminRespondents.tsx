@@ -1,13 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, Plus, Trash2, Mail, User } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Mail, User, Send, Link as LinkIcon, UserPlus } from 'lucide-react';
+import { MagicLinkRequest } from '@/components/MagicLinkRequest';
+import { getUserPlan, getPlanDisplayName } from '@/lib/planUtils';
 
 interface Respondent {
   id: string;
@@ -16,14 +19,23 @@ interface Respondent {
   created_at: string;
 }
 
-const getPlanInfo = (plan: string) => {
-  switch (plan) {
-    case 'start':
-      return { name: 'Start Quântico', limits: '5 questões, 50 respostas, 3 pesquisas/mês' };
-    case 'vortex':
-      return { name: 'Vortex Neural', limits: '10 questões, 250 respostas, 4 pesquisas/mês' };
-    case 'nexus':
-      return { name: 'Nexus Infinito', limits: 'Questões e respostas ilimitadas, pesquisas ilimitadas' };
+interface Survey {
+  id: string;
+  title: string;
+  description?: string;
+  status: string;
+}
+
+const getPlanInfo = (planCode: string) => {
+  const displayName = getPlanDisplayName(planCode);
+  
+  switch (planCode) {
+    case 'start-quantico':
+      return { name: displayName, limits: '5 questões, 50 respostas, 3 pesquisas/mês' };
+    case 'vortex-neural':
+      return { name: displayName, limits: '10 questões, 250 respostas, 4 pesquisas/mês' };
+    case 'nexus-infinito':
+      return { name: displayName, limits: 'Questões e respostas ilimitadas, pesquisas ilimitadas' };
     default:
       return { name: 'Start Quântico', limits: '5 questões, 50 respostas, 3 pesquisas/mês' };
   }
@@ -36,9 +48,14 @@ const AdminRespondents = () => {
   const [loading, setLoading] = useState(false);
   const [respondents, setRespondents] = useState<Respondent[]>([]);
   const [loadingList, setLoadingList] = useState(true);
+  const [surveys, setSurveys] = useState<Survey[]>([]);
+  const [selectedSurveyId, setSelectedSurveyId] = useState('');
+  const [showMagicLinkForm, setShowMagicLinkForm] = useState(false);
+  const [userPlan, setUserPlan] = useState<string>('start-quantico');
+  const [planLoading, setPlanLoading] = useState(true);
   const { toast } = useToast();
 
-  const planInfo = getPlanInfo(plan);
+  const planInfo = getPlanInfo(userPlan);
 
   const loadRespondents = useCallback(async () => {
     try {
@@ -58,9 +75,60 @@ const AdminRespondents = () => {
     }
   }, [toast]);
 
+  const loadSurveys = useCallback(async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: surveys, error } = await supabase
+        .from('surveys')
+        .select('id, title, description, status')
+        .eq('user_id', user.id)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Erro ao carregar pesquisas:', error);
+        return;
+      }
+
+      setSurveys(surveys || []);
+    } catch (error) {
+      console.error('Erro inesperado ao carregar pesquisas:', error);
+    }
+  }, []);
+
+  // Carregar plano real do usuário
+  const loadUserPlan = useCallback(async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const actualPlan = await getUserPlan(supabase, user.id);
+        console.log('AdminRespondents - Plano real do usuário:', actualPlan);
+        setUserPlan(actualPlan);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar plano do usuário:', error);
+    } finally {
+      setPlanLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
+    loadUserPlan();
     loadRespondents();
-  }, [loadRespondents]);
+    loadSurveys();
+  }, [loadUserPlan, loadRespondents, loadSurveys]);
+
+  const handleMagicLinkSuccess = (data: any) => {
+    toast({
+      title: "Magic Link Gerado!",
+      description: "O link de acesso foi gerado com sucesso. Você pode copiá-lo e enviá-lo para o respondente.",
+      variant: "default",
+    });
+    // Mantém o formulário aberto para permitir copiar o link
+    // setShowMagicLinkForm(false);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -146,7 +214,7 @@ const AdminRespondents = () => {
         <div className="max-w-6xl mx-auto">
           <div className="flex items-center gap-4 mb-6">
             <Link 
-              to={`/admin/${plan}`}
+              to={`/admin/${userPlan === 'start-quantico' ? 'start' : userPlan === 'vortex-neural' ? 'vortex' : 'nexus'}`}
               className="flex items-center gap-2 text-brand-white hover:text-brand-white/80 transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
@@ -174,6 +242,108 @@ const AdminRespondents = () => {
       {/* Seção Inferior */}
       <section className="bg-section-light py-12 px-6">
         <div className="max-w-6xl mx-auto space-y-8">
+          {/* Magic Links */}
+          <Card className="bg-brand-white shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-2xl font-bold text-brand-dark-gray flex items-center gap-2">
+                <LinkIcon className="w-6 h-6 text-primary" />
+                Enviar Magic Link
+              </CardTitle>
+              <p className="text-brand-dark-gray/60">
+                Envie links de acesso direto para respondentes participarem de pesquisas específicas
+              </p>
+            </CardHeader>
+            <CardContent>
+              {!showMagicLinkForm ? (
+                <div className="space-y-4">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <Mail className="w-5 h-5 text-blue-600 mt-0.5" />
+                      <div>
+                        <h4 className="font-semibold text-blue-900 mb-1">Magic Links - Acesso Seguro</h4>
+                        <p className="text-blue-700 text-sm mb-3">
+                          Envie links únicos e temporários por email para que respondentes acessem pesquisas específicas sem necessidade de cadastro.
+                        </p>
+                        <ul className="text-blue-600 text-xs space-y-1">
+                          <li>• Links válidos por 24 horas</li>
+                          <li>• Acesso direto à pesquisa selecionada</li>
+                          <li>• Conformidade total com LGPD</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {surveys.length > 0 ? (
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label className="text-brand-dark-gray">Selecione a Pesquisa</Label>
+                        <Select value={selectedSurveyId} onValueChange={setSelectedSurveyId}>
+                          <SelectTrigger className="py-3">
+                            <SelectValue placeholder="Escolha uma pesquisa ativa" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {surveys.map((survey) => (
+                              <SelectItem key={survey.id} value={survey.id}>
+                                {survey.title}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <Button 
+                        onClick={() => setShowMagicLinkForm(true)}
+                        disabled={!selectedSurveyId}
+                        variant="hero"
+                        className="w-full md:w-auto px-8 py-3 text-lg font-semibold"
+                      >
+                        <Send className="w-5 h-5 mr-2" />
+                        Enviar Magic Link
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <LinkIcon className="w-12 h-12 text-brand-dark-gray/30 mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold text-brand-dark-gray mb-2">
+                        Nenhuma pesquisa ativa
+                      </h3>
+                      <p className="text-brand-dark-gray/60 mb-4">
+                        Você precisa ter pelo menos uma pesquisa ativa para enviar magic links.
+                      </p>
+                      <Link 
+                        to={`/admin/${plan}`}
+                        className="text-blue-600 hover:text-blue-800 underline"
+                      >
+                        Criar Nova Pesquisa
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold text-brand-dark-gray">
+                      Enviar para: {surveys.find(s => s.id === selectedSurveyId)?.title}
+                    </h3>
+                    <Button 
+                      variant="ghost" 
+                      onClick={() => setShowMagicLinkForm(false)}
+                      className="text-gray-500 hover:text-gray-700"
+                    >
+                      Cancelar
+                    </Button>
+                  </div>
+                  
+                  <MagicLinkRequest
+                    surveyId={selectedSurveyId}
+                    surveyTitle={surveys.find(s => s.id === selectedSurveyId)?.title || ''}
+                    onSuccess={handleMagicLinkSuccess}
+                  />
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Formulário de Cadastro */}
           <Card className="bg-brand-white shadow-sm">
             <CardHeader>

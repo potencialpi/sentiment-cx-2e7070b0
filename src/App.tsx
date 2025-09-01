@@ -26,6 +26,7 @@ import CreateSurveyNexus from "./pages/CreateSurveyNexus";
 import SurveyResponse from "./pages/SurveyResponse";
 import Reports from "./pages/Reports";
 import NotFound from "./pages/NotFound";
+import MagicLinkAuth from "./pages/MagicLinkAuth";
 import TestSelect from './components/TestSelect';
 import DebugSelect from './components/DebugSelect';
 
@@ -54,6 +55,10 @@ const App = () => (
           <Route path="/admin/nexus" element={<AdminNexus />} />
           <Route path="/admin/questionarios/nexus" element={<AdminNexus />} />
 
+          <Route path="/admin/start-quantico/respondents" element={<AdminRespondents />} />
+          <Route path="/admin/vortex-neural/respondents" element={<AdminRespondents />} />
+          <Route path="/admin/nexus-infinito/respondents" element={<AdminRespondents />} />
+          {/* Rotas alternativas para compatibilidade */}
           <Route path="/admin/vortex/respondentes" element={<AdminRespondents />} />
           <Route path="/admin/nexus/respondentes" element={<AdminRespondents />} />
           <Route path="/create-survey" element={<CreateSurveyRedirect />} />
@@ -63,6 +68,7 @@ const App = () => (
           <Route path="/manage-surveys" element={<CreateSurvey />} />
           <Route path="/survey/:surveyId" element={<SurveyResponse />} />
           <Route path="/reports" element={<Reports />} />
+          <Route path="/auth/magic-link" element={<MagicLinkAuth />} />
           <Route path="/test-select" element={<TestSelect />} />
             <Route path="/debug-select" element={<DebugSelect />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

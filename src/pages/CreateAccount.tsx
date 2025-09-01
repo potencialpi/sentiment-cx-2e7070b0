@@ -91,6 +91,35 @@ const CreateAccount = () => {
       }
 
       if (data?.success) {
+        // Verificar se o perfil foi criado corretamente
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', data.userId)
+          .single();
+
+        // Se não existe perfil, criar um automaticamente
+        if (profileError && profileError.code === 'PGRST116') {
+          console.log('Perfil não encontrado, criando automaticamente...');
+          const { error: createProfileError } = await supabase
+            .from('profiles')
+            .insert({
+              user_id: data.userId,
+              email: data.email,
+              plan_name: data.planId,
+              subscription_status: 'active',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
+
+          if (createProfileError) {
+            console.error('Erro ao criar perfil automaticamente:', createProfileError);
+            // Continuar mesmo com erro no perfil
+          } else {
+            console.log('Perfil criado automaticamente com sucesso!');
+          }
+        }
+
         setUserCredentials({
           email: data.email,
           planId: data.planId

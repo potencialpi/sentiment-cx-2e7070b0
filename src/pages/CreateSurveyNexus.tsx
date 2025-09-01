@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { StarRating } from '@/components/ui/star-rating';
 import { Plus, Minus, ArrowLeft, LogOut, TrendingUp, BarChart3, PieChart, Infinity, Copy, Activity } from 'lucide-react';
+import { getUserPlan, getPlanDisplayName } from '@/lib/planUtils';
 
 interface Question {
   id: string;
@@ -56,6 +57,7 @@ const CreateSurveyNexus = () => {
   const [currentSurveyCount, setCurrentSurveyCount] = useState(0);
   const [activeSurveys, setActiveSurveys] = useState<Survey[]>([]);
   const [isLoadingSurveys, setIsLoadingSurveys] = useState(false);
+  const [userPlan, setUserPlan] = useState<string>('nexus-infinito');
 
   const loadActiveSurveys = useCallback(async (userId: string) => {
     setIsLoadingSurveys(true);
@@ -105,6 +107,12 @@ const CreateSurveyNexus = () => {
         return;
       }
       setUser(user);
+
+      // Obter plano real do usuário
+      const actualPlan = await getUserPlan(user.id);
+      if (actualPlan) {
+        setUserPlan(actualPlan);
+      }
 
       // Verificar quantidade de pesquisas do mês atual
       const { data: surveys, error } = await supabase
@@ -297,7 +305,7 @@ const CreateSurveyNexus = () => {
             <h1 className="text-nav font-semibold mb-4">Sentiment CX</h1>
             <h2 className="text-hero font-bold mb-4 flex items-center justify-center gap-2">
               <Infinity className="h-8 w-8" />
-              Criar e Gerenciar Pesquisas - Nexus Infinito
+              Criar e Gerenciar Pesquisas - {getPlanDisplayName(userPlan)}
             </h2>
             <p className="text-subtitle text-brand-white/80 max-w-3xl mx-auto">
               Questões ilimitadas, respostas ilimitadas, pesquisas ilimitadas - Poder total para sua análise
@@ -320,7 +328,7 @@ const CreateSurveyNexus = () => {
                 <CardHeader>
                   <CardTitle className="text-brand-dark-gray flex items-center gap-2">
                     <Infinity className="h-5 w-5" />
-                    Nova Pesquisa - Nexus Infinito
+                    Nova Pesquisa - {getPlanDisplayName(userPlan)}
                   </CardTitle>
                   <CardDescription className="text-brand-dark-gray/70">
                     Crie pesquisas sem limites - questões, respostas e análises ilimitadas

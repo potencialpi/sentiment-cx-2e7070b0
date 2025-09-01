@@ -45,11 +45,11 @@ const SurveyResponse = () => {
   const loadSurveyData = useCallback(async () => {
     if (!surveyId) return;
     try {
-      // Primeiro, tentar buscar a pesquisa pelo link único
+      // Buscar a pesquisa pelo ID (quando vem do magic link, surveyId é o ID real)
       const { data: surveyData, error: surveyError } = await supabase
         .from('surveys')
         .select('id, title, description, status, current_responses, max_responses')
-        .eq('unique_link', surveyId)
+        .eq('id', surveyId)
         .eq('status', 'active')
         .maybeSingle();
 

@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste Edge Function Magic Link</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background-color: #0056b3; }
+        pre {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 3px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Teste Edge Function Magic Link</h1>
+        
+        <div class="test-section info">
+            <h3>Configuração</h3>
+            <p>URL da Edge Function: <span id="edgeFunctionUrl"></span></p>
+            <p>Status: <span id="connectionStatus">Verificando...</span></p>
+        </div>
+
+        <div class="test-section">
+            <h3>Teste 1: Verificar se Edge Function está acessível</h3>
+            <button onclick="testEdgeFunctionAccess()">Testar Acesso</button>
+            <div id="accessResult"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>Teste 2: Gerar Magic Link</h3>
+            <input type="email" id="testEmail" placeholder="Digite um email" value="teste@exemplo.com">
+            <input type="text" id="testSurveyId" placeholder="ID da pesquisa" value="1">
+            <button onclick="testGenerateMagicLink()">Gerar Magic Link</button>
+            <div id="generateResult"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>Logs de Debug</h3>
+            <pre id="debugLogs"></pre>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://mjuxvppexydaeuoernxa.supabase.co';
+        const EDGE_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/magic-link`;
+        
+        document.getElementById('edgeFunctionUrl').textContent = EDGE_FUNCTION_URL;
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logElement = document.getElementById('debugLogs');
+            logElement.textContent += `[${timestamp}] ${type.toUpperCase()}: ${message}\n`;
+            console.log(`[${type.toUpperCase()}]`, message);
+        }
+
+        async function testEdgeFunctionAccess() {
+            const resultDiv = document.getElementById('accessResult');
+            resultDiv.innerHTML = '<p>Testando acesso...</p>';
+            
+            try {
+                log('Testando acesso à Edge Function...');
+                
+                // Teste com OPTIONS (CORS preflight)
+                const optionsResponse = await fetch(EDGE_FUNCTION_URL, {
+                    method: 'OPTIONS',
+                    headers: {
+                        'Origin': window.location.origin,
+                        'Access-Control-Request-Method': 'POST',
+                        'Access-Control-Request-Headers': 'Content-Type'
+                    }
+                });
+                
+                log(`OPTIONS response status: ${optionsResponse.status}`);
+                log(`OPTIONS response headers: ${JSON.stringify([...optionsResponse.headers.entries()])}`);
+                
+                if (optionsResponse.ok) {
+                    resultDiv.innerHTML = '<div class="success"><p>✅ Edge Function acessível (CORS OK)</p></div>';
+                    document.getElementById('connectionStatus').textContent = 'Conectado';
+                } else {
+                    resultDiv.innerHTML = `<div class="error"><p>❌ Erro no CORS: ${optionsResponse.status}</p></div>`;
+                    document.getElementById('connectionStatus').textContent = 'Erro de CORS';
+                }
+                
+            } catch (error) {
+                log(`Erro ao testar acesso: ${error.message}`, 'error');
+                resultDiv.innerHTML = `<div class="error"><p>❌ Erro: ${error.message}</p></div>`;
+                document.getElementById('connectionStatus').textContent = 'Erro de conexão';
+            }
+        }
+
+        async function testGenerateMagicLink() {
+            const resultDiv = document.getElementById('generateResult');
+            const email = document.getElementById('testEmail').value;
+            const surveyId = document.getElementById('testSurveyId').value;
+            
+            if (!email || !surveyId) {
+                resultDiv.innerHTML = '<div class="error"><p>❌ Preencha email e ID da pesquisa</p></div>';
+                return;
+            }
+            
+            resultDiv.innerHTML = '<p>Gerando magic link...</p>';
+            
+            try {
+                log(`Gerando magic link para email: ${email}, survey: ${surveyId}`);
+                
+                const response = await fetch(EDGE_FUNCTION_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Origin': window.location.origin
+                    },
+                    body: JSON.stringify({
+                        action: 'generate',
+                        email: email,
+                        surveyId: surveyId
+                    })
+                });
+                
+                log(`Response status: ${response.status}`);
+                log(`Response headers: ${JSON.stringify([...response.headers.entries()])}`);
+                
+                const responseText = await response.text();
+                log(`Response text: ${responseText}`);
+                
+                if (response.ok) {
+                    try {
+                        const data = JSON.parse(responseText);
+                        if (data.success) {
+                            resultDiv.innerHTML = `
+                                <div class="success">
+                                    <p>✅ Magic link gerado com sucesso!</p>
+                                    <p><strong>URL:</strong> ${data.data.magicLinkUrl}</p>
+                                    <p><strong>Expira em:</strong> ${new Date(data.data.expiresAt).toLocaleString()}</p>
+                                </div>
+                            `;
+                        } else {
+                            resultDiv.innerHTML = `<div class="error"><p>❌ Erro: ${data.error}</p></div>`;
+                        }
+                    } catch (jsonError) {
+                        log(`Erro ao fazer parse do JSON: ${jsonError.message}`, 'error');
+                        resultDiv.innerHTML = `<div class="error"><p>❌ Resposta inválida: ${responseText}</p></div>`;
+                    }
+                } else {
+                    resultDiv.innerHTML = `<div class="error"><p>❌ Erro HTTP ${response.status}: ${responseText}</p></div>`;
+                }
+                
+            } catch (error) {
+                log(`Erro na requisição: ${error.message}`, 'error');
+                resultDiv.innerHTML = `<div class="error"><p>❌ Erro: ${error.message}</p></div>`;
+            }
+        }
+
+        // Testar acesso automaticamente ao carregar
+        window.addEventListener('load', () => {
+            log('Página carregada, testando acesso à Edge Function...');
+            setTimeout(testEdgeFunctionAccess, 1000);
+        });
+    </script>
+</body>
+</html>

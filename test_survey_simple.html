@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste Simples - SurveyResponse Debug</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background-color: #0056b3; }
+        pre {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 3px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Teste Simples - Debug SurveyResponse</h1>
+        <p>Teste direto do problema "Pesquisa Não Disponível"</p>
+        
+        <button onclick="runTest()">▶️ Executar Teste</button>
+        <button onclick="clearResults()">🗑️ Limpar</button>
+        
+        <div id="results"></div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://mjuxvppexydaeuoernxa.supabase.co'
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1qdXh2cHBleHlkYWV1b2VybnhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM0NDAzNjYsImV4cCI6MjA2OTAxNjM2Nn0.ECVfL7CLqJj4wSPBY7g5yu_zdfBqbUTCK18MAXHjeTg'
+        
+        function addResult(message, type = 'info') {
+            const resultsDiv = document.getElementById('results')
+            const resultDiv = document.createElement('div')
+            resultDiv.className = `result ${type}`
+            resultDiv.innerHTML = message
+            resultsDiv.appendChild(resultDiv)
+            console.log(`[${type.toUpperCase()}] ${message}`)
+        }
+        
+        function clearResults() {
+            document.getElementById('results').innerHTML = ''
+        }
+        
+        async function runTest() {
+            clearResults()
+            addResult('🚀 Iniciando teste...', 'info')
+            
+            try {
+                // Importar Supabase
+                const { createClient } = await import('https://cdn.skypack.dev/@supabase/supabase-js@2')
+                const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+                
+                addResult('✅ Cliente Supabase criado', 'success')
+                
+                // 1. Buscar pesquisas ativas
+                addResult('🔍 Buscando pesquisas ativas...', 'info')
+                const { data: surveys, error: surveyError } = await supabase
+                    .from('surveys')
+                    .select('id, title, status, unique_link')
+                    .eq('status', 'active')
+                    .not('unique_link', 'is', null)
+                    .limit(5)
+                
+                if (surveyError) {
+                    addResult(`❌ Erro ao buscar pesquisas: ${surveyError.message}`, 'error')
+                    return
+                }
+                
+                if (!surveys || surveys.length === 0) {
+                    addResult('⚠️ Nenhuma pesquisa ativa encontrada', 'error')
+                    return
+                }
+                
+                addResult(`✅ Encontradas ${surveys.length} pesquisas ativas`, 'success')
+                
+                // Testar cada pesquisa
+                for (const survey of surveys) {
+                    addResult(`<hr><h4>📋 Testando: ${survey.title} (ID: ${survey.id})</h4>`, 'info')
+                    
+                    // 2. Tentar carregar questões (como no SurveyResponse)
+                    addResult('🔍 Carregando questões...', 'info')
+                    const { data: questions, error: questionsError } = await supabase
+                        .from('questions')
+                        .select('*')
+                        .eq('survey_id', survey.id)
+                        .order('order_index')
+                    
+                    if (questionsError) {
+                        addResult(`❌ Erro ao carregar questões: ${questionsError.message}`, 'error')
+                        addResult(`<pre>Detalhes do erro: ${JSON.stringify(questionsError, null, 2)}</pre>`, 'error')
+                        continue
+                    }
+                    
+                    if (!questions || questions.length === 0) {
+                        addResult('⚠️ Nenhuma questão encontrada para esta pesquisa', 'error')
+                        continue
+                    }
+                    
+                    addResult(`✅ ${questions.length} questões carregadas com sucesso!`, 'success')
+                    
+                    // Mostrar detalhes das questões
+                    let questionsHtml = '<strong>Questões encontradas:</strong><ul>'
+                    questions.forEach((q, i) => {
+                        questionsHtml += `<li><strong>Q${i+1}:</strong> ${q.question_text} (${q.question_type})</li>`
+                    })
+                    questionsHtml += '</ul>'
+                    addResult(questionsHtml, 'success')
+                    
+                    // 3. Testar se conseguimos simular uma resposta
+                    addResult('🧪 Testando inserção de resposta...', 'info')
+                    const testResponse = {
+                        survey_id: survey.id,
+                        question_id: questions[0].id,
+                        response_text: 'Resposta de teste',
+                        response_value: 5,
+                        sentiment_score: 0.8
+                    }
+                    
+                    const { data: responseData, error: responseError } = await supabase
+                        .from('responses')
+                        .insert(testResponse)
+                        .select()
+                    
+                    if (responseError) {
+                        addResult(`❌ Erro ao inserir resposta: ${responseError.message}`, 'error')
+                    } else {
+                        addResult('✅ Resposta inserida com sucesso!', 'success')
+                        
+                        // Limpar a resposta de teste
+                        if (responseData && responseData[0]) {
+                            await supabase.from('responses').delete().eq('id', responseData[0].id)
+                            addResult('🗑️ Resposta de teste removida', 'info')
+                        }
+                    }
+                    
+                    break // Testar apenas a primeira pesquisa
+                }
+                
+                addResult('<hr><h3>🎉 Teste concluído!</h3>', 'success')
+                
+            } catch (error) {
+                addResult(`❌ Erro geral: ${error.message}`, 'error')
+                addResult(`<pre>Stack trace: ${error.stack}</pre>`, 'error')
+            }
+        }
+        
+        // Executar teste automaticamente ao carregar
+        window.addEventListener('load', () => {
+            setTimeout(runTest, 1000)
+        })
+    </script>
+</body>
+</html>

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste Acesso via Unique Link</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <h1>Teste Acesso via Unique Link</h1>
+    <div id="result"></div>
+    
+    <script>
+        const supabaseUrl = 'https://mjuxvppexydaeuoernxa.supabase.co';
+        const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1qdXh2cHBleHlkYWV1b2VybnhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM0NDAzNjYsImV4cCI6MjA2OTAxNjM2Nn0.ECVfL7CLqJj4wSPBY7g5yu_zdfBqbUTCK18MAXHjeTg';
+        
+        const { createClient } = supabase;
+        const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
+        
+        async function testUniqueLinkAccess() {
+            const resultDiv = document.getElementById('result');
+            
+            try {
+                console.log('Testando acesso via unique_link...');
+                
+                // Usar o unique_link da pesquisa que encontramos no teste anterior
+                const uniqueLink = 'ae35b526-1d12-4de1-8f1c-bec76e622149';
+                
+                console.log('Buscando pesquisa pelo unique_link:', uniqueLink);
+                
+                // Tentar acessar a pesquisa pelo unique_link (simulando o que o SurveyResponse faz)
+                const { data: surveyData, error: surveyError } = await supabaseClient
+                    .from('surveys')
+                    .select(`
+                        id, title, description, status, unique_link, max_responses, current_responses,
+                        questions(id, question_text, question_type, options)
+                    `)
+                    .eq('unique_link', uniqueLink)
+                    .single();
+                
+                if (surveyError) {
+                    console.error('Erro ao acessar pesquisa via unique_link:', surveyError);
+                    resultDiv.innerHTML += `<p style="color: red;">Erro ao acessar pesquisa via unique_link: ${JSON.stringify(surveyError)}</p>`;
+                } else {
+                    console.log('Dados da pesquisa via unique_link:', surveyData);
+                    resultDiv.innerHTML += `<h3>Sucesso! Dados da pesquisa via unique_link:</h3><pre>${JSON.stringify(surveyData, null, 2)}</pre>`;
+                    
+                    // Agora vamos testar se conseguimos fazer login anônimo (como o magic link faria)
+                    console.log('Testando login anônimo...');
+                    
+                    const { data: authData, error: authError } = await supabaseClient.auth.signInAnonymously();
+                    
+                    if (authError) {
+                        console.error('Erro no login anônimo:', authError);
+                        resultDiv.innerHTML += `<p style="color: red;">Erro no login anônimo: ${JSON.stringify(authError)}</p>`;
+                    } else {
+                        console.log('Login anônimo bem-sucedido:', authData);
+                        resultDiv.innerHTML += `<h3>Login anônimo bem-sucedido!</h3><pre>${JSON.stringify(authData.user, null, 2)}</pre>`;
+                        
+                        // Testar acesso à pesquisa após login anônimo
+                        console.log('Testando acesso à pesquisa após login anônimo...');
+                        
+                        const { data: surveyAfterAuth, error: surveyAfterAuthError } = await supabaseClient
+                            .from('surveys')
+                            .select(`
+                                id, title, description, status, unique_link, max_responses, current_responses,
+                                questions(id, question_text, question_type, options)
+                            `)
+                            .eq('unique_link', uniqueLink)
+                            .single();
+                        
+                        if (surveyAfterAuthError) {
+                            console.error('Erro ao acessar pesquisa após auth:', surveyAfterAuthError);
+                            resultDiv.innerHTML += `<p style="color: red;">Erro ao acessar pesquisa após auth: ${JSON.stringify(surveyAfterAuthError)}</p>`;
+                        } else {
+                            console.log('Acesso à pesquisa após auth bem-sucedido:', surveyAfterAuth);
+                            resultDiv.innerHTML += `<h3>Acesso à pesquisa após auth bem-sucedido!</h3><pre>${JSON.stringify(surveyAfterAuth, null, 2)}</pre>`;
+                        }
+                    }
+                }
+                
+            } catch (err) {
+                console.error('Erro capturado:', err);
+                resultDiv.innerHTML += `<p style="color: red;">Erro capturado: ${err.message}</p>`;
+            }
+        }
+        
+        // Executar teste quando a página carregar
+        window.onload = testUniqueLinkAccess;
+    </script>
+</body>
+</html>

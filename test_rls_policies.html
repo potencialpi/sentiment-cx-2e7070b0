@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste de Políticas RLS - Magic Link</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .test-section {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        .warning { background-color: #fff3cd; border-color: #ffeaa7; }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background-color: #0056b3; }
+        pre {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 3px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+        .status {
+            font-weight: bold;
+            padding: 5px 10px;
+            border-radius: 3px;
+            display: inline-block;
+            margin: 5px 0;
+        }
+        .status.success { background-color: #28a745; color: white; }
+        .status.error { background-color: #dc3545; color: white; }
+        .status.warning { background-color: #ffc107; color: black; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Teste de Políticas RLS - Magic Link</h1>
+        <p>Este teste verifica se as políticas RLS estão funcionando corretamente para o acesso às questões via magic link.</p>
+        
+        <div class="test-section info">
+            <h3>📋 Configuração do Teste</h3>
+            <p><strong>Supabase URL:</strong> <span id="supabase-url">Carregando...</span></p>
+            <p><strong>Status da Conexão:</strong> <span id="connection-status">Verificando...</span></p>
+            <button onclick="initializeTest()">🔄 Inicializar Teste</button>
+        </div>
+
+        <div class="test-section" id="test-1">
+            <h3>1️⃣ Verificar Políticas RLS Ativas</h3>
+            <p>Verificando se as políticas RLS estão habilitadas e ativas para as tabelas relevantes.</p>
+            <button onclick="checkRLSPolicies()">▶️ Verificar Políticas</button>
+            <div id="rls-results"></div>
+        </div>
+
+        <div class="test-section" id="test-2">
+            <h3>2️⃣ Testar Acesso Anônimo às Pesquisas</h3>
+            <p>Testando se usuários anônimos podem acessar pesquisas ativas com unique_link.</p>
+            <button onclick="testAnonymousSurveyAccess()">▶️ Testar Acesso Anônimo</button>
+            <div id="survey-access-results"></div>
+        </div>
+
+        <div class="test-section" id="test-3">
+            <h3>3️⃣ Testar Acesso às Questões</h3>
+            <p>Testando se usuários anônimos podem acessar questões de pesquisas ativas.</p>
+            <button onclick="testQuestionsAccess()">▶️ Testar Questões</button>
+            <div id="questions-access-results"></div>
+        </div>
+
+        <div class="test-section" id="test-4">
+            <h3>4️⃣ Simular Fluxo Magic Link</h3>
+            <p>Simulando o fluxo completo de autenticação via magic link.</p>
+            <button onclick="simulateMagicLinkFlow()">▶️ Simular Magic Link</button>
+            <div id="magic-link-results"></div>
+        </div>
+
+        <div class="test-section" id="test-5">
+            <h3>5️⃣ Verificar Sessão Autenticada</h3>
+            <p>Verificando se após autenticação via magic link o usuário consegue acessar as questões.</p>
+            <button onclick="testAuthenticatedAccess()">▶️ Testar Acesso Autenticado</button>
+            <div id="authenticated-access-results"></div>
+        </div>
+
+        <div class="test-section" id="summary">
+            <h3>📊 Resumo dos Testes</h3>
+            <div id="test-summary">Execute os testes acima para ver o resumo.</div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { createClient } from 'https://cdn.skypack.dev/@supabase/supabase-js@2'
+        
+        // Configuração do Supabase
+        const SUPABASE_URL = 'https://mjuxvppexydaeuoernxa.supabase.co'
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1qdXh2cHBleHlkYWV1b2VybnhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM0NDAzNjYsImV4cCI6MjA2OTAxNjM2Nn0.ECVfL7CLqJj4wSPBY7g5yu_zdfBqbUTCK18MAXHjeTg'
+        
+        let supabase
+        let testResults = {
+            rls: null,
+            surveyAccess: null,
+            questionsAccess: null,
+            magicLink: null,
+            authenticatedAccess: null
+        }
+
+        window.initializeTest = async function() {
+            try {
+                supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+                document.getElementById('supabase-url').textContent = SUPABASE_URL
+                
+                // Testar conexão
+                const { data, error } = await supabase.from('surveys').select('count').limit(1)
+                
+                if (error) {
+                    document.getElementById('connection-status').innerHTML = 
+                        '<span class="status error">❌ Erro de Conexão: ' + error.message + '</span>'
+                } else {
+                    document.getElementById('connection-status').innerHTML = 
+                        '<span class="status success">✅ Conectado com Sucesso</span>'
+                }
+            } catch (error) {
+                document.getElementById('connection-status').innerHTML = 
+                    '<span class="status error">❌ Erro: ' + error.message + '</span>'
+            }
+        }
+
+        window.checkRLSPolicies = async function() {
+            const resultsDiv = document.getElementById('rls-results')
+            resultsDiv.innerHTML = '<p>🔄 Verificando políticas RLS...</p>'
+            
+            try {
+                // Verificar se RLS está habilitado nas tabelas
+                const { data: rlsStatus, error: rlsError } = await supabase.rpc('check_rls_status')
+                
+                if (rlsError) {
+                    // Tentar uma abordagem alternativa
+                    const tables = ['surveys', 'questions', 'responses', 'magic_links']
+                    let results = '<h4>Status das Políticas RLS:</h4>'
+                    
+                    for (const table of tables) {
+                        try {
+                            const { data, error } = await supabase.from(table).select('*').limit(1)
+                            if (error) {
+                                if (error.message.includes('permission denied') || error.message.includes('RLS')) {
+                                    results += `<p>✅ ${table}: RLS Ativo (acesso negado como esperado)</p>`
+                                } else {
+                                    results += `<p>⚠️ ${table}: Erro inesperado - ${error.message}</p>`
+                                }
+                            } else {
+                                results += `<p>🔓 ${table}: Acesso permitido (${data.length} registros)</p>`
+                            }
+                        } catch (e) {
+                            results += `<p>❌ ${table}: Erro - ${e.message}</p>`
+                        }
+                    }
+                    
+                    resultsDiv.innerHTML = results
+                    testResults.rls = 'partial'
+                } else {
+                    resultsDiv.innerHTML = '<pre>' + JSON.stringify(rlsStatus, null, 2) + '</pre>'
+                    testResults.rls = 'success'
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = '<p class="status error">❌ Erro ao verificar RLS: ' + error.message + '</p>'
+                testResults.rls = 'error'
+            }
+            
+            updateSummary()
+        }
+
+        window.testAnonymousSurveyAccess = async function() {
+            const resultsDiv = document.getElementById('survey-access-results')
+            resultsDiv.innerHTML = '<p>🔄 Testando acesso anônimo às pesquisas...</p>'
+            
+            try {
+                // Tentar acessar pesquisas ativas com unique_link
+                const { data: surveys, error } = await supabase
+                    .from('surveys')
+                    .select('id, title, status, unique_link')
+                    .eq('status', 'active')
+                    .not('unique_link', 'is', null)
+                    .limit(5)
+                
+                if (error) {
+                    resultsDiv.innerHTML = `<p class="status error">❌ Erro ao acessar pesquisas: ${error.message}</p>`
+                    testResults.surveyAccess = 'error'
+                } else {
+                    let results = `<p class="status success">✅ Acesso às pesquisas funcionando!</p>`
+                    results += `<p><strong>Pesquisas encontradas:</strong> ${surveys.length}</p>`
+                    
+                    if (surveys.length > 0) {
+                        results += '<h5>Pesquisas Ativas com Unique Link:</h5><ul>'
+                        surveys.forEach(survey => {
+                            results += `<li><strong>${survey.title}</strong> (ID: ${survey.id}, Link: ${survey.unique_link ? '✅' : '❌'})</li>`
+                        })
+                        results += '</ul>'
+                        
+                        // Salvar uma pesquisa para testes posteriores
+                        window.testSurvey = surveys[0]
+                    } else {
+                        results += '<p class="status warning">⚠️ Nenhuma pesquisa ativa com unique_link encontrada</p>'
+                    }
+                    
+                    resultsDiv.innerHTML = results
+                    testResults.surveyAccess = surveys.length > 0 ? 'success' : 'warning'
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `<p class="status error">❌ Erro: ${error.message}</p>`
+                testResults.surveyAccess = 'error'
+            }
+            
+            updateSummary()
+        }
+
+        window.testQuestionsAccess = async function() {
+            const resultsDiv = document.getElementById('questions-access-results')
+            resultsDiv.innerHTML = '<p>🔄 Testando acesso às questões...</p>'
+            
+            if (!window.testSurvey) {
+                resultsDiv.innerHTML = '<p class="status warning">⚠️ Execute primeiro o teste de acesso às pesquisas</p>'
+                return
+            }
+            
+            try {
+                // Tentar acessar questões da pesquisa
+                const { data: questions, error } = await supabase
+                    .from('questions')
+                    .select('id, question_text, question_type, survey_id')
+                    .eq('survey_id', window.testSurvey.id)
+                
+                if (error) {
+                    resultsDiv.innerHTML = `<p class="status error">❌ Erro ao acessar questões: ${error.message}</p>`
+                    testResults.questionsAccess = 'error'
+                } else {
+                    let results = `<p class="status success">✅ Acesso às questões funcionando!</p>`
+                    results += `<p><strong>Questões encontradas:</strong> ${questions.length}</p>`
+                    
+                    if (questions.length > 0) {
+                        results += '<h5>Questões da Pesquisa:</h5><ul>'
+                        questions.forEach((question, index) => {
+                            results += `<li><strong>Q${index + 1}:</strong> ${question.question_text.substring(0, 50)}... (Tipo: ${question.question_type})</li>`
+                        })
+                        results += '</ul>'
+                    } else {
+                        results += '<p class="status warning">⚠️ Nenhuma questão encontrada para esta pesquisa</p>'
+                    }
+                    
+                    resultsDiv.innerHTML = results
+                    testResults.questionsAccess = questions.length > 0 ? 'success' : 'warning'
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `<p class="status error">❌ Erro: ${error.message}</p>`
+                testResults.questionsAccess = 'error'
+            }
+            
+            updateSummary()
+        }
+
+        window.simulateMagicLinkFlow = async function() {
+            const resultsDiv = document.getElementById('magic-link-results')
+            resultsDiv.innerHTML = '<p>🔄 Simulando fluxo do magic link...</p>'
+            
+            if (!window.testSurvey) {
+                resultsDiv.innerHTML = '<p class="status warning">⚠️ Execute primeiro o teste de acesso às pesquisas</p>'
+                return
+            }
+            
+            try {
+                // Simular geração de magic link
+                const response = await fetch(`${SUPABASE_URL}/functions/v1/magic-link`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    },
+                    body: JSON.stringify({
+                        action: 'generate',
+                        email: 'test@example.com',
+                        surveyId: window.testSurvey.id
+                    })
+                })
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${await response.text()}`)
+                }
+                
+                const magicLinkData = await response.json()
+                
+                let results = `<p class="status success">✅ Magic link gerado com sucesso!</p>`
+                results += `<p><strong>Token:</strong> ${magicLinkData.token}</p>`
+                results += `<p><strong>Survey ID:</strong> ${magicLinkData.surveyId}</p>`
+                
+                // Salvar token para teste de autenticação
+                window.testToken = magicLinkData.token
+                
+                // Tentar usar o magic link
+                const useResponse = await fetch(`${SUPABASE_URL}/functions/v1/magic-link`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    },
+                    body: JSON.stringify({
+                        action: 'use',
+                        token: magicLinkData.token,
+                        surveyId: magicLinkData.surveyId
+                    })
+                })
+                
+                if (useResponse.ok) {
+                    const useData = await useResponse.json()
+                    results += `<p class="status success">✅ Token validado com sucesso!</p>`
+                    results += `<p><strong>Usuário autenticado:</strong> ${useData.user?.email || 'Anônimo'}</p>`
+                    
+                    // Salvar sessão para próximo teste
+                    window.authenticatedSupabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+                        global: {
+                            headers: {
+                                Authorization: `Bearer ${useData.access_token || SUPABASE_ANON_KEY}`
+                            }
+                        }
+                    })
+                } else {
+                    results += `<p class="status error">❌ Erro ao usar token: ${await useResponse.text()}</p>`
+                }
+                
+                resultsDiv.innerHTML = results
+                testResults.magicLink = 'success'
+                
+            } catch (error) {
+                resultsDiv.innerHTML = `<p class="status error">❌ Erro no fluxo magic link: ${error.message}</p>`
+                testResults.magicLink = 'error'
+            }
+            
+            updateSummary()
+        }
+
+        window.testAuthenticatedAccess = async function() {
+            const resultsDiv = document.getElementById('authenticated-access-results')
+            resultsDiv.innerHTML = '<p>🔄 Testando acesso autenticado...</p>'
+            
+            if (!window.testSurvey || !window.authenticatedSupabase) {
+                resultsDiv.innerHTML = '<p class="status warning">⚠️ Execute primeiro o teste de simulação do magic link</p>'
+                return
+            }
+            
+            try {
+                // Testar acesso às questões com usuário autenticado
+                const { data: questions, error } = await window.authenticatedSupabase
+                    .from('questions')
+                    .select('id, question_text, question_type, survey_id')
+                    .eq('survey_id', window.testSurvey.id)
+                
+                if (error) {
+                    resultsDiv.innerHTML = `<p class="status error">❌ Erro ao acessar questões autenticado: ${error.message}</p>`
+                    testResults.authenticatedAccess = 'error'
+                } else {
+                    let results = `<p class="status success">✅ Acesso autenticado às questões funcionando!</p>`
+                    results += `<p><strong>Questões acessíveis:</strong> ${questions.length}</p>`
+                    
+                    // Comparar com acesso anônimo
+                    const { data: anonQuestions } = await supabase
+                        .from('questions')
+                        .select('id')
+                        .eq('survey_id', window.testSurvey.id)
+                    
+                    results += `<p><strong>Comparação:</strong></p>`
+                    results += `<ul>`
+                    results += `<li>Acesso Anônimo: ${anonQuestions?.length || 0} questões</li>`
+                    results += `<li>Acesso Autenticado: ${questions.length} questões</li>`
+                    results += `</ul>`
+                    
+                    if (questions.length === (anonQuestions?.length || 0)) {
+                        results += `<p class="status success">✅ Políticas RLS funcionando corretamente - mesmo acesso para ambos</p>`
+                    } else {
+                        results += `<p class="status warning">⚠️ Diferença no acesso - pode indicar problema nas políticas</p>`
+                    }
+                    
+                    resultsDiv.innerHTML = results
+                    testResults.authenticatedAccess = 'success'
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `<p class="status error">❌ Erro: ${error.message}</p>`
+                testResults.authenticatedAccess = 'error'
+            }
+            
+            updateSummary()
+        }
+
+        function updateSummary() {
+            const summaryDiv = document.getElementById('test-summary')
+            let summary = '<h4>Resultados dos Testes:</h4><ul>'
+            
+            const tests = [
+                { name: 'Políticas RLS', result: testResults.rls },
+                { name: 'Acesso às Pesquisas', result: testResults.surveyAccess },
+                { name: 'Acesso às Questões', result: testResults.questionsAccess },
+                { name: 'Fluxo Magic Link', result: testResults.magicLink },
+                { name: 'Acesso Autenticado', result: testResults.authenticatedAccess }
+            ]
+            
+            tests.forEach(test => {
+                let status = '⏳ Pendente'
+                if (test.result === 'success') status = '✅ Sucesso'
+                else if (test.result === 'error') status = '❌ Erro'
+                else if (test.result === 'warning') status = '⚠️ Aviso'
+                else if (test.result === 'partial') status = '🔶 Parcial'
+                
+                summary += `<li><strong>${test.name}:</strong> ${status}</li>`
+            })
+            
+            summary += '</ul>'
+            
+            // Diagnóstico
+            const completedTests = Object.values(testResults).filter(r => r !== null).length
+            if (completedTests > 0) {
+                summary += '<h4>💡 Diagnóstico:</h4>'
+                
+                if (testResults.surveyAccess === 'success' && testResults.questionsAccess === 'error') {
+                    summary += '<p class="status error">🔍 <strong>Problema Identificado:</strong> Acesso às pesquisas funciona, mas questões estão bloqueadas. Verifique a política "Anyone can view questions from active surveys".</p>'
+                } else if (testResults.magicLink === 'success' && testResults.authenticatedAccess === 'error') {
+                    summary += '<p class="status error">🔍 <strong>Problema Identificado:</strong> Magic link funciona, mas acesso autenticado falha. Problema pode estar na sessão ou token.</p>'
+                } else if (testResults.surveyAccess === 'success' && testResults.questionsAccess === 'success') {
+                    summary += '<p class="status success">🎉 <strong>Políticas RLS funcionando corretamente!</strong> O problema pode estar na implementação do frontend.</p>'
+                } else if (testResults.surveyAccess === 'error') {
+                    summary += '<p class="status error">🔍 <strong>Problema Identificado:</strong> Acesso básico às pesquisas está falhando. Verifique as políticas RLS fundamentais.</p>'
+                }
+            }
+            
+            summaryDiv.innerHTML = summary
+        }
+
+        // Inicializar automaticamente
+        window.addEventListener('load', () => {
+            initializeTest()
+        })
+    </script>
+</body>
+</html>

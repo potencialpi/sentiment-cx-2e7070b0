@@ -26,7 +26,8 @@ import {
   ArrowLeft, 
   LogOut,
   Brain,
-  Loader2 
+  Loader2,
+  UserPlus 
 } from "lucide-react";
 import { useNavigate } from 'react-router-dom';
 import AnalyticsDashboard from './AnalyticsDashboard';
@@ -34,6 +35,7 @@ import VortexNeuralAnalytics from './VortexNeuralAnalytics';
 import { NexusInfinitoAnalytics } from './NexusInfinitoAnalytics';
 import { useSurveyManager } from '@/hooks/useSurveyManager';
 import { Question, Survey, uiUtils, surveyDataUtils, executeAIAnalysis } from '@/utils/surveyUtils';
+import { getPlanRespondentsRoute, normalizePlanCode } from '@/lib/planUtils';
 
 // Interfaces movidas para surveyUtils.ts
 
@@ -121,6 +123,23 @@ const UnifiedPlanInterface: React.FC<UnifiedPlanInterfaceProps> = ({ config }) =
     await saveSurvey();
     setActiveTab('active');
   }, [saveSurvey]);
+
+  // Função para mapear nome do plano para rota de respondentes
+  const getRespondentsRoute = useCallback(() => {
+    // Mapear nome do plano para código do plano
+    const planNameToCode: { [key: string]: string } = {
+      'Start Quântico': 'start-quantico',
+      'Vortex Neural': 'vortex-neural', 
+      'Nexus Infinito': 'nexus-infinito'
+    };
+    const planCode = planNameToCode[config.planName] || 'start-quantico';
+    return getPlanRespondentsRoute(planCode);
+  }, [config.planName]);
+
+  // Função para navegar para página de respondentes
+  const handleNavigateToRespondents = useCallback(() => {
+    navigate(getRespondentsRoute());
+  }, [navigate, getRespondentsRoute]);
 
   // Wrapper para executeAIAnalysis com estado local
   const handleExecuteAIAnalysis = useCallback((analysisKey: string, analysisName: string) => {
@@ -368,13 +387,21 @@ const UnifiedPlanInterface: React.FC<UnifiedPlanInterfaceProps> = ({ config }) =
                     ))}
                   </div>
 
-                  <div className="flex justify-center pt-4 sm:pt-6">
+                  <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4 pt-4 sm:pt-6">
                     <Button
                       onClick={handleSaveSurvey}
                       disabled={isLoading}
                       className="bg-brand-green hover:bg-brand-green/90 hover:shadow-lg text-brand-white font-medium px-6 sm:px-8 py-3 text-base sm:text-lg transition-all duration-300 min-h-[48px] touch-manipulation w-full sm:w-auto max-w-xs sm:max-w-none"
                     >
                       {isLoading ? 'Salvando...' : 'Salvar Pesquisa'}
+                    </Button>
+                    <Button
+                      onClick={handleNavigateToRespondents}
+                      variant="outline"
+                      className="border-brand-green text-brand-green hover:bg-brand-green hover:text-brand-white font-medium px-6 sm:px-8 py-3 text-base sm:text-lg transition-all duration-300 min-h-[48px] touch-manipulation w-full sm:w-auto max-w-xs sm:max-w-none"
+                    >
+                      <UserPlus className="w-4 h-4 mr-2" />
+                      Gerenciar Respondentes
                     </Button>
                   </div>
                 </CardContent>

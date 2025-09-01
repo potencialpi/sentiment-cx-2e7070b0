@@ -24,6 +24,7 @@ import {
   Cpu
 } from 'lucide-react';
 import { fetchRealSurveyData, convertRealDataToAnalysisFormat, ProcessedRealData } from '@/utils/realDataFetcher';
+import { supabase } from '@/integrations/supabase/client';
 
 // Interfaces específicas para Nexus Infinito
 interface SurveyResponseNexus {
@@ -192,6 +193,13 @@ export const NexusInfinitoAnalytics: React.FC<{ surveyId: string }> = ({ surveyI
       setError(null);
       
       try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          setError('Você precisa estar logado para visualizar os dados reais da pesquisa.');
+          setLoading(false);
+          return;
+        }
+
         const realData = await fetchRealSurveyData(surveyId);
         setRealData(realData);
         
@@ -221,9 +229,12 @@ export const NexusInfinitoAnalytics: React.FC<{ surveyId: string }> = ({ surveyI
           performSentimentAnalysis(surveyResponses)
         ]);
 
-      } catch (err) {
+      } catch (err: any) {
         console.error('Erro ao carregar dados da pesquisa:', err);
-        setError('Erro ao carregar dados da pesquisa. Tente novamente.');
+        const msg = typeof err?.message === 'string' && err.message.toLowerCase().includes('permission denied')
+          ? 'Você não possui permissão para visualizar as respostas desta pesquisa. Entre com a conta proprietária da pesquisa.'
+          : 'Erro ao carregar dados da pesquisa. Tente novamente.';
+        setError(msg);
       } finally {
         setLoading(false);
       }

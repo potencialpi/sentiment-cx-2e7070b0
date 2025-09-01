@@ -59,6 +59,21 @@ export function getPlanCreateSurveyRoute(planCode: string): string {
   }
 }
 
+export function getPlanRespondentsRoute(planCode: string): string {
+  const normalizedCode = normalizePlanCode(planCode);
+  
+  switch (normalizedCode) {
+    case 'start-quantico':
+      return '/admin/start-quantico/respondents';
+    case 'vortex-neural':
+      return '/admin/vortex-neural/respondents';
+    case 'nexus-infinito':
+      return '/admin/nexus-infinito/respondents';
+    default:
+      return '/admin/start-quantico/respondents';
+  }
+}
+
 // Função utilitária para buscar o plano do usuário de forma consistente
 export async function getUserPlan(supabase: any, userId: string): Promise<string> {
   let planCode = 'start-quantico'; // fallback padrão

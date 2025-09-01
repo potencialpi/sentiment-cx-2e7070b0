@@ -188,4 +188,92 @@ async function main() {
   await listExistingUsers();
 }
 
-main().catch(console.error);
+// Função para verificar dados do usuário nexus
+async function checkNexusUser() {
+  try {
+    console.log('\n🔍 VERIFICANDO DADOS DO USUÁRIO NEXUS');
+    console.log('==================================================');
+    
+    // Buscar usuário por email
+    const { data: users } = await supabaseAdmin.auth.admin.listUsers();
+    const nexusUser = users.users.find(u => u.email === 'teste.nexus@example.com');
+    
+    if (!nexusUser) {
+      console.log('❌ Usuário nexus não encontrado');
+      return;
+    }
+    
+    console.log(`✅ Usuário encontrado: ${nexusUser.id}`);
+    
+    // Verificar dados na tabela companies
+    const { data: companyData } = await supabaseAdmin
+      .from('companies')
+      .select('*')
+      .eq('user_id', nexusUser.id);
+    
+    console.log('📊 Dados na tabela companies:', JSON.stringify(companyData, null, 2));
+    
+    // Verificar dados na tabela profiles
+    const { data: profileData } = await supabaseAdmin
+      .from('profiles')
+      .select('*')
+      .eq('id', nexusUser.id);
+    
+    console.log('👤 Dados na tabela profiles:', JSON.stringify(profileData, null, 2));
+    
+  } catch (error) {
+    console.error('❌ Erro ao verificar usuário nexus:', error);
+  }
+}
+
+// Função para corrigir o plano do usuário nexus
+async function fixNexusUserPlan() {
+  try {
+    console.log('\n🔧 CORRIGINDO PLANO DO USUÁRIO NEXUS');
+    console.log('==================================================');
+    
+    // Buscar usuário por email
+    const { data: users } = await supabaseAdmin.auth.admin.listUsers();
+    const nexusUser = users.users.find(u => u.email === 'teste.nexus@example.com');
+    
+    if (!nexusUser) {
+      console.log('❌ Usuário nexus não encontrado');
+      return;
+    }
+    
+    console.log(`✅ Usuário encontrado: ${nexusUser.id}`);
+    
+    // Atualizar plano na tabela companies
+    const { error: updateError } = await supabaseAdmin
+      .from('companies')
+      .update({ plan_name: 'nexus-infinito' })
+      .eq('user_id', nexusUser.id);
+    
+    if (updateError) {
+      console.log('❌ Erro ao atualizar plano:', updateError.message);
+    } else {
+      console.log('✅ Plano atualizado para nexus-infinito com sucesso!');
+    }
+    
+    // Verificar se a atualização funcionou
+    const { data: updatedData } = await supabaseAdmin
+      .from('companies')
+      .select('plan_name')
+      .eq('user_id', nexusUser.id)
+      .single();
+    
+    console.log('📊 Plano atual:', updatedData?.plan_name);
+    
+  } catch (error) {
+    console.error('❌ Erro ao corrigir plano do usuário nexus:', error);
+  }
+}
+
+// Executar correção do plano
+fixNexusUserPlan().catch(console.error);
+
+// Executar verificação do usuário nexus
+// checkNexusUser().catch(console.error);
+
+// Executar o script principal
+// main().catch(console.error);}]

@@ -39,8 +39,8 @@ export const startQuanticoConfig: PlanConfig = {
   planTitle: "Start Quântico",
   planDescription: "Plano inicial com recursos essenciais para análise de sentimentos e criação de pesquisas básicas.",
   maxQuestions: 5,
-  maxResponses: 100,
-  maxSurveysPerMonth: 2,
+  maxResponses: 50,
+  maxSurveysPerMonth: 3,
   backRoute: "/dashboard",
   features: {
     analytics: {
@@ -94,7 +94,7 @@ export const nexusInfinitoConfig: PlanConfig = {
   planDescription: "Plano premium com recursos ilimitados, IA avançada e análises em tempo real para empresas de grande porte.",
   maxQuestions: 999999, // Ilimitado
   maxResponses: 999999, // Ilimitado
-  maxSurveysPerMonth: 15,
+  maxSurveysPerMonth: 999999, // Ilimitado
   backRoute: "/dashboard",
   features: {
     analytics: {

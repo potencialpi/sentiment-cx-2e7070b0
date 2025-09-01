@@ -54,6 +54,12 @@ export interface ProcessedRealData {
  */
 export async function fetchRealSurveyData(surveyId: string): Promise<ProcessedRealData> {
   try {
+    // Verificar sessão antes de acessar dados protegidos por RLS
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      throw new Error('AUTH_REQUIRED: Você precisa estar logado para visualizar os dados reais da pesquisa.');
+    }
+
     // Buscar respostas da pesquisa
     const { data: responses, error: responsesError } = await supabase
       .from('responses')
@@ -62,6 +68,10 @@ export async function fetchRealSurveyData(surveyId: string): Promise<ProcessedRe
       .order('created_at', { ascending: true });
 
     if (responsesError) {
+      const normalized = (responsesError.message || '').toLowerCase();
+      if (normalized.includes('permission denied')) {
+        throw new Error('PERMISSION_DENIED: Você não possui permissão para visualizar as respostas desta pesquisa. Verifique se está logado com a conta proprietária e se as políticas RLS permitem SELECT para proprietários.');
+      }
       throw new Error(`Erro ao buscar respostas: ${responsesError.message}`);
     }
 
@@ -73,6 +83,10 @@ export async function fetchRealSurveyData(surveyId: string): Promise<ProcessedRe
       .order('question_order', { ascending: true });
 
     if (questionsError) {
+      const normalized = (questionsError.message || '').toLowerCase();
+      if (normalized.includes('permission denied')) {
+        throw new Error('PERMISSION_DENIED: Você não possui permissão para visualizar as perguntas desta pesquisa. Verifique políticas RLS da tabela questions.');
+      }
       throw new Error(`Erro ao buscar perguntas: ${questionsError.message}`);
     }
 
@@ -88,7 +102,12 @@ export async function fetchRealSurveyData(surveyId: string): Promise<ProcessedRe
         .order('created_at', { ascending: true });
 
       if (qResponsesError) {
-        console.warn('Erro ao buscar respostas detalhadas:', qResponsesError.message);
+        const normalized = (qResponsesError.message || '').toLowerCase();
+        if (normalized.includes('permission denied')) {
+          console.warn('Permissão negada para question_responses. Verifique políticas RLS para permitir SELECT a proprietários.');
+        } else {
+          console.warn('Erro ao buscar respostas detalhadas:', qResponsesError.message);
+        }
       } else {
         questionResponses = qResponses || [];
       }

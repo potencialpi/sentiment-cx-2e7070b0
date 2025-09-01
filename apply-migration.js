@@ -7,6 +7,7 @@ dotenv.config();
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseServiceKey) {
   console.error('❌ Variáveis de ambiente não configuradas');
@@ -22,14 +23,32 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   }
 });
 
+const supabaseAnon = supabaseAnonKey
+  ? createClient(supabaseUrl, supabaseAnonKey, {
+      auth: { autoRefreshToken: false, persistSession: false }
+    })
+  : null;
+
 async function applyMigration() {
-  console.log('🔧 APLICANDO MIGRAÇÃO DE CORREÇÃO AUTH...');
+  // Permitir passar o caminho do arquivo via argumento CLI ou variável de ambiente
+  const migrationPath = process.argv[2] || process.env.MIGRATION_FILE || './supabase/migrations/fix_auth_complete.sql';
+  console.log(`🔧 Aplicando migração SQL: ${migrationPath}`);
   
   try {
     // Ler o arquivo de migração
-    const migrationSQL = readFileSync('./supabase/migrations/fix_auth_complete.sql', 'utf8');
+    const migrationSQL = readFileSync(migrationPath, 'utf8');
     
     console.log('📄 Migração carregada, aplicando...');
+
+    // Pré-checagem: tentar usar exec_sql; se falhar, avisar mas continuar tentando cada comando
+    try {
+      const { error: preErr } = await supabase.rpc('exec_sql', { sql: 'select 1;' });
+      if (preErr) {
+        console.log('ℹ️ Aviso: rpc exec_sql retornou erro na checagem prévia:', preErr.message);
+      }
+    } catch (e) {
+      console.log('ℹ️ Aviso: não foi possível validar exec_sql previamente:', e.message);
+    }
     
     // Dividir em comandos individuais (por ponto e vírgula)
     const commands = migrationSQL
@@ -54,26 +73,13 @@ async function applyMigration() {
       try {
         console.log(`⚡ Executando comando ${i + 1}/${commands.length}...`);
         
-        const { data, error } = await supabase.rpc('exec_sql', {
+        const { error } = await supabase.rpc('exec_sql', {
           sql: command + ';'
         });
         
         if (error) {
-          // Tentar execução direta se RPC falhar
-          console.log(`⚠️ RPC falhou, tentando execução direta...`);
-          
-          const { data: directData, error: directError } = await supabase
-            .from('_supabase_migrations')
-            .select('*')
-            .limit(1);
-          
-          if (directError) {
-            console.log(`❌ Comando ${i + 1} falhou:`, error.message);
-            errorCount++;
-          } else {
-            console.log(`✅ Comando ${i + 1} executado com sucesso`);
-            successCount++;
-          }
+          console.log(`❌ Comando ${i + 1} falhou via RPC:`, error.message);
+          errorCount++;
         } else {
           console.log(`✅ Comando ${i + 1} executado com sucesso`);
           successCount++;
@@ -85,15 +91,22 @@ async function applyMigration() {
       }
       
       // Pequena pausa entre comandos
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 80));
     }
     
     console.log('\n📊 RESULTADO DA MIGRAÇÃO:');
     console.log(`✅ Comandos executados com sucesso: ${successCount}`);
     console.log(`❌ Comandos com erro: ${errorCount}`);
     
-    // Testar as correções
+    // Testar as correções genéricas auth
     await testCorrections();
+
+    // Testar políticas RLS (apenas se tivermos anon key)
+    if (supabaseAnon) {
+      await testRLS();
+    } else {
+      console.log('\nℹ️ Testes RLS pulados (chave ANON não configurada)');
+    }
     
   } catch (error) {
     console.error('❌ Erro ao aplicar migração:', error.message);
@@ -187,6 +200,73 @@ async function testCorrections() {
     
   } catch (error) {
     console.error('❌ Erro nos testes:', error.message);
+  }
+}
+
+async function testRLS() {
+  console.log('\n🧪 TESTANDO RLS (anon)...');
+
+  try {
+    // 1) Selecionar uma pesquisa ativa com unique_link via service role
+    const { data: surveys, error: srvErr } = await supabase
+      .from('surveys')
+      .select('id, unique_link, status')
+      .eq('status', 'active')
+      .not('unique_link', 'is', null)
+      .limit(1);
+
+    if (srvErr) {
+      console.log('❌ Erro buscando survey de teste:', srvErr.message);
+      return;
+    }
+
+    if (!surveys || surveys.length === 0) {
+      console.log('ℹ️ Nenhuma survey ativa com unique_link encontrada para teste. Pulei testes RLS.');
+      return;
+    }
+
+    const testSurvey = surveys[0];
+
+    // 2) Como anônimo, tentar ler a survey pelo unique_link
+    const { data: publicSurvey, error: anonSelectErr } = await supabaseAnon
+      .from('surveys')
+      .select('id')
+      .eq('unique_link', testSurvey.unique_link)
+      .single();
+
+    if (anonSelectErr) {
+      console.log('❌ RLS falhou: anon não conseguiu SELECT em surveys por unique_link:', anonSelectErr.message);
+    } else {
+      console.log('✅ RLS OK: anon conseguiu SELECT em surveys por unique_link');
+    }
+
+    // 3) Como anônimo, tentar inserir uma response
+    const testResponse = {
+      survey_id: testSurvey.id,
+      respondent_id: `rls-test-${Date.now()}`,
+      responses: {},
+      sentiment_score: 0,
+      sentiment_category: 'neutral'
+    };
+
+    const { data: insData, error: insErr } = await supabaseAnon
+      .from('responses')
+      .insert(testResponse)
+      .select('id')
+      .single();
+
+    if (insErr) {
+      console.log('❌ RLS falhou: anon não conseguiu INSERT em responses:', insErr.message);
+    } else {
+      console.log('✅ RLS OK: anon conseguiu INSERT em responses');
+      // Limpeza
+      if (insData?.id) {
+        await supabase.from('responses').delete().eq('id', insData.id);
+        console.log('🧹 Response de teste removida');
+      }
+    }
+  } catch (e) {
+    console.log('❌ Erro nos testes RLS:', e.message);
   }
 }
 
