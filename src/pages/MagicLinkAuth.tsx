@@ -25,12 +25,7 @@ export function MagicLinkAuth() {
 
   // Callback para sucesso na validação/autenticação
   const handleValidationSuccess = (data: any) => {
-    console.log('Autenticação via magic link bem-sucedida:', {
-      surveyId: data?.surveyData?.surveyId || surveyId,
-      email: data?.surveyData?.email,
-      userId: data?.user?.id,
-      timestamp: new Date().toISOString()
-    })
+    console.log('Autenticação via magic link bem-sucedida')
 
     toast({
       title: "Acesso Autorizado!",
@@ -54,12 +49,7 @@ export function MagicLinkAuth() {
 
   // Callback para erro na validação/autenticação
   const handleValidationError = (error: string) => {
-    console.error('Erro na autenticação via magic link:', {
-      error,
-      token: token ? `${token.substring(0, 8)}...` : 'não fornecido',
-      surveyId,
-      timestamp: new Date().toISOString()
-    })
+    console.error('Erro na autenticação via magic link:', error)
 
     toast({
       title: "Erro de Autenticação",

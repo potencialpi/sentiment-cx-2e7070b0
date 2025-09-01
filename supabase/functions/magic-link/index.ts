@@ -167,7 +167,6 @@ async function generateMagicLink(
         success: true,
         message: 'Link de acesso gerado com sucesso',
         data: {
-          token,
           magicLinkUrl,
           expiresAt: expiresAt.toISOString(),
           surveyTitle: survey.title
@@ -191,7 +190,7 @@ async function validateMagicLink(
   userAgent: string
 ): Promise<Response> {
   try {
-    console.log('🔍 Validando token:', token)
+    console.log('🔍 Validando token de magic link')
     
     // Buscar magic link válido
     const { data: magicLink, error } = await supabase
@@ -268,7 +267,7 @@ async function useMagicLink(
   userAgent: string
 ): Promise<Response> {
   try {
-    console.log('🎯 Usando magic link com token:', token)
+    console.log('🎯 Processando autenticação via magic link')
     
     // Primeiro validar o token
     const validationResponse = await validateMagicLink(supabaseAdmin, token, clientIP, userAgent)

@@ -187,10 +187,7 @@ export function useMagicLinkAuth(): UseMagicLinkAuthReturn {
         throw new Error('Token de acesso não fornecido')
       }
 
-      console.log('Validando magic link token:', {
-        tokenLength: token.length,
-        timestamp: new Date().toISOString()
-      })
+      console.log('Validando magic link token')
 
       const { data: result, error: functionError } = await supabase.functions.invoke('magic-link', {
         body: {
@@ -211,12 +208,7 @@ export function useMagicLinkAuth(): UseMagicLinkAuthReturn {
 
       setValidationData(response.data)
 
-      console.log('Token validado com sucesso:', {
-        email: response.data?.email,
-        surveyId: response.data?.surveyId,
-        expiresAt: response.data?.expiresAt,
-        timestamp: new Date().toISOString()
-      })
+      console.log('Token validado com sucesso')
 
       return response
 
@@ -245,10 +237,7 @@ export function useMagicLinkAuth(): UseMagicLinkAuthReturn {
         throw new Error('Token de acesso não fornecido')
       }
 
-      console.log('Autenticando com magic link:', {
-        tokenLength: token.length,
-        timestamp: new Date().toISOString()
-      })
+      console.log('Autenticando com magic link')
 
       const { data: result, error: functionError } = await supabase.functions.invoke('magic-link', {
         body: {
@@ -279,12 +268,7 @@ export function useMagicLinkAuth(): UseMagicLinkAuthReturn {
         variant: "default"
       })
 
-      console.log('Autenticação realizada com sucesso:', {
-        userId: response.data?.user?.id,
-        email: response.data?.surveyData?.email,
-        surveyId: response.data?.surveyData?.surveyId,
-        timestamp: new Date().toISOString()
-      })
+      console.log('Autenticação realizada com sucesso')
 
       return response
 
