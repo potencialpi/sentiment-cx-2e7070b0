@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste das Políticas RLS Corrigidas</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Teste das Políticas RLS Corrigidas</h1>
+    
+    <div class="test-section info">
+        <h3>Status da Autenticação</h3>
+        <div id="auth-status">Verificando...</div>
+        <button onclick="checkAuth()">Verificar Autenticação</button>
+        <button onclick="signIn()">Fazer Login</button>
+    </div>
+
+    <div class="test-section">
+        <h3>Teste de Acesso aos Dados</h3>
+        <button onclick="testSurveyAccess()">Testar Acesso às Pesquisas</button>
+        <button onclick="testResponseAccess()">Testar Acesso às Respostas</button>
+        <button onclick="testQuestionAccess()">Testar Acesso às Questões</button>
+        <button onclick="testQuestionResponseAccess()">Testar Acesso às Respostas de Questões</button>
+        <div id="test-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>Logs Detalhados</h3>
+        <pre id="detailed-logs"></pre>
+        <button onclick="clearLogs()">Limpar Logs</button>
+    </div>
+
+    <script>
+        // Configuração do Supabase
+        const supabaseUrl = 'https://wnpkmkqtqtjqzjwqzjwq.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InducGtta3F0cXRqcXpqd3F6andxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzU5MjU0NzQsImV4cCI6MjA1MTUwMTQ3NH0.Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8';
+        const { createClient } = supabase;
+        const supabaseClient = createClient(supabaseUrl, supabaseKey);
+
+        let logs = [];
+
+        function addLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${type.toUpperCase()}: ${message}`;
+            logs.push(logEntry);
+            document.getElementById('detailed-logs').textContent = logs.join('\n');
+            console.log(logEntry);
+        }
+
+        function clearLogs() {
+            logs = [];
+            document.getElementById('detailed-logs').textContent = '';
+        }
+
+        async function checkAuth() {
+            try {
+                const { data: { session }, error } = await supabaseClient.auth.getSession();
+                const authStatus = document.getElementById('auth-status');
+                
+                if (error) {
+                    authStatus.innerHTML = `<span style="color: red;">Erro: ${error.message}</span>`;
+                    addLog(`Erro ao verificar autenticação: ${error.message}`, 'error');
+                    return;
+                }
+
+                if (session) {
+                    authStatus.innerHTML = `<span style="color: green;">✓ Usuário autenticado: ${session.user.email}</span>`;
+                    addLog(`Usuário autenticado: ${session.user.email} (ID: ${session.user.id})`, 'success');
+                } else {
+                    authStatus.innerHTML = `<span style="color: orange;">⚠ Usuário não autenticado</span>`;
+                    addLog('Usuário não autenticado', 'warning');
+                }
+            } catch (error) {
+                addLog(`Erro inesperado ao verificar autenticação: ${error.message}`, 'error');
+            }
+        }
+
+        async function signIn() {
+            try {
+                const email = prompt('Digite seu email:');
+                const password = prompt('Digite sua senha:');
+                
+                if (!email || !password) {
+                    addLog('Login cancelado pelo usuário', 'info');
+                    return;
+                }
+
+                const { data, error } = await supabaseClient.auth.signInWithPassword({
+                    email: email,
+                    password: password
+                });
+
+                if (error) {
+                    addLog(`Erro no login: ${error.message}`, 'error');
+                } else {
+                    addLog(`Login realizado com sucesso: ${data.user.email}`, 'success');
+                    checkAuth();
+                }
+            } catch (error) {
+                addLog(`Erro inesperado no login: ${error.message}`, 'error');
+            }
+        }
+
+        async function testSurveyAccess() {
+            try {
+                addLog('Testando acesso às pesquisas...', 'info');
+                const { data, error } = await supabaseClient
+                    .from('surveys')
+                    .select('*')
+                    .limit(5);
+
+                if (error) {
+                    addLog(`ERRO - Acesso às pesquisas: ${error.message}`, 'error');
+                    updateTestResult('surveys', false, error.message);
+                } else {
+                    addLog(`SUCESSO - Encontradas ${data.length} pesquisas`, 'success');
+                    updateTestResult('surveys', true, `${data.length} pesquisas encontradas`);
+                }
+            } catch (error) {
+                addLog(`Erro inesperado ao testar pesquisas: ${error.message}`, 'error');
+            }
+        }
+
+        async function testResponseAccess() {
+            try {
+                addLog('Testando acesso às respostas...', 'info');
+                const { data, error } = await supabaseClient
+                    .from('responses')
+                    .select('*')
+                    .limit(5);
+
+                if (error) {
+                    addLog(`ERRO - Acesso às respostas: ${error.message}`, 'error');
+                    updateTestResult('responses', false, error.message);
+                } else {
+                    addLog(`SUCESSO - Encontradas ${data.length} respostas`, 'success');
+                    updateTestResult('responses', true, `${data.length} respostas encontradas`);
+                }
+            } catch (error) {
+                addLog(`Erro inesperado ao testar respostas: ${error.message}`, 'error');
+            }
+        }
+
+        async function testQuestionAccess() {
+            try {
+                addLog('Testando acesso às questões...', 'info');
+                const { data, error } = await supabaseClient
+                    .from('questions')
+                    .select('*')
+                    .limit(5);
+
+                if (error) {
+                    addLog(`ERRO - Acesso às questões: ${error.message}`, 'error');
+                    updateTestResult('questions', false, error.message);
+                } else {
+                    addLog(`SUCESSO - Encontradas ${data.length} questões`, 'success');
+                    updateTestResult('questions', true, `${data.length} questões encontradas`);
+                }
+            } catch (error) {
+                addLog(`Erro inesperado ao testar questões: ${error.message}`, 'error');
+            }
+        }
+
+        async function testQuestionResponseAccess() {
+            try {
+                addLog('Testando acesso às respostas de questões...', 'info');
+                const { data, error } = await supabaseClient
+                    .from('question_responses')
+                    .select('*')
+                    .limit(5);
+
+                if (error) {
+                    addLog(`ERRO - Acesso às respostas de questões: ${error.message}`, 'error');
+                    updateTestResult('question_responses', false, error.message);
+                } else {
+                    addLog(`SUCESSO - Encontradas ${data.length} respostas de questões`, 'success');
+                    updateTestResult('question_responses', true, `${data.length} respostas de questões encontradas`);
+                }
+            } catch (error) {
+                addLog(`Erro inesperado ao testar respostas de questões: ${error.message}`, 'error');
+            }
+        }
+
+        function updateTestResult(table, success, message) {
+            const resultsDiv = document.getElementById('test-results');
+            const resultClass = success ? 'success' : 'error';
+            const icon = success ? '✓' : '✗';
+            
+            resultsDiv.innerHTML += `
+                <div class="test-section ${resultClass}">
+                    <strong>${icon} ${table}:</strong> ${message}
+                </div>
+            `;
+        }
+
+        // Verificar autenticação ao carregar a página
+        window.onload = function() {
+            checkAuth();
+            addLog('Página carregada - Pronto para testes', 'info');
+        };
+    </script>

@@ -23,10 +23,17 @@ STRIPE_WEBHOOK_SECRET=whsec_seu_webhook_secret_aqui
 
 ### 2. Configuração dos Price IDs
 
-No arquivo `src/lib/stripe.ts`, atualize os Price IDs com os valores do seu Dashboard Stripe:
+Os Price IDs estão configurados nas Edge Functions do Supabase. Para atualizá-los:
+
+1. Acesse o arquivo `supabase/functions/create-checkout/index.ts`
+2. Atualize o objeto `STRIPE_PRICE_IDS` com os valores do seu Dashboard Stripe:
 
 ```typescript
-export const STRIPE_PRICE_IDS = {
+const STRIPE_PRICE_IDS = {
+  'start-quantico': {
+    monthly: 'price_seu_price_id_start_mensal',
+    yearly: 'price_seu_price_id_start_anual'
+  },
   'vortex-neural': {
     monthly: 'price_seu_price_id_vortex_mensal',
     yearly: 'price_seu_price_id_vortex_anual'
@@ -140,7 +147,7 @@ Verifique os dados no Supabase:
 ### Problemas Comuns
 
 1. **Erro de Price ID não encontrado**
-   - Verifique se os Price IDs estão corretos no `stripe.ts`
+   - Verifique se os Price IDs estão corretos na Edge Function `create-checkout`
    - Confirme se os produtos estão ativos no Stripe
 
 2. **Webhook não funciona**
