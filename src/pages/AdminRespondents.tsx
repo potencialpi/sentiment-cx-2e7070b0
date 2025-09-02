@@ -585,9 +585,7 @@ const AdminRespondents = () => {
         onConfirm={handleConfirmDelete}
         isDeleting={isDeleting}
         deleteProgress={deleteProgress}
-        itemCount={respondentsToDelete.length}
-        itemType="respondente"
-        requiresConfirmation={respondentsToDelete.length > 1}
+        respondentCount={respondentsToDelete.length}
       />
     </div>
   );
