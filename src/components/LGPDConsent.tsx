@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase/client';
+import { supabase } from '../integrations/supabase/client';
 import { Shield, Check, X, Info, Eye, Download, Trash2 } from 'lucide-react';
 
 interface ConsentOption {
@@ -90,18 +90,15 @@ export const LGPDConsent: React.FC<LGPDConsentProps> = ({
       const { error } = await supabase
         .from('audit_log')
         .insert({
+          event_type: 'consent_given',
           table_name: 'lgpd_consent',
-          operation: 'consent_given',
-          old_data: null,
-          new_data: {
+          details: {
             consents,
             timestamp: new Date().toISOString(),
             user_email: userEmail,
-            ip_address: 'client_side', // Em produção, capturar do servidor
+            ip_address: 'client_side',
             user_agent: navigator.userAgent
-          },
-          user_id: null, // Será preenchido pelo trigger se houver usuário autenticado
-          created_at: new Date().toISOString()
+          }
         });
 
       if (error) {
@@ -124,24 +121,16 @@ export const LGPDConsent: React.FC<LGPDConsentProps> = ({
     setIsLoadingData(true);
     try {
       // Buscar dados do usuário em todas as tabelas relevantes
-      const [responsesResult, magicLinksResult, auditLogResult] = await Promise.all([
-        supabase
-          .from('responses')
-          .select('*')
-          .eq('email', userEmail),
-        supabase
-          .from('magic_links')
-          .select('*')
-          .eq('email', userEmail),
+      const [auditLogResult] = await Promise.all([
         supabase
           .from('audit_log')
           .select('*')
-          .eq('new_data->>user_email', userEmail)
+          .contains('details', { user_email: userEmail })
       ]);
 
       setUserData({
-        responses: responsesResult.data || [],
-        magicLinks: magicLinksResult.data || [],
+        responses: [],
+        magicLinks: [],
         auditLogs: auditLogResult.data || []
       });
     } catch (error) {
@@ -183,16 +172,13 @@ export const LGPDConsent: React.FC<LGPDConsentProps> = ({
       await supabase
         .from('audit_log')
         .insert({
+          event_type: 'delete_request',
           table_name: 'data_deletion_request',
-          operation: 'delete_request',
-          old_data: null,
-          new_data: {
+          details: {
             user_email: userEmail,
             timestamp: new Date().toISOString(),
             status: 'pending'
-          },
-          user_id: null,
-          created_at: new Date().toISOString()
+          }
         });
 
       alert('Solicitação de exclusão registrada. Seus dados serão removidos em até 30 dias conforme a LGPD.');

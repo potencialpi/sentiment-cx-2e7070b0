@@ -11,7 +11,7 @@ import { getUserPlan } from '@/lib/planUtils';
 import Chart from 'react-apexcharts';
 import { ApexOptions } from 'apexcharts';
 import VortexNeuralAnalytics from './VortexNeuralAnalytics';
-import { NexusInfinitoAnalytics } from './NexusInfinitoAnalytics';
+import NexusInfinitoAnalyticsSimplified from './NexusInfinitoAnalyticsSimplified';
 import StartQuanticoAnalytics from './StartQuanticoAnalytics';
 
 interface AnalyticsDashboardProps {
@@ -844,8 +844,7 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         {/* Seção Nexus Infinito - Análises Estatísticas Avançadas */}
         {accountType === 'nexus-infinito' && (
           <div className="mt-8">
-            {console.log('AnalyticsDashboard - Rendering NexusInfinitoAnalytics with surveyId:', surveyId)}
-            <NexusInfinitoAnalytics surveyId={surveyId} />
+            <NexusInfinitoAnalyticsSimplified surveyId={surveyId} />
           </div>
         )}
       </div>

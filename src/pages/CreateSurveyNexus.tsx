@@ -109,7 +109,7 @@ const CreateSurveyNexus = () => {
       setUser(user);
 
       // Obter plano real do usuário
-      const actualPlan = await getUserPlan(user.id);
+      const actualPlan = await getUserPlan(supabase, user.id);
       if (actualPlan) {
         setUserPlan(actualPlan);
       }

@@ -32,7 +32,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import AnalyticsDashboard from './AnalyticsDashboard';
 import VortexNeuralAnalytics from './VortexNeuralAnalytics';
-import { NexusInfinitoAnalytics } from './NexusInfinitoAnalytics';
+import NexusInfinitoAnalyticsSimplified from './NexusInfinitoAnalyticsSimplified';
 import { useSurveyManager } from '@/hooks/useSurveyManager';
 import { Question, Survey, uiUtils, surveyDataUtils, executeAIAnalysis } from '@/utils/surveyUtils';
 import { getPlanRespondentsRoute, normalizePlanCode } from '@/lib/planUtils';
