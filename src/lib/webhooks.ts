@@ -207,7 +207,7 @@ async function handleSubscriptionCanceled(subscription: any) {
       console.error('Erro ao cancelar assinatura:', error);
     }
 
-    console.log(`Assinatura cancelada para usuário ${user.email}`);
+    console.log(`Assinatura cancelada para usuário ID: ${user.id} - Email hash: ${user.email.substring(0,3)}***`);
   } catch (error) {
     console.error('Erro ao processar cancelamento:', error);
   }

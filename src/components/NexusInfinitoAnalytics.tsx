@@ -163,6 +163,66 @@ interface DimensionalData {
   informationContent: number;
 }
 
+// Função para mapear nomes técnicos para títulos amigáveis
+const getVariableDisplayName = (variable: string): string => {
+  const displayNames: Record<string, string> = {
+    'sentiment_score': 'Análise de Sentimentos',
+    'satisfaction_score': 'Índice de Satisfação',
+    'nps_score': 'Net Promoter Score (NPS)',
+    'rating': 'Avaliação Geral',
+    'response_time': 'Tempo de Resposta',
+    'engagement_score': 'Nível de Engajamento',
+    'loyalty_index': 'Índice de Fidelidade',
+    'recommendation_score': 'Propensão à Recomendação',
+    'quality_rating': 'Avaliação de Qualidade',
+    'service_rating': 'Avaliação do Atendimento',
+    'product_rating': 'Avaliação do Produto',
+    'price_perception': 'Percepção de Preço',
+    'brand_perception': 'Percepção da Marca',
+    'purchase_intent': 'Intenção de Compra',
+    'customer_effort': 'Esforço do Cliente',
+    'resolution_time': 'Tempo de Resolução',
+    'first_contact_resolution': 'Resolução no Primeiro Contato',
+    'channel_preference': 'Preferência de Canal',
+    'demographic_age': 'Análise Demográfica - Idade',
+    'demographic_gender': 'Análise Demográfica - Gênero',
+    'usage_frequency': 'Frequência de Uso',
+    'feature_importance': 'Importância das Funcionalidades',
+    'competitive_analysis': 'Análise Competitiva',
+    'market_share': 'Participação de Mercado',
+    'churn_risk': 'Risco de Churn',
+    'lifetime_value': 'Valor do Cliente (CLV)',
+    'acquisition_cost': 'Custo de Aquisição',
+    'retention_rate': 'Taxa de Retenção',
+    'conversion_rate': 'Taxa de Conversão',
+    'abandonment_rate': 'Taxa de Abandono',
+    'interaction_quality': 'Qualidade da Interação',
+    'emotional_connection': 'Conexão Emocional',
+    'trust_level': 'Nível de Confiança',
+    'innovation_perception': 'Percepção de Inovação',
+    'social_responsibility': 'Responsabilidade Social',
+    'environmental_impact': 'Impacto Ambiental',
+    'accessibility_rating': 'Avaliação de Acessibilidade',
+    'mobile_experience': 'Experiência Mobile',
+    'website_usability': 'Usabilidade do Website',
+    'support_quality': 'Qualidade do Suporte',
+    'communication_effectiveness': 'Efetividade da Comunicação',
+    'personalization_level': 'Nível de Personalização',
+    'security_perception': 'Percepção de Segurança',
+    'privacy_concern': 'Preocupação com Privacidade',
+    'data_usage_comfort': 'Conforto com Uso de Dados',
+    'omnichannel_experience': 'Experiência Omnichannel',
+    'self_service_adoption': 'Adoção de Autoatendimento',
+    'ai_interaction_satisfaction': 'Satisfação com IA',
+    'digital_transformation': 'Transformação Digital',
+    'sustainability_importance': 'Importância da Sustentabilidade',
+    'social_impact_awareness': 'Consciência do Impacto Social'
+  };
+  
+  // Se encontrar um nome personalizado, usar ele, senão usar um padrão amigável
+  return displayNames[variable] || 'Análise Estatística';
+};
+
 export const NexusInfinitoAnalytics: React.FC<{ surveyId: string }> = ({ surveyId }) => {
   // Estados principais
   const [loading, setLoading] = useState(false);
@@ -187,20 +247,27 @@ export const NexusInfinitoAnalytics: React.FC<{ surveyId: string }> = ({ surveyI
   // Carregar dados da pesquisa
   useEffect(() => {
     const loadSurveyData = async () => {
-      if (!surveyId) return;
+      if (!surveyId) {
+        console.log('❌ Nenhum surveyId fornecido');
+        return;
+      }
       
+      console.log('🔄 Carregando dados da pesquisa:', surveyId);
       setLoading(true);
       setError(null);
       
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
+          console.log('❌ Usuário não autenticado');
           setError('Você precisa estar logado para visualizar os dados reais da pesquisa.');
           setLoading(false);
           return;
         }
 
+        console.log('✅ Usuário autenticado, buscando dados...');
         const realData = await fetchRealSurveyData(surveyId);
+        console.log('📊 Dados reais carregados:', realData);
         setRealData(realData);
         
         // Converter dados para formato compatível com Nexus
@@ -214,6 +281,7 @@ export const NexusInfinitoAnalytics: React.FC<{ surveyId: string }> = ({ surveyI
           createdAt: response.created_at
         }));
         
+        console.log('🔄 Dados convertidos para Nexus:', surveyResponses.length, 'respostas');
         setResponses(surveyResponses);
         
         // Executar todas as análises em paralelo
@@ -266,12 +334,17 @@ export const NexusInfinitoAnalytics: React.FC<{ surveyId: string }> = ({ surveyI
         // Moda
         const frequency: Record<string, number> = {};
         values.forEach(val => {
-          const key = val.toString();
-          frequency[key] = (frequency[key] || 0) + 1;
+          // Validação para prevenir erro de null/undefined
+          if (val !== null && val !== undefined) {
+            const key = val.toString();
+            frequency[key] = (frequency[key] || 0) + 1;
+          }
         });
-        const mode = parseFloat(Object.keys(frequency).reduce((a, b) => 
-          frequency[a] > frequency[b] ? a : b
-        ));
+        const mode = Object.keys(frequency).length > 0 
+          ? parseFloat(Object.keys(frequency).reduce((a, b) => 
+              frequency[a] > frequency[b] ? a : b
+            ))
+          : 0;
         
         // Desvio padrão e variância
         const variance = values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / (n - 1);
@@ -401,14 +474,26 @@ export const NexusInfinitoAnalytics: React.FC<{ surveyId: string }> = ({ surveyI
 
   // Função para realizar clustering K-Means
   const performClustering = async (data: SurveyResponseNexus[]) => {
+    console.log('🔍 Iniciando clustering K-means com', data.length, 'respostas');
+    
     const numericVars = extractNumericVariables(data);
     const variables = Object.keys(numericVars);
     
-    if (variables.length < 2) return;
+    console.log('📊 Variáveis numéricas encontradas:', variables);
+    console.log('📈 Dados numéricos:', numericVars);
+    console.log('🔢 Quantidade de variáveis:', variables.length);
+    
+    if (variables.length < 2) {
+      console.warn('⚠️ Clustering cancelado: menos de 2 variáveis numéricas encontradas');
+      console.log('❌ Variáveis disponíveis:', variables);
+      return;
+    }
     
     // Preparar dados para clustering
     const dataMatrix: number[][] = [];
     const minLength = Math.min(...variables.map(v => numericVars[v].length));
+    
+    console.log('📏 Comprimento mínimo dos dados:', minLength);
     
     for (let i = 0; i < minLength; i++) {
       const point: number[] = [];
@@ -422,24 +507,48 @@ export const NexusInfinitoAnalytics: React.FC<{ surveyId: string }> = ({ surveyI
       }
     }
     
-    if (dataMatrix.length < 3) return;
+    console.log('🎯 Matriz de dados preparada:', dataMatrix.length, 'pontos');
+    
+    if (dataMatrix.length < 3) {
+      console.warn('⚠️ Clustering cancelado: menos de 3 pontos de dados');
+      return;
+    }
     
     const clusterResults: ClusterResult[] = [];
     
+    console.log('🧮 Testando diferentes números de clusters...');
+    
     // Testar diferentes números de clusters (2 a 5)
-    for (let k = 2; k <= Math.min(5, Math.floor(dataMatrix.length / 2)); k++) {
+    const maxK = Math.min(5, Math.floor(dataMatrix.length / 2));
+    console.log('🎯 Testando clustering de k=2 até k=' + maxK);
+    
+    for (let k = 2; k <= maxK; k++) {
+      console.log(`🔄 Testando k=${k}`);
       const result = performKMeans(dataMatrix, k);
+      console.log(`📊 Resultado K-means para k=${k}:`, result);
+      
       if (result) {
-        clusterResults.push({
+        const silhouetteScore = calculateSilhouetteScore(dataMatrix, result.clusters);
+        console.log(`📈 k=${k}, Silhouette Score: ${silhouetteScore}`);
+        
+        const clusterResult = {
           clusterCount: k,
           clusters: result.clusters,
           centroids: result.centroids,
-          silhouetteScore: calculateSilhouetteScore(dataMatrix, result.clusters)
-        });
+          silhouetteScore
+        };
+        
+        clusterResults.push(clusterResult);
+        console.log(`✅ Resultado adicionado para k=${k}:`, clusterResult);
+      } else {
+        console.warn(`❌ Falha no K-means para k=${k}`);
       }
     }
     
+    console.log('🎉 Todos os resultados de clustering:', clusterResults);
+    console.log('🔄 Atualizando estado clusterResults com', clusterResults.length, 'resultados');
     setClusterResults(clusterResults);
+    console.log('✅ Estado clusterResults atualizado');
   };
 
   // Função para realizar análise de conjoint
@@ -783,26 +892,26 @@ export const NexusInfinitoAnalytics: React.FC<{ surveyId: string }> = ({ surveyI
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <BarChart3 className="h-5 w-5 text-blue-600" />
-                    Análise Estatística: {variable}
+                    {getVariableDisplayName(variable)}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <p className="text-sm text-muted-foreground">Média</p>
-                      <p className="text-lg font-semibold">{metrics.mean.toFixed(2)}</p>
+                      <p className="text-lg font-semibold">{(metrics.mean ?? 0).toFixed(2)}</p>
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Mediana</p>
-                      <p className="text-lg font-semibold">{metrics.median.toFixed(2)}</p>
+                      <p className="text-lg font-semibold">{(metrics.median ?? 0).toFixed(2)}</p>
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Desvio Padrão</p>
-                      <p className="text-lg font-semibold">{metrics.standardDeviation.toFixed(2)}</p>
+                      <p className="text-lg font-semibold">{(metrics.standardDeviation ?? 0).toFixed(2)}</p>
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Variância</p>
-                      <p className="text-lg font-semibold">{metrics.variance.toFixed(2)}</p>
+                      <p className="text-lg font-semibold">{(metrics.variance ?? 0).toFixed(2)}</p>
                     </div>
                   </div>
                   
@@ -811,7 +920,7 @@ export const NexusInfinitoAnalytics: React.FC<{ surveyId: string }> = ({ surveyI
                   <div>
                     <h4 className="font-semibold mb-2">Intervalo de Confiança (95%)</h4>
                     <p className="text-sm">
-                      [{metrics.confidenceInterval[0].toFixed(2)}, {metrics.confidenceInterval[1].toFixed(2)}]
+                      [{(metrics.confidenceInterval[0] ?? 0).toFixed(2)}, {(metrics.confidenceInterval[1] ?? 0).toFixed(2)}]
                     </p>
                   </div>
                   
@@ -820,11 +929,11 @@ export const NexusInfinitoAnalytics: React.FC<{ surveyId: string }> = ({ surveyI
                     <div className="grid grid-cols-2 gap-2">
                       <div>
                         <p className="text-xs text-muted-foreground">Skewness</p>
-                        <p className="font-medium">{metrics.skewness.toFixed(3)}</p>
+                        <p className="font-medium">{(metrics.skewness ?? 0).toFixed(3)}</p>
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">Kurtosis</p>
-                        <p className="font-medium">{metrics.kurtosis.toFixed(3)}</p>
+                        <p className="font-medium">{(metrics.kurtosis ?? 0).toFixed(3)}</p>
                       </div>
                     </div>
                   </div>
@@ -842,11 +951,11 @@ export const NexusInfinitoAnalytics: React.FC<{ surveyId: string }> = ({ surveyI
                 <Card key={idx}>
                   <CardHeader>
                     <CardTitle>
-                      Correlação entre {corr.variable1} e {corr.variable2}
+                      Correlação: {getVariableDisplayName(corr.variable1)} × {getVariableDisplayName(corr.variable2)}
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p>Coeficiente de Correlação: {corr.correlation.toFixed(3)}</p>
+                    <p>Coeficiente de Correlação: {(corr.correlation ?? 0).toFixed(3)}</p>
                     <p>P-valor: {corr.pValue.toExponential(3)}</p>
                     <p>Significância: {corr.significance}</p>
                   </CardContent>
@@ -860,27 +969,64 @@ export const NexusInfinitoAnalytics: React.FC<{ surveyId: string }> = ({ surveyI
 
         {/* TabsContent for clustering */}
         <TabsContent value="clustering" className="space-y-4">
+          {console.log('🔍 Clustering Tab - clusterResults:', clusterResults)}
           {clusterResults.length > 0 ? (
             <div className="space-y-4">
+              {console.log('📊 Renderizando', clusterResults.length, 'resultados de clustering')}
               {clusterResults.map((cluster, idx) => (
                 <Card key={idx}>
                   <CardHeader>
-                    <CardTitle>Clusters com {cluster.clusterCount} grupos</CardTitle>
+                    <CardTitle>Agrupamento de Dados - {cluster.clusterCount} Segmentos</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p>Silhouette Score: {cluster.silhouetteScore.toFixed(3)}</p>
-                    <p>Centroides:</p>
-                    <ul>
-                      {cluster.centroids.map((centroid, i) => (
-                        <li key={i}>{centroid.map(v => v.toFixed(2)).join(', ')}</li>
-                      ))}
-                    </ul>
+                    <div className="space-y-4">
+                      <div>
+                        <h4 className="font-semibold mb-2">Qualidade do Clustering</h4>
+                        <p>Silhouette Score: {(cluster.silhouetteScore ?? 0).toFixed(3)}</p>
+                        <div className="w-full bg-gray-200 rounded-full h-2.5 mt-2">
+                          <div 
+                            className="bg-blue-600 h-2.5 rounded-full" 
+                            style={{ width: `${Math.max(0, Math.min(100, (cluster.silhouetteScore + 1) * 50))}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <h4 className="font-semibold mb-2">Centroides dos Clusters</h4>
+                        <div className="grid gap-2">
+                          {cluster.centroids.map((centroid, i) => (
+                            <div key={i} className="p-2 bg-gray-50 rounded">
+                              <span className="font-medium">Cluster {i + 1}:</span> 
+                              [{centroid.map(v => (v ?? 0).toFixed(2)).join(', ')}]
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <h4 className="font-semibold mb-2">Distribuição dos Pontos</h4>
+                        <div className="grid gap-2">
+                          {Object.entries(cluster.clusters).map(([clusterName, points]) => (
+                            <div key={clusterName} className="flex justify-between p-2 bg-gray-50 rounded">
+                              <span className="font-medium">{clusterName.replace('_', ' ').toUpperCase()}:</span>
+                              <span>{points.length} pontos</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
               ))}
             </div>
           ) : (
-            <p className="text-muted-foreground">Executando clustering K-Means...</p>
+            <div className="text-center py-8">
+              {console.log('⚠️ Nenhum resultado de clustering encontrado')}
+              <p className="text-muted-foreground">Executando clustering K-Means...</p>
+              <div className="mt-4">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+              </div>
+            </div>
           )}
         </TabsContent>
 
@@ -891,21 +1037,21 @@ export const NexusInfinitoAnalytics: React.FC<{ surveyId: string }> = ({ surveyI
               {Object.entries(predictiveModels).map(([key, model]) => (
                 <Card key={key}>
                   <CardHeader>
-                    <CardTitle>{model.modelType}</CardTitle>
+                    <CardTitle>Modelo Preditivo - {model.modelType}</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p>Acurácia: {(model.accuracy * 100).toFixed(2)}%</p>
-                    <p>RMSE: {model.rmse.toFixed(3)}</p>
+                    <p>Acurácia: {((model.accuracy ?? 0) * 100).toFixed(2)}%</p>
+                <p>RMSE: {(model.rmse ?? 0).toFixed(3)}</p>
                     <p>Importância das Features:</p>
                     <ul>
                       {Object.entries(model.featureImportance).map(([feature, importance]) => (
-                        <li key={feature}>{feature}: {importance.toFixed(3)}</li>
+                        <li key={feature}>{feature}: {(importance ?? 0).toFixed(3)}</li>
                       ))}
                     </ul>
                     <p>Predições:</p>
                     <ul>
                       {Object.entries(model.predictions).map(([pred, val]) => (
-                        <li key={pred}>{pred}: {val.toFixed(3)}</li>
+                        <li key={pred}>{pred}: {(val ?? 0).toFixed(3)}</li>
                       ))}
                     </ul>
                   </CardContent>
@@ -926,8 +1072,8 @@ export const NexusInfinitoAnalytics: React.FC<{ surveyId: string }> = ({ surveyI
                   <CardTitle>Análise de Sentimento Geral</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p>Sentimento Geral: {(sentimentAnalysis.overall * 100).toFixed(2)}%</p>
-                  <p>Intensidade: {(sentimentAnalysis.intensity * 100).toFixed(2)}%</p>
+                  <p>Sentimento Geral: {((sentimentAnalysis.overall ?? 0) * 100).toFixed(2)}%</p>
+                <p>Intensidade: {((sentimentAnalysis.intensity ?? 0) * 100).toFixed(2)}%</p>
                 </CardContent>
               </Card>
               <Card>
@@ -937,7 +1083,7 @@ export const NexusInfinitoAnalytics: React.FC<{ surveyId: string }> = ({ surveyI
                 <CardContent>
                   <ul>
                     {Object.entries(sentimentAnalysis.channels).map(([channel, score]) => (
-                      <li key={channel}>{channel}: {(score * 100).toFixed(2)}%</li>
+                      <li key={channel}>{channel}: {((score ?? 0) * 100).toFixed(2)}%</li>
                     ))}
                   </ul>
                 </CardContent>
@@ -949,7 +1095,7 @@ export const NexusInfinitoAnalytics: React.FC<{ surveyId: string }> = ({ surveyI
                 <CardContent>
                   <ul>
                     {Object.entries(sentimentAnalysis.emotions).map(([emotion, score]) => (
-                      <li key={emotion}>{emotion}: {(score * 100).toFixed(2)}%</li>
+                      <li key={emotion}>{emotion}: {((score ?? 0) * 100).toFixed(2)}%</li>
                     ))}
                   </ul>
                 </CardContent>

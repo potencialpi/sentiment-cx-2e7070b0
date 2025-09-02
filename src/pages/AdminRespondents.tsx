@@ -167,7 +167,7 @@ const AdminRespondents = () => {
 
       // Como a tabela 'respondents' não existe no esquema atual,
       // vamos simular o cadastro por enquanto
-      console.log('Simulando cadastro de respondente:', { name: name.trim(), email: email.trim().toLowerCase() });
+      console.log('Simulando cadastro de respondente - Nome fornecido:', !!name.trim(), 'Email fornecido:', !!email.trim());
       
       toast({
         title: "Funcionalidade em desenvolvimento",

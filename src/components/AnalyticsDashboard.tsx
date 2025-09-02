@@ -41,22 +41,30 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
     const detectUserPlan = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
+        console.log('AnalyticsDashboard - User detected:', user ? 'Yes' : 'No');
         if (user) {
           const userPlan = await getUserPlan(supabase, user.id);
-          console.log('Detected user plan:', userPlan);
+          console.log('AnalyticsDashboard - Detected user plan:', userPlan);
           
           if (userPlan === 'vortex-neural') {
             setAccountType('vortex-neural');
+            console.log('AnalyticsDashboard - Account type set to: vortex-neural');
           } else if (userPlan === 'nexus-infinito') {
             setAccountType('nexus-infinito');
+            console.log('AnalyticsDashboard - Account type set to: nexus-infinito');
           } else if (userPlan === 'start-quantico') {
             setAccountType('start-quantico');
+            console.log('AnalyticsDashboard - Account type set to: start-quantico');
           } else {
             setAccountType('basic');
+            console.log('AnalyticsDashboard - Account type set to: basic');
           }
+        } else {
+          console.log('AnalyticsDashboard - No user found, using prop account type:', propAccountType);
+          setAccountType(propAccountType);
         }
       } catch (error) {
-        console.error('Error detecting user plan:', error);
+        console.error('AnalyticsDashboard - Error detecting user plan:', error);
         setAccountType(propAccountType);
       } finally {
         setUserPlanLoading(false);
@@ -836,6 +844,7 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         {/* Seção Nexus Infinito - Análises Estatísticas Avançadas */}
         {accountType === 'nexus-infinito' && (
           <div className="mt-8">
+            {console.log('AnalyticsDashboard - Rendering NexusInfinitoAnalytics with surveyId:', surveyId)}
             <NexusInfinitoAnalytics surveyId={surveyId} />
           </div>
         )}

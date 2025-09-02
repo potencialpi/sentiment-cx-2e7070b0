@@ -36,18 +36,21 @@ const Login = () => {
 
   const redirectToCorrectAdminPage = async (userId: string) => {
     try {
+      console.log('🎯 REDIRECT DEBUG - Buscando plano para usuário:', userId);
       // Usar a função getUserPlan que busca nas tabelas corretas (companies e profiles)
       const planCode = await getUserPlan(supabase, userId);
 
-      console.log('Login - Plano encontrado:', planCode);
+      console.log('🎯 REDIRECT DEBUG - Plano encontrado:', planCode);
       
       // Redireciona para a página administrativa correta baseada no plano
       const adminRoute = getPlanAdminRoute(planCode);
-      console.log('Login - Redirecionando para:', adminRoute);
+      console.log('🎯 REDIRECT DEBUG - Rota calculada:', adminRoute);
+      console.log('🎯 REDIRECT DEBUG - Navegando para:', adminRoute);
       navigate(adminRoute);
     } catch (error) {
-      console.error('Erro ao buscar plano do usuário:', error);
+      console.error('🎯 REDIRECT DEBUG - Erro ao buscar plano do usuário:', error);
       // Em caso de erro, redireciona para o dashboard padrão
+      console.log('🎯 REDIRECT DEBUG - Redirecionando para dashboard padrão');
       navigate('/dashboard');
     }
   };
@@ -64,29 +67,36 @@ const Login = () => {
   }, [navigate]);
 
   const onSubmit = async (data: LoginForm) => {
+    console.log('🔐 LOGIN DEBUG - Iniciando processo de login para:', data.email);
     setIsLoading(true);
     setError(null);
 
     try {
       // Usar login seguro com isolamento melhorado
+      console.log('🔐 LOGIN DEBUG - Importando signInSecurely...');
       const { signInSecurely } = await import('@/lib/authUtils');
+      console.log('🔐 LOGIN DEBUG - Tentando fazer login...');
       const { data: authData, error: authError } = await signInSecurely(data.email, data.password);
 
       if (authError) {
+        console.log('🔐 LOGIN DEBUG - Erro de autenticação:', authError);
         setError('E-mail ou senha incorretos');
         return;
       }
 
       if (authData?.user) {
+        console.log('🔐 LOGIN DEBUG - Login bem-sucedido! Usuário:', authData.user.id, authData.user.email);
         toast({
           title: 'Login realizado com sucesso!',
           description: 'Redirecionando para o painel...'
         });
         
         // Redirecionar automaticamente para a página correta baseada no plano
+        console.log('🔐 LOGIN DEBUG - Redirecionando para página correta...');
         await redirectToCorrectAdminPage(authData.user.id);
       }
     } catch (err) {
+      console.error('🔐 LOGIN DEBUG - Erro interno:', err);
       setError('Erro interno. Tente novamente.');
     } finally {
       setIsLoading(false);

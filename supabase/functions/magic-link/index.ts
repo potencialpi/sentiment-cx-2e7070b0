@@ -41,7 +41,8 @@ serve(async (req: Request): Promise<Response> => {
     )
 
     const body = await req.json()
-    console.log('📦 Request body:', JSON.stringify(body, null, 2))
+    // Log apenas metadados para auditoria (sem dados sensíveis)
+    console.log('📦 Request received - Action:', body.action, 'Email provided:', !!body.email, 'Survey ID provided:', !!body.surveyId)
     
     const { action, email, surveyId, token }: MagicLinkRequest = body
     
@@ -98,7 +99,7 @@ async function generateMagicLink(
   userAgent: string
 ): Promise<Response> {
   try {
-    console.log('🔗 Gerando magic link para:', email, 'survey:', surveyId)
+    console.log('🔗 Gerando magic link - Email hash:', email.substring(0,3) + '***', 'Survey ID:', surveyId)
     
     // Validar email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -190,7 +191,7 @@ async function validateMagicLink(
   userAgent: string
 ): Promise<Response> {
   try {
-    console.log('🔍 Validando token de magic link')
+    console.log('🔍 Validando token de magic link - Token length:', token?.length || 0)
     
     // Buscar magic link válido
     const { data: magicLink, error } = await supabase
@@ -267,7 +268,7 @@ async function useMagicLink(
   userAgent: string
 ): Promise<Response> {
   try {
-    console.log('🎯 Processando autenticação via magic link')
+    console.log('🎯 Processando autenticação via magic link - Token length:', token?.length || 0)
     
     // Primeiro validar o token
     const validationResponse = await validateMagicLink(supabaseAdmin, token, clientIP, userAgent)
@@ -306,7 +307,7 @@ async function useMagicLink(
       }
     }
 
-    console.log('✅ Sessão criada para usuário anônimo:', validationData.data.email)
+    console.log('✅ Sessão criada para usuário anônimo - Email hash:', validationData.data.email.substring(0,3) + '***')
 
     console.log('✅ Autenticação bem-sucedida')
     return new Response(
