@@ -508,7 +508,7 @@ const UnifiedPlanInterface: React.FC<UnifiedPlanInterfaceProps> = ({ config }) =
                        {selectedSurveyForAnalysis && (
                          <div className="space-y-6">
                            {config.planName === "Nexus Infinito" ? (
-                             <NexusInfinitoAnalytics surveyId={selectedSurveyForAnalysis} />
+                             <NexusInfinitoAnalyticsSimplified surveyId={selectedSurveyForAnalysis} />
                            ) : config.planName === "Vortex Neural" ? (
                              <VortexNeuralAnalytics surveyId={selectedSurveyForAnalysis} />
                            ) : (
