@@ -5,6 +5,7 @@
 
 import { beforeAll, afterAll } from 'vitest';
 import dotenv from 'dotenv';
+import '@testing-library/jest-dom';
 
 // Load environment variables
 dotenv.config();
