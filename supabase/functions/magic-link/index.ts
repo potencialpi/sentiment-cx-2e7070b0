@@ -160,7 +160,7 @@ async function generateMagicLink(
     console.log('✅ Magic link criado:', magicLink.id)
 
     // Construir URL do magic link
-    const baseUrl = Deno.env.get('FRONTEND_URL') || 'https://sentiment-cx-2e7070b0-main.vercel.app'
+    const baseUrl = Deno.env.get('FRONTEND_URL') || 'https://traesentiment-cx-2e7070b0-mainfsak-potencialpi-potencial-pi.vercel.app'
     const magicLinkUrl = `${baseUrl}/auth/magic-link?token=${token}&surveyId=${surveyId}`
 
     return new Response(
