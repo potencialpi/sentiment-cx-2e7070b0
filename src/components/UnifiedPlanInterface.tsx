@@ -147,19 +147,28 @@ const UnifiedPlanInterface: React.FC<UnifiedPlanInterfaceProps> = ({ config }) =
   }, [toast]);
 
   return (
-    <div className="min-h-screen bg-brand-bg-gray">
-      {/* Header Section - Padrão do Design System */}
-      <header className="bg-brand-dark-blue text-brand-white py-6 sm:py-8 md:py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="bg-gradient-to-br from-slate-100 via-blue-100 to-indigo-100 min-h-screen">
+      {/* Header Section - Design Futurista */}
+      <header className="relative overflow-hidden py-6 sm:py-8 md:py-12">
+        {/* Gradiente Estático de Fundo */}
+        <div className="absolute inset-0 bg-gradient-to-br from-cyan-900 via-blue-900 to-purple-900"></div>
+        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-cyan-500/10 to-purple-500/10"></div>
+        
+        {/* Efeito de Partículas/Grid */}
+        <div className="absolute inset-0 opacity-20">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(120,119,198,0.3),transparent_50%)]"></div>
+        </div>
+        
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 mb-6 sm:mb-8">
             <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto">
               <Button 
                 variant="outline"
                 size="sm"
                 onClick={() => navigate(config.backRoute)}
-                className="bg-brand-dark-blue text-brand-white border-brand-white/20 hover:bg-brand-white/10 text-xs sm:text-sm px-3 py-2 sm:px-4"
+                className="relative bg-transparent text-cyan-300 border-cyan-400/50 hover:border-cyan-300 hover:bg-cyan-500/20 hover:shadow-[0_0_20px_rgba(34,211,238,0.4)] text-xs sm:text-sm px-3 py-2 sm:px-4 transition-all duration-300 backdrop-blur-sm"
               >
-                <ArrowLeft className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                <ArrowLeft className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]" />
                 <span className="hidden xs:inline">Voltar</span>
               </Button>
               <Button 
@@ -169,28 +178,31 @@ const UnifiedPlanInterface: React.FC<UnifiedPlanInterfaceProps> = ({ config }) =
                   const { robustLogout } = await import('@/lib/authUtils');
                   await robustLogout(navigate);
                 }}
-                className="bg-brand-green text-brand-white hover:bg-brand-green/90 border-brand-green text-xs sm:text-sm px-3 py-2 sm:px-4"
+                className="relative bg-transparent text-emerald-300 border-emerald-400/50 hover:border-emerald-300 hover:bg-emerald-500/20 hover:shadow-[0_0_20px_rgba(16,185,129,0.4)] text-xs sm:text-sm px-3 py-2 sm:px-4 transition-all duration-300 backdrop-blur-sm"
               >
-                <LogOut className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                <LogOut className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 drop-shadow-[0_0_8px_rgba(16,185,129,0.6)]" />
                 <span className="hidden xs:inline">Sair</span>
               </Button>
             </div>
           </div>
           <div className="text-center">
-            <h1 className="text-lg sm:text-xl md:text-2xl lg:text-nav font-semibold mb-2 sm:mb-4">Sentiment CX</h1>
-            <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-hero font-bold mb-3 sm:mb-4 flex flex-col sm:flex-row items-center justify-center gap-2">
-              <Activity className="h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8" />
+            <h1 className="text-lg sm:text-xl md:text-2xl lg:text-nav font-bold mb-2 sm:mb-4 text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-blue-300 drop-shadow-[0_0_10px_rgba(34,211,238,0.5)]">Sentiment CX</h1>
+            <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-hero font-bold mb-3 sm:mb-4 flex flex-col sm:flex-row items-center justify-center gap-2 text-transparent bg-clip-text bg-gradient-to-r from-purple-300 via-cyan-300 to-emerald-300 drop-shadow-[0_0_15px_rgba(168,85,247,0.4)]">
+              <Activity className="h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 text-cyan-400 drop-shadow-[0_0_12px_rgba(34,211,238,0.8)]" />
               <span className="text-center">{config.planTitle}</span>
             </h2>
-            <p className="text-sm sm:text-base md:text-subtitle text-brand-white/80 max-w-xs sm:max-w-2xl md:max-w-3xl mx-auto px-2 sm:px-0">
+            <p className="text-sm sm:text-base md:text-subtitle text-cyan-200/90 max-w-xs sm:max-w-2xl md:max-w-3xl mx-auto px-2 sm:px-0 drop-shadow-[0_0_8px_rgba(34,211,238,0.3)]">
               {config.planDescription}
             </p>
           </div>
         </div>
+        
+        {/* Borda inferior com efeito neon */}
+        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-cyan-400 to-transparent drop-shadow-[0_0_4px_rgba(34,211,238,0.6)]"></div>
       </header>
 
       {/* Main Content Section - Padrão do Design System */}
-      <main className="bg-brand-bg-gray py-4 sm:py-6 md:py-8">
+      <main className="account-content-wrapper py-4 sm:py-6 md:py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3 gap-1 sm:gap-0 mb-4 sm:mb-6 md:mb-8 h-auto sm:h-10 p-1">
@@ -209,7 +221,7 @@ const UnifiedPlanInterface: React.FC<UnifiedPlanInterfaceProps> = ({ config }) =
             </TabsList>
 
             <TabsContent value="create" className="space-y-6">
-              <Card className="bg-brand-white shadow-sm">
+              <Card className="account-card-enhanced bg-brand-white shadow-sm">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-brand-dark-gray">
                     <BarChart3 className="h-5 w-5" />
@@ -264,7 +276,7 @@ const UnifiedPlanInterface: React.FC<UnifiedPlanInterfaceProps> = ({ config }) =
                     </div>
 
                     {questions.map((question, index) => (
-                      <Card key={question.id} className="border-l-4 border-l-brand-green bg-brand-white shadow-sm">
+                      <Card key={question.id} className="border-l-4 border-l-brand-green account-card-enhanced bg-brand-white shadow-sm">
                         <CardContent className="pt-4 sm:pt-6 px-4 sm:px-6">
                           <div className="space-y-3 sm:space-y-4">
                             <div className="flex items-center justify-between">
@@ -449,14 +461,12 @@ const UnifiedPlanInterface: React.FC<UnifiedPlanInterfaceProps> = ({ config }) =
                               </div>
                               <div className="flex items-center space-x-2">
                                 <Button
-                                  size="sm"
+                                  onClick={() => handleNavigateToRespondents()}
                                   variant="outline"
-                                  onClick={() => uiUtils.copyLinkToClipboard(survey.unique_link, toast)}
-                                  className="flex-1 border-brand-dark-gray text-brand-dark-gray hover:bg-brand-dark-gray hover:text-brand-white text-xs sm:text-sm py-2 px-3 min-h-[44px] touch-manipulation"
+                                  className="border-brand-green text-brand-green hover:bg-brand-green hover:text-brand-white font-medium px-6 sm:px-8 py-3 text-base sm:text-lg transition-all duration-300 min-h-[48px] touch-manipulation w-full sm:w-auto max-w-xs sm:max-w-none"
                                 >
-                                  <Copy className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-                                  <span className="hidden xs:inline">Copiar Link</span>
-                                  <span className="xs:hidden">Copiar</span>
+                                  <UserPlus className="w-4 h-4 mr-2" />
+                                  Gerenciar Respondentes
                                 </Button>
                               </div>
                             </div>

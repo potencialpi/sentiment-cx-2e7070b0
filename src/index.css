@@ -68,6 +68,11 @@ All colors MUST be HSL.
     --gradient-teal: linear-gradient(135deg, hsl(var(--brand-teal)), hsl(var(--brand-cyan)));
     --gradient-vibrant: linear-gradient(135deg, hsl(var(--brand-purple)), hsl(var(--brand-coral)), hsl(var(--brand-orange)));
     
+    /* Account Pages Gradient Backgrounds */
+    --gradient-account-primary: linear-gradient(135deg, hsl(var(--brand-green) / 0.08), hsl(var(--brand-purple) / 0.12), hsl(var(--brand-cyan) / 0.06));
+    --gradient-account-secondary: linear-gradient(45deg, hsl(var(--brand-purple) / 0.06), hsl(var(--brand-green) / 0.10), hsl(var(--brand-teal) / 0.08));
+    --gradient-account-radial: radial-gradient(ellipse at top, hsl(var(--brand-green) / 0.15), hsl(var(--brand-purple) / 0.08), transparent 70%);
+    
     --shadow-glow: 0 0 30px hsl(var(--brand-green) / 0.6);
     --shadow-soft: 0 4px 20px hsl(220 20% 10% / 0.15);
     --shadow-card: 0 8px 32px hsl(220 20% 10% / 0.18);
@@ -198,6 +203,51 @@ All colors MUST be HSL.
   
   .card-glass {
     background: var(--backdrop-glass);
+  }
+  
+  /* Account Pages Background Classes */
+  .bg-account-gradient {
+    background: var(--gradient-account-primary);
+    position: relative;
+  }
+  
+  .bg-account-gradient::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--gradient-account-radial);
+    pointer-events: none;
+    z-index: 0;
+  }
+  
+  .bg-account-gradient > * {
+    position: relative;
+    z-index: 1;
+  }
+  
+  .bg-account-secondary {
+    background: var(--gradient-account-secondary);
+  }
+  
+  /* Enhanced account page styling */
+  .account-page-container {
+    @apply min-h-screen bg-account-gradient;
+  }
+  
+  .account-content-wrapper {
+    @apply relative z-10 backdrop-blur-sm;
+  }
+  
+  .account-card-enhanced {
+    @apply bg-white/90 backdrop-blur-sm border-0 shadow-[var(--shadow-card)] 
+           transition-all duration-300 hover:shadow-[var(--shadow-elevated)] 
+           hover:bg-white/95 rounded-2xl;
+  }
+  
+  .card-glass-enhanced {
     @apply backdrop-blur-[var(--blur-glass)] border border-white/20 
            shadow-[var(--shadow-soft)] rounded-2xl;
   }

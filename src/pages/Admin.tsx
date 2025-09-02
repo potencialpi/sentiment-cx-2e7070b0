@@ -62,10 +62,10 @@ const Admin = () => {
   }
 
   return (
-    <div className="min-h-screen bg-section-light">
+    <div className="bg-gradient-to-br from-slate-100 via-blue-100 to-indigo-100 min-h-screen">
       {/* Header */}
       <header className="bg-hero relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent animate-pulse"></div>
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent drop-shadow-[0_0_8px_rgba(255,255,255,0.1)]"></div>
         <div className="relative z-10 py-8 px-6">
           <div className="max-w-7xl mx-auto flex justify-between items-center">
             <div className="flex items-center space-x-4">
@@ -102,7 +102,7 @@ const Admin = () => {
       {/* Conteúdo Principal */}
       <main className="p-6 max-w-7xl mx-auto">
         {/* Card Status da Conta */}
-        <div className="card-modern mb-8 fade-in">
+        <div className="account-card-enhanced mb-8 fade-in">
           <CardHeader className="pb-4">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 bg-gradient-accent rounded-lg flex items-center justify-center">
@@ -142,7 +142,7 @@ const Admin = () => {
 
         {/* Grid de Cards de Métricas */}
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-          <div className="card-modern p-6 group interactive-hover">
+          <div className="account-card-enhanced p-6 group interactive-hover">
             <div className="flex items-center justify-between mb-4">
               <div className="w-12 h-12 bg-gradient-to-br from-brand-green to-brand-cyan rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
                 <FileText className="h-6 w-6 text-white" />
@@ -159,7 +159,7 @@ const Admin = () => {
             </p>
           </div>
 
-          <div className="card-modern p-6 group interactive-hover">
+          <div className="account-card-enhanced p-6 group interactive-hover">
             <div className="flex items-center justify-between mb-4">
               <div className="w-12 h-12 bg-gradient-to-br from-brand-purple to-brand-light-blue rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
                 <Users className="h-6 w-6 text-white" />

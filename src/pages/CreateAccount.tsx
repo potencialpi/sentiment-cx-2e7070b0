@@ -152,10 +152,10 @@ const CreateAccount = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-brand-bg-gray">
+      <div className="account-page-container">
         <Header />
         <div className="flex items-center justify-center py-12 px-6">
-          <Card className="w-full max-w-md">
+          <Card className="account-card-enhanced w-full max-w-md">
             <CardContent className="text-center p-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-green mx-auto mb-4"></div>
               <h2 className="text-xl font-semibold mb-2">Criando sua conta...</h2>
@@ -174,7 +174,7 @@ const CreateAccount = () => {
       <div className="min-h-screen bg-brand-bg-gray">
         <Header />
         <div className="flex items-center justify-center py-12 px-6">
-          <Card className="w-full max-w-md">
+          <Card className="account-card-enhanced w-full max-w-md">
             <CardHeader className="text-center">
               <div className="mx-auto mb-4 w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center">
                 <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">

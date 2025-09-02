@@ -39,8 +39,8 @@ const Dashboard = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-brand-bg-gray flex items-center justify-center">
-        <div className="text-brand-dark-gray">Redirecionando...</div>
+      <div className="bg-gradient-to-br from-slate-100 via-blue-100 to-indigo-100 min-h-screen flex items-center justify-center">
+        <div className="text-white">Redirecionando...</div>
       </div>
     );
   }

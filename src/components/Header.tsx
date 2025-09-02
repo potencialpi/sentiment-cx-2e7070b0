@@ -7,7 +7,7 @@ export function Header() {
 
   return (
     <header className="bg-hero relative overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent animate-pulse"></div>
+      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent drop-shadow-[0_0_8px_rgba(255,255,255,0.1)]"></div>
       <div className="relative z-10 py-6 px-6">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="flex items-center space-x-3">

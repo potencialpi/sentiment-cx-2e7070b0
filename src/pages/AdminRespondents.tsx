@@ -6,10 +6,13 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, Plus, Trash2, Mail, User, Send, Link as LinkIcon, UserPlus } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Mail, User, Send, Link as LinkIcon, UserPlus, Users, AlertTriangle } from 'lucide-react';
 import { MagicLinkRequest } from '@/components/MagicLinkRequest';
+import DeleteConfirmationModal from '@/components/DeleteConfirmationModal';
+import { useRespondentDeletion } from '@/hooks/useRespondentDeletion';
 import { getUserPlan, getPlanDisplayName } from '@/lib/planUtils';
 
 interface Respondent {
@@ -46,11 +49,19 @@ const AdminRespondents = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
-  const [respondents, setRespondents] = useState<Respondent[]>([]);
   const [loadingList, setLoadingList] = useState(true);
+  const [respondents, setRespondents] = useState<Respondent[]>([]);
   const [surveys, setSurveys] = useState<Survey[]>([]);
   const [selectedSurveyId, setSelectedSurveyId] = useState('');
   const [showMagicLinkForm, setShowMagicLinkForm] = useState(false);
+  
+  // Estados para exclusão em massa
+  const [selectedRespondents, setSelectedRespondents] = useState<string[]>([]);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [respondentsToDelete, setRespondentsToDelete] = useState<string[]>([]);
+  
+  // Hook para exclusão
+  const { isDeleting, deleteProgress, deleteSingleRespondent, deleteMultipleRespondents } = useRespondentDeletion();
   const [userPlan, setUserPlan] = useState<string>('start-quantico');
   const [planLoading, setPlanLoading] = useState(true);
   const { toast } = useToast();
@@ -195,20 +206,79 @@ const AdminRespondents = () => {
     }
   };
 
+  // Funções para gerenciamento de seleção
+  const handleSelectRespondent = (respondentId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedRespondents(prev => [...prev, respondentId]);
+    } else {
+      setSelectedRespondents(prev => prev.filter(id => id !== respondentId));
+    }
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedRespondents(respondents.map(r => r.id));
+    } else {
+      setSelectedRespondents([]);
+    }
+  };
+
+  // Função para exclusão individual
   const handleDelete = async (id: string, respondentName: string) => {
-    // Como a tabela 'respondents' não existe no esquema atual,
-    // vamos simular a exclusão por enquanto
-    console.log('Simulando exclusão de respondente:', { id, respondentName });
+    setRespondentsToDelete([id]);
+    setShowDeleteModal(true);
+  };
+
+  // Função para exclusão em massa
+  const handleDeleteSelected = () => {
+    if (selectedRespondents.length === 0) {
+      toast({
+        title: "Nenhum respondente selecionado",
+        description: "Selecione pelo menos um respondente para excluir.",
+        variant: "destructive",
+      });
+      return;
+    }
     
-    toast({
-      title: "Funcionalidade em desenvolvimento",
-      description: "A exclusão de respondentes será implementada em breve.",
-      variant: "destructive",
-    });
+    setRespondentsToDelete(selectedRespondents);
+    setShowDeleteModal(true);
+  };
+
+  // Função de confirmação de exclusão
+  const handleConfirmDelete = async (confirmationText: string) => {
+    try {
+      let result;
+      
+      if (respondentsToDelete.length === 1) {
+        result = await deleteSingleRespondent(respondentsToDelete[0]);
+      } else {
+        result = await deleteMultipleRespondents(respondentsToDelete, confirmationText);
+      }
+      
+      if (result.success) {
+        // Atualizar lista de respondentes
+        await loadRespondents();
+        
+        // Limpar seleções
+        setSelectedRespondents([]);
+        setRespondentsToDelete([]);
+        setShowDeleteModal(false);
+      }
+    } catch (error) {
+      console.error('Erro durante exclusão:', error);
+    }
+  };
+
+  // Função para fechar modal
+  const handleCloseDeleteModal = () => {
+    if (!isDeleting) {
+      setShowDeleteModal(false);
+      setRespondentsToDelete([]);
+    }
   };
 
   return (
-    <div className="min-h-screen">
+    <div className="bg-gradient-to-br from-slate-100 via-blue-100 to-indigo-100 min-h-screen">
       {/* Seção Superior */}
       <section className="bg-hero py-12 px-6">
         <div className="max-w-6xl mx-auto">
@@ -241,9 +311,9 @@ const AdminRespondents = () => {
 
       {/* Seção Inferior */}
       <section className="bg-section-light py-12 px-6">
-        <div className="max-w-6xl mx-auto space-y-8">
+        <div className="account-content-wrapper max-w-6xl mx-auto space-y-8">
           {/* Magic Links */}
-          <Card className="bg-brand-white shadow-sm">
+          <Card className="account-card-enhanced bg-brand-white shadow-sm">
             <CardHeader>
               <CardTitle className="text-2xl font-bold text-brand-dark-gray flex items-center gap-2">
                 <LinkIcon className="w-6 h-6 text-primary" />
@@ -345,7 +415,7 @@ const AdminRespondents = () => {
           </Card>
 
           {/* Formulário de Cadastro */}
-          <Card className="bg-brand-white shadow-sm">
+          <Card className="account-card-enhanced bg-brand-white shadow-sm">
             <CardHeader>
               <CardTitle className="text-2xl font-bold text-brand-dark-gray flex items-center gap-2">
                 <Plus className="w-6 h-6 text-primary" />
@@ -406,12 +476,37 @@ const AdminRespondents = () => {
           {/* Lista de Respondentes */}
           <Card className="bg-brand-white shadow-sm">
             <CardHeader>
-              <CardTitle className="text-2xl font-bold text-brand-dark-gray">
-                Respondentes Cadastrados ({respondents.length})
-              </CardTitle>
-              <p className="text-brand-dark-gray/60">
-                Lista de todos os respondentes cadastrados
-              </p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-2xl font-bold text-brand-dark-gray">
+                    Respondentes Cadastrados ({respondents.length})
+                  </CardTitle>
+                  <p className="text-brand-dark-gray/60">
+                    Lista de todos os respondentes cadastrados
+                  </p>
+                </div>
+                {respondents.length > 0 && (
+                  <div className="flex items-center gap-3">
+                    {selectedRespondents.length > 0 && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-brand-dark-gray">
+                          {selectedRespondents.length} selecionado{selectedRespondents.length > 1 ? 's' : ''}
+                        </span>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={handleDeleteSelected}
+                          disabled={isDeleting}
+                          className="flex items-center gap-2"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          Excluir Selecionados
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               {loadingList ? (
@@ -433,6 +528,13 @@ const AdminRespondents = () => {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead className="w-12">
+                          <Checkbox
+                            checked={selectedRespondents.length === respondents.length && respondents.length > 0}
+                            onCheckedChange={handleSelectAll}
+                            disabled={isDeleting}
+                          />
+                        </TableHead>
                         <TableHead className="font-semibold">Nome</TableHead>
                         <TableHead className="font-semibold">E-mail</TableHead>
                         <TableHead className="font-semibold">Cadastrado em</TableHead>
@@ -442,6 +544,13 @@ const AdminRespondents = () => {
                     <TableBody>
                       {respondents.map((respondent) => (
                         <TableRow key={respondent.id} className="hover:bg-brand-dark-gray/5">
+                          <TableCell>
+                            <Checkbox
+                              checked={selectedRespondents.includes(respondent.id)}
+                              onCheckedChange={(checked) => handleSelectRespondent(respondent.id, checked as boolean)}
+                              disabled={isDeleting}
+                            />
+                          </TableCell>
                           <TableCell className="font-medium">{respondent.name}</TableCell>
                           <TableCell className="text-brand-dark-gray/70">{respondent.email}</TableCell>
                           <TableCell className="text-brand-dark-gray/70">
@@ -453,6 +562,7 @@ const AdminRespondents = () => {
                               size="sm"
                               onClick={() => handleDelete(respondent.id, respondent.name)}
                               className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              disabled={isDeleting}
                             >
                               <Trash2 className="w-4 h-4" />
                             </Button>
@@ -467,6 +577,18 @@ const AdminRespondents = () => {
           </Card>
         </div>
       </section>
+
+      {/* Modal de Confirmação de Exclusão */}
+      <DeleteConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={handleCloseDeleteModal}
+        onConfirm={handleConfirmDelete}
+        isDeleting={isDeleting}
+        deleteProgress={deleteProgress}
+        itemCount={respondentsToDelete.length}
+        itemType="respondente"
+        requiresConfirmation={respondentsToDelete.length > 1}
+      />
     </div>
   );
 };
