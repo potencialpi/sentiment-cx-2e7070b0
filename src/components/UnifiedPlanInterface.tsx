@@ -517,6 +517,14 @@ const UnifiedPlanInterface: React.FC<UnifiedPlanInterfaceProps> = ({ config }) =
                        {/* Dashboard de análise */}
                        {selectedSurveyForAnalysis && (
                          <div className="space-y-6">
+                           {(() => {
+                             console.log('🔍 Renderizando analytics para:', {
+                               planName: config.planName,
+                               surveyId: selectedSurveyForAnalysis,
+                               activeSurveys: activeSurveys.length
+                             });
+                             return null;
+                           })()}
                            {config.planName === "Nexus Infinito" ? (
                              <NexusInfinitoAnalyticsSimplified surveyId={selectedSurveyForAnalysis} />
                            ) : config.planName === "Vortex Neural" ? (

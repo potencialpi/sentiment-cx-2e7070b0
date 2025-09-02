@@ -48,6 +48,7 @@ interface VortexNeuralAnalyticsProps {
 }
 
 const VortexNeuralAnalytics: React.FC<VortexNeuralAnalyticsProps> = ({ className, surveyId }) => {
+  console.log('🔥 VortexNeuralAnalytics renderizado com surveyId:', surveyId);
   const [activeTab, setActiveTab] = useState('statistical');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [refreshing, setRefreshing] = useState(false);
@@ -144,7 +145,7 @@ const VortexNeuralAnalytics: React.FC<VortexNeuralAnalyticsProps> = ({ className
         console.error('Erro ao carregar dados reais:', err);
         const msg = typeof err?.message === 'string' && err.message.toLowerCase().includes('permission denied')
           ? 'Você não possui permissão para visualizar as respostas desta pesquisa. Entre com a conta proprietária da pesquisa.'
-          : 'Erro ao carregar dados da pesquisa. Tente novamente.';
+          : 'Erro ao carregar dados da pesquisa';
         setError(msg);
       } finally {
         setIsLoading(false);
@@ -190,7 +191,14 @@ const VortexNeuralAnalytics: React.FC<VortexNeuralAnalyticsProps> = ({ className
 
   // Análise temática de sentimentos
   const thematicAnalysis = useMemo(() => {
+    console.log('🔍 DEBUG thematicAnalysis - realData:', realData);
+    
     if (!realData || !realData.statisticalData || !realData.statisticalData.textResponses.length) {
+      console.log('❌ DEBUG thematicAnalysis - Sem dados:', {
+        hasRealData: !!realData,
+        hasStatisticalData: !!(realData?.statisticalData),
+        textResponsesLength: realData?.statisticalData?.textResponses?.length || 0
+      });
       return {
         themes: [],
         sentiments: { positive: 0, negative: 0, neutral: 0 },
@@ -201,13 +209,22 @@ const VortexNeuralAnalytics: React.FC<VortexNeuralAnalyticsProps> = ({ className
     const textResponses = realData.statisticalData.textResponses
       .filter(text => text && text.trim().length > 0);
     
-    return textResponses.length > 0 
+    console.log('📝 DEBUG thematicAnalysis - textResponses:', {
+      totalResponses: realData.statisticalData.textResponses.length,
+      filteredResponses: textResponses.length,
+      sampleResponses: textResponses.slice(0, 3)
+    });
+    
+    const result = textResponses.length > 0 
       ? performThematicSentimentAnalysis(textResponses)
       : {
           themes: [],
           sentiments: { positive: 0, negative: 0, neutral: 0 },
           summary: 'Nenhum comentário de texto encontrado para análise.'
         };
+    
+    console.log('✅ DEBUG thematicAnalysis - resultado:', result);
+    return result;
   }, [realData]);
 
   // Configurações para gráfico de correlação
