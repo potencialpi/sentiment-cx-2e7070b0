@@ -11,8 +11,8 @@ describe('planConfigs', () => {
       expect(startPlan?.planTitle).toBe('Start Quântico');
       expect(startPlan?.planDescription).toBe('Plano inicial com recursos essenciais para análise de sentimentos e criação de pesquisas básicas.');
       expect(startPlan?.maxQuestions).toBe(5);
-      expect(startPlan?.maxResponses).toBe(50);
-      expect(startPlan?.maxSurveysPerMonth).toBe(3);
+      expect(startPlan?.maxResponses).toBe(100);
+      expect(startPlan?.maxSurveysPerMonth).toBe(2);
       expect(startPlan?.backRoute).toBe('/dashboard');
 
       // Test features structure
@@ -73,7 +73,7 @@ describe('planConfigs', () => {
       expect(nexusPlan?.planDescription).toBe('Plano premium com recursos ilimitados, IA avançada e análises em tempo real para empresas de grande porte.');
       expect(nexusPlan?.maxQuestions).toBe(999999);
       expect(nexusPlan?.maxResponses).toBe(999999);
-      expect(nexusPlan?.maxSurveysPerMonth).toBe(999999);
+      expect(nexusPlan?.maxSurveysPerMonth).toBe(15);
       expect(nexusPlan?.backRoute).toBe('/dashboard');
 
       // Test features structure

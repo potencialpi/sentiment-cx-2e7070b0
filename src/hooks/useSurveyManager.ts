@@ -153,10 +153,27 @@ export const useSurveyManager = (): UseSurveyManagerReturn => {
       }
 
       // Obter informações do plano
-      const userPlan = await getUserPlan(user.id, 'start-quantico');
+      const userPlan = await getUserPlan(user.id);
       const planName = userPlan || 'start-quantico';
-      const maxQuestions = 5; // Default para start quantico
-      const maxSurveysPerMonth = 2; // Default para start quantico
+      
+      // Definir limites baseados no plano
+      let maxQuestions = 5; // Default para start quantico
+      let maxSurveysPerMonth = 2; // Default para start quantico
+      
+      switch (planName) {
+        case 'start-quantico':
+          maxQuestions = 5;
+          maxSurveysPerMonth = 2;
+          break;
+        case 'vortex-neural':
+          maxQuestions = 10;
+          maxSurveysPerMonth = 4;
+          break;
+        case 'nexus-infinito':
+          maxQuestions = 999999; // Ilimitado
+          maxSurveysPerMonth = 15; // 15 pesquisas por mês
+          break;
+      }
 
       // Verificar limite de questões
       if (questions.length > maxQuestions) {
@@ -216,10 +233,27 @@ export const useSurveyManager = (): UseSurveyManagerReturn => {
       
     } catch (error: any) {
       console.error('Erro ao salvar pesquisa:', error);
-      const userPlan = await getUserPlan((await supabase.auth.getUser()).data.user?.id || '', 'start-quantico');
+      const userPlan = await getUserPlan((await supabase.auth.getUser()).data.user?.id || '');
       const planName = userPlan || 'start-quantico';
-      const maxQuestions = 5; // Default para start quantico
-      const maxSurveysPerMonth = 2; // Default para start quantico
+      
+      // Definir limites baseados no plano
+      let maxQuestions = 5; // Default para start quantico
+      let maxSurveysPerMonth = 2; // Default para start quantico
+      
+      switch (planName) {
+        case 'start-quantico':
+          maxQuestions = 5;
+          maxSurveysPerMonth = 2;
+          break;
+        case 'vortex-neural':
+          maxQuestions = 10;
+          maxSurveysPerMonth = 4;
+          break;
+        case 'nexus-infinito':
+           maxQuestions = 999999; // Ilimitado
+           maxSurveysPerMonth = 15; // 15 pesquisas por mês
+           break;
+      }
       
       const config = { planName, maxQuestions, maxSurveysPerMonth };
       handlePlanLimitError(error, config, toast);

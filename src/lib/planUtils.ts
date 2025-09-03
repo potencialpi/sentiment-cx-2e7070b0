@@ -76,7 +76,7 @@ export function getPlanRespondentsRoute(planCode: string): string {
 
 // Função utilitária para buscar o plano do usuário de forma consistente
 export async function getUserPlan(supabase: any, userId: string): Promise<string> {
-  let planCode = 'start-quantico'; // fallback padrão
+  let planCode: string | null = null; // Não assumir plano padrão
 
   try {
     // Tentar buscar o plano na tabela companies primeiro
@@ -104,6 +104,31 @@ export async function getUserPlan(supabase: any, userId: string): Promise<string
     console.error('Erro ao buscar plano do usuário:', error);
   }
 
-  console.log('getUserPlan - Plano encontrado:', planCode);
+  // VALIDAÇÃO CRÍTICA: Não retornar plano se não foi encontrado
+  if (!planCode) {
+    console.error('ERRO CRÍTICO: Usuário sem plano válido identificado', {
+      userId,
+      timestamp: new Date().toISOString()
+    });
+    throw new Error(`Usuário ${userId} não possui plano válido - acesso negado`);
+  }
+
+  // Validar se o plano encontrado é válido
+  const validPlans = ['start-quantico', 'vortex-neural', 'nexus-infinito'];
+  if (!validPlans.includes(planCode)) {
+    console.error('ERRO CRÍTICO: Plano inválido encontrado no banco', {
+      userId,
+      planCode,
+      timestamp: new Date().toISOString()
+    });
+    throw new Error(`Plano inválido encontrado: ${planCode} para usuário ${userId}`);
+  }
+
+  console.log('✅ PLANO VALIDADO COM SUCESSO', {
+    userId,
+    planCode,
+    timestamp: new Date().toISOString()
+  });
+
   return planCode;
 }

@@ -18,6 +18,9 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { calculateStatisticalSummary, calculateCorrelation, identifyOutliers } from '@/utils/statisticalAnalysis';
 import ClusteringTab from '@/components/ClusteringTab';
+import CorrelationMatrix from '@/components/charts/CorrelationMatrix';
+import TimeSeriesChart from '@/components/charts/TimeSeriesChart';
+import ANOVAChart from '@/components/charts/ANOVAChart';
 
 interface NexusAnalyticsProps {
   surveyId: string;
@@ -281,9 +284,18 @@ export const NexusInfinitoAnalyticsSimplified: React.FC<NexusAnalyticsProps> = (
                   <p className="text-sm text-muted-foreground">
                     Identifica relações entre variáveis dos dados.
                   </p>
-                  <Button size="sm" className="mt-2" disabled>
-                    Em Breve
-                  </Button>
+                  <CorrelationMatrix 
+                    data={{
+                      variables: ['Satisfação', 'Qualidade', 'Preço', 'Atendimento'],
+                      matrix: [
+                        [1.00, 0.75, -0.32, 0.68],
+                        [0.75, 1.00, -0.28, 0.72],
+                        [-0.32, -0.28, 1.00, -0.15],
+                        [0.68, 0.72, -0.15, 1.00]
+                      ]
+                    }}
+                    className="mt-2"
+                  />
                 </Card>
                 
                 <Card className="p-4">
@@ -301,9 +313,18 @@ export const NexusInfinitoAnalyticsSimplified: React.FC<NexusAnalyticsProps> = (
                   <p className="text-sm text-muted-foreground">
                     Analisa tendências ao longo do tempo.
                   </p>
-                  <Button size="sm" className="mt-2" disabled>
-                    Em Breve
-                  </Button>
+                  <TimeSeriesChart 
+                    data={[
+                      { date: '2024-01', value: 4.2, predicted: false },
+                      { date: '2024-02', value: 4.5, predicted: false },
+                      { date: '2024-03', value: 4.1, predicted: false },
+                      { date: '2024-04', value: 4.7, predicted: false },
+                      { date: '2024-05', value: 4.3, predicted: false },
+                      { date: '2024-06', value: 4.8, predicted: true },
+                      { date: '2024-07', value: 4.9, predicted: true }
+                    ]}
+                    className="mt-2"
+                  />
                 </Card>
                 
                 <Card className="p-4">

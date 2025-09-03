@@ -2,6 +2,7 @@
 // import { supabase } from '@/integrations/supabase/client';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
+import { assignPlanWithAudit, checkPlanConsistency } from './planAudit';
 
 // Tipos para eventos do Stripe
 interface StripeEvent {
@@ -119,27 +120,81 @@ async function handleCheckoutCompleted(session: CheckoutSession, sb: SupabaseCli
       }
     }
 
-    planCode = planCode || 'vortex-neural';
+    // VALIDAÇÃO CRÍTICA: Não permitir processamento sem plano válido
+    if (!planCode) {
+      console.error('ERRO CRÍTICO: Plano não identificado na sessão de checkout', {
+        sessionId: session.id,
+        customerEmail: customer_email,
+        metadata: session.metadata,
+        subscription: (session as any).subscription
+      });
+      throw new Error('Plano não identificado - processamento de pagamento cancelado');
+    }
+    
+    // Validar se o plano é válido
+    const validPlans = ['start-quantico', 'vortex-neural', 'nexus-infinito'];
+    if (!validPlans.includes(planCode)) {
+      console.error('ERRO CRÍTICO: Plano inválido identificado', {
+        planCode,
+        sessionId: session.id,
+        customerEmail: customer_email
+      });
+      throw new Error(`Plano inválido: ${planCode} - processamento cancelado`);
+    }
+    
     billingType = billingType || 'monthly';
     amountCents = amountCents ?? 0;
     txnCurrency = txnCurrency || 'brl';
+    
+    console.log('✅ VALIDAÇÃO DE PLANO APROVADA', {
+      planCode,
+      billingType,
+      customerEmail: customer_email,
+      sessionId: session.id
+    });
 
-    // Atualizar status do usuário para ativo
-    const { error: updateError } = await sb
-      .from('profiles')
-      .update({
-        subscription_status: 'active',
-        plan_name: planCode,
-        plan_type: planCode,
-        billing_type: billingType,
-        subscription_id: (session as any).subscription,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', user.id);
+    // Usar sistema de auditoria para atribuir plano com segurança
+    try {
+      await assignPlanWithAudit(
+        sb,
+        user.id,
+        planCode,
+        'webhook',
+        session.id,
+        {
+          stripe_session_id: session.id,
+          customer_email: customer_email,
+          billing_type: billingType,
+          amount_cents: amountCents,
+          currency: txnCurrency,
+          subscription_id: (session as any).subscription
+        }
+      );
 
-    if (updateError) {
-      console.error('Erro ao atualizar perfil do usuário:', updateError);
-      return;
+      // Atualizar status de assinatura
+      const { error: updateError } = await sb
+        .from('profiles')
+        .update({
+          subscription_status: 'active',
+          billing_type: billingType,
+          subscription_id: (session as any).subscription,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', user.id);
+
+      if (updateError) {
+        console.error('Erro ao atualizar status de assinatura:', updateError);
+      }
+
+      // Verificar consistência após atribuição
+      const consistencyCheck = await checkPlanConsistency(sb, user.id);
+      if (!consistencyCheck.consistent) {
+        console.error('⚠️ INCONSISTÊNCIA DETECTADA APÓS ATRIBUIÇÃO DE PLANO:', consistencyCheck.details);
+      }
+
+    } catch (auditError) {
+      console.error('ERRO CRÍTICO NA ATRIBUIÇÃO DE PLANO COM AUDITORIA:', auditError);
+      throw auditError; // Falhar o processo se não conseguir atribuir com segurança
     }
 
     // Registrar transação

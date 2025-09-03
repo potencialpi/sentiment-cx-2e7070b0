@@ -13,8 +13,8 @@ const plans = [
     yearlyPrice: 'R$ 3.499 à vista',
     features: [
       'Até 5 questões por pesquisa',
-      '50 respostas por pesquisa',
-      '3 pesquisas por mês',
+      '100 respostas por pesquisa',
+      '2 pesquisas por mês',
       'Análise estatística básica (média, mediana, moda, desvio padrão, percentis)',
       'Análise de sentimento simples (positivo, neutro, negativo)',
       'Gráficos interativos simples (barra, pizza)'

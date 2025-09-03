@@ -39,23 +39,23 @@ export const startQuanticoConfig: PlanConfig = {
   planTitle: "Start Quântico",
   planDescription: "Plano inicial com recursos essenciais para análise de sentimentos e criação de pesquisas básicas.",
   maxQuestions: 5,
-  maxResponses: 50,
-  maxSurveysPerMonth: 3,
+  maxResponses: 100,
+  maxSurveysPerMonth: 2,
   backRoute: "/dashboard",
   features: {
     analytics: {
       basic: ["Análise básica de sentimentos", "Relatórios simples", "Estatísticas descritivas"],
-      advanced: ["Dashboard de visão geral", "Análise de tendências básicas", "Segmentação por demografia"],
-      charts: ["Gráficos de barras", "Gráficos de pizza", "Histogramas"],
-      export: ["CSV", "JSON"]
+      advanced: [], // Sem recursos avançados no plano básico
+      charts: ["Gráficos de barras", "Gráficos de pizza"],
+      export: ["CSV"]
     },
     sentiment: {
       levels: ["Positivo", "Neutro", "Negativo"],
-      segmentation: ["Por idade", "Por gênero"]
+      segmentation: [] // Sem segmentação no plano básico
     },
     statistics: {
       basic: ["Média", "Mediana", "Moda", "Desvio padrão", "Percentis"],
-      advanced: ["Gráficos interativos simples (barra, pizza)"]
+      advanced: [] // Sem estatísticas avançadas no plano básico
     }
   }
 };
@@ -72,9 +72,9 @@ export const vortexNeuralConfig: PlanConfig = {
   features: {
     analytics: {
       basic: ["Análise avançada de sentimentos", "Relatórios detalhados", "Estatísticas inferenciais"],
-      advanced: ["Dashboard de análise geral com insights detalhados", "Machine Learning", "Análise preditiva", "Clustering automático", "Detecção de anomalias"],
-      charts: ["Gráficos de barras", "Gráficos de pizza", "Histogramas", "Scatter plots", "Heatmaps"],
-      export: ["CSV", "JSON", "Parquet"]
+      advanced: ["Dashboard de análise geral com insights detalhados"],
+      charts: ["Gráficos de barras", "Gráficos de pizza", "Boxplot"],
+      export: ["CSV", "JSON"]
     },
     sentiment: {
       levels: ["Muito Positivo", "Positivo", "Neutro", "Negativo", "Muito Negativo"],
@@ -94,7 +94,7 @@ export const nexusInfinitoConfig: PlanConfig = {
   planDescription: "Plano premium com recursos ilimitados, IA avançada e análises em tempo real para empresas de grande porte.",
   maxQuestions: 999999, // Ilimitado
   maxResponses: 999999, // Ilimitado
-  maxSurveysPerMonth: 999999, // Ilimitado
+  maxSurveysPerMonth: 15, // 15 pesquisas por mês
   backRoute: "/dashboard",
   features: {
     analytics: {
