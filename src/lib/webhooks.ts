@@ -1,5 +1,7 @@
 
-import { supabase } from '@/integrations/supabase/client';
+// import { supabase } from '@/integrations/supabase/client';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '@/integrations/supabase/types';
 
 // Tipos para eventos do Stripe
 interface StripeEvent {
@@ -24,25 +26,30 @@ interface CheckoutSession {
 }
 
 // Função para processar webhooks do Stripe
-export async function handleStripeWebhook(event: StripeEvent) {
+export async function handleStripeWebhook(event: StripeEvent, sbOverride?: SupabaseClient<Database>) {
   console.log('Processando evento do Stripe:', event.type);
+
+  // Evita importar o client do browser em ambiente server (Node)
+  const sb: SupabaseClient<Database> = sbOverride
+    ? sbOverride
+    : (await import('@/integrations/supabase/client')).supabase as unknown as SupabaseClient<Database>;
 
   try {
     switch (event.type) {
       case 'checkout.session.completed':
-        await handleCheckoutCompleted(event.data.object as CheckoutSession);
+        await handleCheckoutCompleted(event.data.object as CheckoutSession, sb);
         break;
       
       case 'invoice.payment_succeeded':
-        await handlePaymentSucceeded(event.data.object);
+        await handlePaymentSucceeded(event.data.object, sb);
         break;
       
       case 'invoice.payment_failed':
-        await handlePaymentFailed(event.data.object);
+        await handlePaymentFailed(event.data.object, sb);
         break;
       
       case 'customer.subscription.deleted':
-        await handleSubscriptionCanceled(event.data.object);
+        await handleSubscriptionCanceled(event.data.object, sb);
         break;
       
       default:
@@ -55,9 +62,12 @@ export async function handleStripeWebhook(event: StripeEvent) {
 }
 
 // Processar checkout completado
-async function handleCheckoutCompleted(session: CheckoutSession) {
-  const { customer_email, metadata, amount_total, currency } = session;
-  
+async function handleCheckoutCompleted(session: CheckoutSession, sb: SupabaseClient<Database>) {
+  // Acessa campos potencialmente ausentes de forma defensiva
+  const { customer_email, metadata } = session;
+  const amount_total = (session as any).amount_total as number | undefined;
+  const currency = (session as any).currency as string | undefined;
+
   if (!customer_email) {
     console.error('Email do cliente não encontrado na sessão');
     return;
@@ -65,7 +75,7 @@ async function handleCheckoutCompleted(session: CheckoutSession) {
 
   try {
     // Buscar usuário pelo email
-    const { data: user, error: userError } = await supabase
+    const { data: user, error: userError } = await sb
       .from('profiles')
       .select('*')
       .eq('email', customer_email)
@@ -76,14 +86,53 @@ async function handleCheckoutCompleted(session: CheckoutSession) {
       return;
     }
 
+    // Preferir metadados do Stripe, mas fazer fallback para checkout_sessions
+    let planCode = metadata?.planType as string | undefined;
+    let billingType = metadata?.billingType as string | undefined;
+
+    // Preparar valores de amount/currency da transação
+    let amountCents: number | null = typeof amount_total === 'number' ? amount_total : null;
+    let txnCurrency: string | null = currency ? currency.toLowerCase() : null;
+
+    if (!planCode || !billingType || amountCents == null || !txnCurrency) {
+      console.warn('Dados ausentes no evento. Buscando fallback em checkout_sessions...', { planCode, billingType, amountCents, txnCurrency, sessionId: session.id });
+      const { data: cs, error: csError } = await sb
+        .from('checkout_sessions')
+        .select('plan_id, billing_type, amount, currency')
+        .eq('stripe_session_id', session.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (csError) {
+        console.warn('Falha ao buscar fallback em checkout_sessions:', csError);
+      } else if (cs) {
+        if (!planCode) planCode = cs.plan_id;
+        if (!billingType) billingType = cs.billing_type;
+        if (amountCents == null && typeof cs.amount === 'number') amountCents = cs.amount;
+        if (!txnCurrency && cs.currency) txnCurrency = cs.currency.toLowerCase();
+        // Opcionalmente, marcar a sessão como concluída
+        await sb
+          .from('checkout_sessions')
+          .update({ status: 'completed', updated_at: new Date().toISOString() })
+          .eq('stripe_session_id', session.id);
+      }
+    }
+
+    planCode = planCode || 'vortex-neural';
+    billingType = billingType || 'monthly';
+    amountCents = amountCents ?? 0;
+    txnCurrency = txnCurrency || 'brl';
+
     // Atualizar status do usuário para ativo
-    const { error: updateError } = await supabase
+    const { error: updateError } = await sb
       .from('profiles')
       .update({
         subscription_status: 'active',
-        plan_type: metadata?.planType || 'vortex-neural',
-        billing_type: metadata?.billingType || 'monthly',
-        subscription_id: session.subscription,
+        plan_name: planCode,
+        plan_type: planCode,
+        billing_type: billingType,
+        subscription_id: (session as any).subscription,
         updated_at: new Date().toISOString()
       })
       .eq('id', user.id);
@@ -94,16 +143,16 @@ async function handleCheckoutCompleted(session: CheckoutSession) {
     }
 
     // Registrar transação
-    const { error: transactionError } = await supabase
+    const { error: transactionError } = await sb
       .from('transactions')
       .insert({
         user_id: user.id,
         stripe_session_id: session.id,
-        amount: amount_total / 100, // Converter de centavos
-        currency: currency,
+        amount: amountCents / 100, // Converter de centavos
+        currency: txnCurrency,
         status: 'completed',
-        plan_type: metadata?.planType,
-        billing_type: metadata?.billingType,
+        plan_type: planCode,
+        billing_type: billingType,
         created_at: new Date().toISOString()
       });
 
@@ -119,8 +168,8 @@ async function handleCheckoutCompleted(session: CheckoutSession) {
 }
 
 // Processar pagamento bem-sucedido (renovações)
-async function handlePaymentSucceeded(invoice: any) {
-  const { customer_email, subscription } = invoice;
+async function handlePaymentSucceeded(invoice: any, sb: SupabaseClient<Database>) {
+  const { customer_email } = invoice;
   
   if (!customer_email) {
     console.error('Email do cliente não encontrado na fatura');
@@ -129,7 +178,7 @@ async function handlePaymentSucceeded(invoice: any) {
 
   try {
     // Atualizar status da assinatura
-    const { error } = await supabase
+    const { error } = await sb
       .from('profiles')
       .update({
         subscription_status: 'active',
@@ -148,7 +197,7 @@ async function handlePaymentSucceeded(invoice: any) {
 }
 
 // Processar falha no pagamento
-async function handlePaymentFailed(invoice: any) {
+async function handlePaymentFailed(invoice: any, sb: SupabaseClient<Database>) {
   const { customer_email } = invoice;
   
   if (!customer_email) {
@@ -158,7 +207,7 @@ async function handlePaymentFailed(invoice: any) {
 
   try {
     // Atualizar status para pagamento pendente
-    const { error } = await supabase
+    const { error } = await sb
       .from('profiles')
       .update({
         subscription_status: 'past_due',
@@ -177,12 +226,10 @@ async function handlePaymentFailed(invoice: any) {
 }
 
 // Processar cancelamento de assinatura
-async function handleSubscriptionCanceled(subscription: any) {
-  const { customer } = subscription;
-  
+async function handleSubscriptionCanceled(subscription: any, sb: SupabaseClient<Database>) {
   try {
     // Buscar usuário pela subscription_id
-    const { data: user, error: userError } = await supabase
+    const { data: user, error: userError } = await sb
       .from('profiles')
       .select('*')
       .eq('subscription_id', subscription.id)
@@ -194,7 +241,7 @@ async function handleSubscriptionCanceled(subscription: any) {
     }
 
     // Atualizar status para cancelado
-    const { error } = await supabase
+    const { error } = await sb
       .from('profiles')
       .update({
         subscription_status: 'canceled',
@@ -214,9 +261,13 @@ async function handleSubscriptionCanceled(subscription: any) {
 }
 
 // Função para verificar assinatura do usuário
-export async function checkUserSubscription(userId: string) {
+export async function checkUserSubscription(userId: string, sbOverride?: SupabaseClient<Database>) {
   try {
-    const { data: user, error } = await supabase
+    const sb: SupabaseClient<Database> = sbOverride
+      ? sbOverride
+      : (await import('@/integrations/supabase/client')).supabase as unknown as SupabaseClient<Database>;
+
+    const { data: user, error } = await sb
       .from('profiles')
       .select('subscription_status, plan_type, billing_type')
       .eq('id', userId)

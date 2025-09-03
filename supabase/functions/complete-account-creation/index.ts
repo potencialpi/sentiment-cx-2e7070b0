@@ -35,7 +35,11 @@ serve(async (req) => {
     logStep("Session ID received", { sessionId });
 
     if (!sessionId) {
-      throw new Error("Session ID is required");
+      logStep("Missing sessionId");
+      return new Response(
+        JSON.stringify({ success: false, code: "MISSING_SESSION_ID", error: "Session ID is required" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+      );
     }
 
     // Retrieve checkout session data
@@ -48,7 +52,10 @@ serve(async (req) => {
 
     if (checkoutError || !checkoutData) {
       logStep("Checkout session not found", { checkoutError });
-      throw new Error("Checkout session not found or already processed");
+      return new Response(
+        JSON.stringify({ success: false, code: "CHECKOUT_NOT_FOUND", error: "Checkout session not found or already processed" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+      );
     }
 
     logStep("Checkout session found", { 
@@ -67,7 +74,16 @@ serve(async (req) => {
         paymentStatus: session.payment_status, 
         status: session.status 
       });
-      throw new Error("Payment not confirmed");
+      return new Response(
+        JSON.stringify({
+          success: false,
+          code: "PAYMENT_NOT_CONFIRMED",
+          error: "Payment not confirmed",
+          paymentStatus: session.payment_status,
+          status: session.status,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+      );
     }
 
     logStep("Payment confirmed by Stripe");
@@ -75,7 +91,7 @@ serve(async (req) => {
     // Create the user account
     const { data: authData, error: authError } = await supabaseService.auth.admin.createUser({
       email: checkoutData.email,
-      password: checkoutData.password_hash, // This is actually the plain password, we'll hash it properly
+      password: checkoutData.password_hash, // Using original plain password stored temporarily
       email_confirm: true, // Auto-confirm email since payment is verified
       user_metadata: {
         company_name: checkoutData.company_name,
@@ -86,11 +102,20 @@ serve(async (req) => {
 
     if (authError) {
       logStep("Error creating user", authError);
-      throw new Error(`Failed to create user: ${authError.message}`);
+      return new Response(
+        JSON.stringify({ success: false, code: "USER_CREATION_FAILED", error: `Failed to create user: ${authError.message}` }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+      );
     }
 
     const userId = authData.user.id;
     logStep("User created successfully", { userId });
+
+    // Redact stored password immediately after user creation
+    await supabaseService
+      .from('checkout_sessions')
+      .update({ password_hash: '[redacted]' })
+      .eq('stripe_session_id', sessionId);
 
     // Create profile record
     const { error: profileError } = await supabaseService
@@ -150,10 +175,11 @@ serve(async (req) => {
     logStep("ERROR in complete-account-creation", { message: errorMessage });
     return new Response(JSON.stringify({ 
       success: false, 
+      code: "UNEXPECTED_ERROR",
       error: errorMessage 
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 500,
+      status: 200,
     });
   }
 });

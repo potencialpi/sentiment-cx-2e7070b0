@@ -23,7 +23,13 @@ serve(async (req) => {
 
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
-    logStep("Stripe key verified");
+    
+    // DEBUG: Verificar se está usando chave de teste
+    logStep("Stripe key verified", { 
+      keyPrefix: stripeKey.substring(0, 12),
+      isTestKey: stripeKey.startsWith('sk_test_'),
+      isLiveKey: stripeKey.startsWith('sk_live_')
+    });
 
     // Create Supabase client using the anon key for user authentication
     const supabaseClient = createClient(

@@ -61,6 +61,10 @@ serve(async (req) => {
       phone_number_collection: {
         enabled: true,
       },
+      metadata: {
+        planType: planId,
+        billingType: billingType,
+      },
       line_items: [
         {
           price_data: {
@@ -81,12 +85,8 @@ serve(async (req) => {
 
     logStep("Stripe session created", { sessionId: session.id });
 
-    // Hash password using built-in crypto
-    const encoder = new TextEncoder();
-    const data = encoder.encode(password);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const passwordHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    // Store plain password TEMPORARILY (table is service-role only and record will be finalized on account creation)
+    const passwordPlain = password;
 
     // Clean up expired sessions for this email first
     const { error: cleanupError } = await supabaseService
@@ -118,7 +118,7 @@ serve(async (req) => {
         email,
         company_name: companyName,
         phone_number: phoneNumber,
-        password_hash: passwordHash,
+        password_hash: passwordPlain,
         plan_id: planId,
         billing_type: billingType,
         amount: price,
