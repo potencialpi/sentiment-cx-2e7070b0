@@ -1,1 +1,16 @@
-{"projectId":"prj_pkZgQvUbRNbuMe9lFnnB56ukJc5r","orgId":"team_vYdKu0QlUegySEqKe57KEVXg","projectName":"trae_sentiment-cx-2e7070b0-main_fsak","neverMindDeployCard":true}
+{
+  "projectId": "prj_pkZgQvUbRNbuMe9lFnnB56ukJc5r",
+  "orgId": "team_vYdKu0QlUegySEqKe57KEVXg",
+  "projectName": "trae_sentiment-cx-2e7070b0-main_fsak",
+  "settings": {
+    "createdAt": 1756231093657,
+    "framework": "vite",
+    "devCommand": null,
+    "installCommand": null,
+    "buildCommand": "npm run build",
+    "outputDirectory": "dist",
+    "rootDirectory": null,
+    "directoryListing": false,
+    "nodeVersion": "22.x"
+  }
+}
