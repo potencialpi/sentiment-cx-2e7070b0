@@ -153,7 +153,7 @@ export const useSurveyManager = (): UseSurveyManagerReturn => {
       }
 
       // Obter informações do plano
-      const userPlan = await getUserPlan(user.id);
+      const userPlan = await getUserPlan(supabase, user.id);
       const planName = userPlan || 'start-quantico';
       
       // Definir limites baseados no plano
@@ -233,7 +233,7 @@ export const useSurveyManager = (): UseSurveyManagerReturn => {
       
     } catch (error: any) {
       console.error('Erro ao salvar pesquisa:', error);
-      const userPlan = await getUserPlan((await supabase.auth.getUser()).data.user?.id || '');
+      const userPlan = await getUserPlan(supabase, (await supabase.auth.getUser()).data.user?.id || '');
       const planName = userPlan || 'start-quantico';
       
       // Definir limites baseados no plano

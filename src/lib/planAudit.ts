@@ -28,15 +28,18 @@ export async function logPlanChange(
 
     // Salvar no banco de dados (assumindo que existe uma tabela plan_audit_logs)
     const { error } = await supabase
-      .from('plan_audit_logs')
+      .from('audit_log')
       .insert({
         user_id: auditLog.user_id,
-        old_plan: auditLog.old_plan,
-        new_plan: auditLog.new_plan,
-        source: auditLog.source,
-        session_id: auditLog.session_id,
-        metadata: auditLog.metadata,
-        created_at: auditLog.timestamp
+        event_type: 'plan_change',
+        table_name: 'profiles',
+        details: {
+          old_plan: auditLog.old_plan,
+          new_plan: auditLog.new_plan,
+          source: auditLog.source,
+          session_id: auditLog.session_id,
+          metadata: auditLog.metadata
+        }
       });
 
     if (error) {
