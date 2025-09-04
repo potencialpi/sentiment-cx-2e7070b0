@@ -31,5 +31,7 @@ export default defineConfig(({ mode }) => ({
         },
       },
     },
+    cssCodeSplit: true,
+    minify: 'esbuild',
   },
 }));
