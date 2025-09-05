@@ -1,11 +1,16 @@
 // Teste da função de análise de sentimento
 import { createClient } from '@supabase/supabase-js';
+import dotenv from 'dotenv';
+
+dotenv.config({ path: '.env' });
 
 // Configuração do Supabase
-const supabaseUrl = 'https://mjuxvppexydaeuoernxa.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1qdXh2cHBleHlkYWV1b2VybnhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM0NDAzNjYsImV4cCI6MjA2OTAxNjM2Nn0.ECVfL7CLqJj4wSPBY7g5yu_zdfBqbUTCK18MAXHjeTg';
+const supabaseUrl = process.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-const supabase = createClient(supabaseUrl, supabaseKey);
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
 async function testSentimentAnalysis() {
   console.log('🧪 Testando análise de sentimento...');
@@ -20,8 +25,27 @@ async function testSentimentAnalysis() {
       'Péssimo atendimento, nunca mais compro aqui.'
     ];
     
-    // Simular um response_id para teste
-    const testResponseId = 'test-' + Date.now();
+    // Usar um response_id real do banco de dados
+    const testResponseId = 'd813cf8d-c1bf-41a3-a425-60bb80a9d947'; // Survey ID que sabemos que existe
+    
+    // Criar um response real para teste
+    const { data: responseData, error: responseError } = await supabase
+      .from('responses')
+      .insert({
+        survey_id: testResponseId,
+        respondent_id: crypto.randomUUID(),
+        responses: { test_texts: testTexts }
+      })
+      .select()
+      .single();
+      
+    if (responseError) {
+      console.error('❌ Erro ao criar response de teste:', responseError.message);
+      return;
+    }
+    
+    const actualResponseId = responseData.id;
+    console.log('📝 Response de teste criado:', actualResponseId);
     
     console.log('📝 Textos para análise:');
     testTexts.forEach((text, index) => {
@@ -33,10 +57,10 @@ async function testSentimentAnalysis() {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${supabaseKey}`
+        'Authorization': `Bearer ${supabaseAnonKey}`
       },
       body: JSON.stringify({
-        responseId: testResponseId,
+        responseId: actualResponseId,
         texts: testTexts
       })
     });
@@ -63,11 +87,17 @@ async function testSentimentAnalysis() {
     
     // Verificar se foi salvo no banco de dados
     console.log('\n🔍 Verificando se foi salvo no banco...');
-    const { data: sentimentData, error } = await supabase
+    const { data: sentimentData, error } = await supabaseAdmin
       .from('sentiment_analysis')
       .select('*')
-      .eq('response_id', testResponseId)
+      .eq('response_id', actualResponseId)
       .single();
+      
+    // Limpar dados de teste
+    await supabaseAdmin.from('responses').delete().eq('id', actualResponseId);
+    if (sentimentData) {
+      await supabaseAdmin.from('sentiment_analysis').delete().eq('id', sentimentData.id);
+    }
     
     if (error) {
       console.error('❌ Erro ao buscar dados salvos:', error.message);

@@ -34,13 +34,21 @@ export const STRIPE_PRICE_IDS = {
 
 // Função para obter o price_id correto baseado no plano e tipo de cobrança
 export const getStripePriceId = (planId: string, billingType: 'monthly' | 'yearly'): string => {
-  const priceIds = STRIPE_PRICE_IDS[planId as keyof typeof STRIPE_PRICE_IDS];
-  
-  if (!priceIds) {
-    throw new Error(`Plano não encontrado: ${planId}`);
+  // Normalizar inputs
+  let effectivePlan: keyof typeof STRIPE_PRICE_IDS = (planId?.replace(/_/g, '-') as any) || 'start-quantico';
+  if (!(effectivePlan in STRIPE_PRICE_IDS)) {
+    console.warn(`Plano não encontrado: ${planId}. Aplicando fallback para start-quantico.`);
+    effectivePlan = 'start-quantico';
   }
-  
-  return priceIds[billingType];
+
+  let effectiveBilling: 'monthly' | 'yearly' = billingType;
+  if (effectiveBilling !== 'monthly' && effectiveBilling !== 'yearly') {
+    console.warn(`Tipo de cobrança inválido: ${billingType}. Aplicando fallback para monthly.`);
+    effectiveBilling = 'monthly';
+  }
+
+  const priceIds = STRIPE_PRICE_IDS[effectivePlan];
+  return priceIds[effectiveBilling];
 };
 
 // Função para criar sessão de checkout

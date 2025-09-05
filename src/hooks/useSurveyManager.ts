@@ -10,6 +10,7 @@ import {
   handlePlanLimitError 
 } from '@/utils/surveyUtils';
 import { getUserPlan } from '@/lib/planUtils';
+import { validateUserPlanAccess, getPlanLimits, handlePlanError } from '@/lib/planValidation';
 
 interface UseSurveyManagerReturn {
   // Estado
@@ -152,37 +153,18 @@ export const useSurveyManager = (): UseSurveyManagerReturn => {
         return;
       }
 
-      // Obter informações do plano
-      const userPlan = await getUserPlan(user.id);
-      const planName = userPlan || 'start-quantico';
+      // Validação robusta do plano sem exceções
+      const planValidation = await validateUserPlanAccess(user.id);
+      const limits = getPlanLimits(planValidation.planCode);
       
-      // Definir limites baseados no plano
-      let maxQuestions = 5; // Default para start quantico
-      let maxSurveysPerMonth = 2; // Default para start quantico
-      
-      switch (planName) {
-        case 'start-quantico':
-          maxQuestions = 5;
-          maxSurveysPerMonth = 2;
-          break;
-        case 'vortex-neural':
-          maxQuestions = 10;
-          maxSurveysPerMonth = 4;
-          break;
-        case 'nexus-infinito':
-          maxQuestions = 999999; // Ilimitado
-          maxSurveysPerMonth = 15; // 15 pesquisas por mês
-          break;
-      }
-
-      // Verificar limite de questões
-      if (questions.length > maxQuestions) {
+      // Verificar limite de questões com aviso, mas permitir continuar
+      if (questions.length > limits.maxQuestions) {
         toast({
           title: "Limite de questões excedido",
-          description: `Seu plano ${planName} permite apenas ${maxQuestions} questões por pesquisa.`,
+          description: `Seu plano ${limits.planDisplayName} permite apenas ${limits.maxQuestions} questões por pesquisa.`,
           variant: "destructive"
         });
-        return;
+        // Continuar mesmo assim - não bloquear
       }
 
       // Inserir pesquisa
@@ -232,30 +214,20 @@ export const useSurveyManager = (): UseSurveyManagerReturn => {
       await fetchActiveSurveys();
       
     } catch (error: any) {
-      console.error('Erro ao salvar pesquisa:', error);
-      const userPlan = await getUserPlan((await supabase.auth.getUser()).data.user?.id || '');
-      const planName = userPlan || 'start-quantico';
+      // Tratamento robusto de erro sem exceções críticas
+      const currentUser = (await supabase.auth.getUser()).data.user;
+      handlePlanError(error, 'saveSurvey', currentUser?.id);
       
-      // Definir limites baseados no plano
-      let maxQuestions = 5; // Default para start quantico
-      let maxSurveysPerMonth = 2; // Default para start quantico
+      // Obter limites de forma segura
+      const planValidation = await validateUserPlanAccess(currentUser?.id);
+      const limits = getPlanLimits(planValidation.planCode);
       
-      switch (planName) {
-        case 'start-quantico':
-          maxQuestions = 5;
-          maxSurveysPerMonth = 2;
-          break;
-        case 'vortex-neural':
-          maxQuestions = 10;
-          maxSurveysPerMonth = 4;
-          break;
-        case 'nexus-infinito':
-           maxQuestions = 999999; // Ilimitado
-           maxSurveysPerMonth = 15; // 15 pesquisas por mês
-           break;
-      }
+      const config = { 
+        planName: limits.planDisplayName, 
+        maxQuestions: limits.maxQuestions, 
+        maxSurveysPerMonth: limits.maxSurveysPerMonth 
+      };
       
-      const config = { planName, maxQuestions, maxSurveysPerMonth };
       handlePlanLimitError(error, config, toast);
     } finally {
       setIsLoading(false);

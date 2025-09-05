@@ -16,6 +16,7 @@ const SUPABASE_PUBLISHABLE_KEY =
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
+// Criar o cliente Supabase primeiro
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
     storage: localStorage,
@@ -23,3 +24,41 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     autoRefreshToken: true,
   }
 });
+
+// Interceptador para garantir autenticação em Edge Functions
+supabase.functions.setAuth = async (token?: string) => {
+  if (!token) {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) {
+      throw new Error('Usuário não autenticado');
+    }
+    token = session.access_token;
+  }
+  return token;
+};
+
+// Sobrescrever invoke para sempre incluir autenticação
+const originalInvoke = supabase.functions.invoke;
+supabase.functions.invoke = async (functionName: string, options: any = {}) => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.access_token) {
+      throw new Error('Acesso negado: Usuário não autenticado');
+    }
+    
+    // Garantir que o token de autenticação seja sempre incluído
+    const headers = {
+      'Authorization': `Bearer ${session.access_token}`,
+      ...options.headers
+    };
+    
+    return originalInvoke.call(supabase.functions, functionName, {
+      ...options,
+      headers
+    });
+  } catch (error) {
+    console.error('❌ Erro na chamada da Edge Function:', error);
+    throw error;
+  }
+};

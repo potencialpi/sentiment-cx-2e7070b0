@@ -6,22 +6,17 @@ DROP POLICY IF EXISTS "Anyone can insert responses" ON public.responses;
 DROP POLICY IF EXISTS "Anyone can insert question responses" ON public.question_responses;
 
 -- Create secure policies for responses table
--- Only allow inserts for valid survey participants via magic link sessions
-CREATE POLICY "Authenticated users can insert responses" 
+-- Allow public inserts for survey responses (magic link flow)
+CREATE POLICY "Public can insert responses" 
 ON public.responses 
 FOR INSERT 
 WITH CHECK (
-  -- Verificar se o usuário tem uma sessão válida para esta pesquisa
+  -- Verificar se a survey existe e está ativa
   EXISTS (
-    SELECT 1 FROM public.respondent_sessions rs
-    WHERE rs.survey_id = responses.survey_id
-    AND rs.session_token = current_setting('request.jwt.claims', true)::json->>'session_token'
-    AND rs.expires_at > now()
-    AND rs.is_active = true
+    SELECT 1 FROM public.surveys s
+    WHERE s.id = responses.survey_id
+    AND s.status = 'active'
   )
-  OR
-  -- Permitir service_role para operações de backend
-  current_setting('role') = 'service_role'
 );
 
 -- Allow users to read only their own survey responses
@@ -41,23 +36,18 @@ USING (
 );
 
 -- Create secure policies for question_responses table
--- Only allow inserts for valid survey participants
-CREATE POLICY "Authenticated users can insert question responses" 
+-- Allow public inserts for question responses
+CREATE POLICY "Public can insert question responses" 
 ON public.question_responses 
 FOR INSERT 
 WITH CHECK (
   -- Verificar se existe uma resposta válida associada
   EXISTS (
     SELECT 1 FROM public.responses r
-    JOIN public.respondent_sessions rs ON rs.survey_id = r.survey_id
+    JOIN public.surveys s ON s.id = r.survey_id
     WHERE r.id = question_responses.response_id
-    AND rs.session_token = current_setting('request.jwt.claims', true)::json->>'session_token'
-    AND rs.expires_at > now()
-    AND rs.is_active = true
+    AND s.status = 'active'
   )
-  OR
-  -- Permitir service_role para operações de backend
-  current_setting('role') = 'service_role'
 );
 
 -- Allow users to read question responses from their own surveys
@@ -133,14 +123,14 @@ GRANT SELECT, INSERT ON public.question_responses TO authenticated;
 GRANT ALL ON public.audit_log TO service_role;
 
 -- Add security comments
-COMMENT ON POLICY "Authenticated users can insert responses" ON public.responses IS 
-'Security: Only allows response insertion for users with valid magic link sessions';
+COMMENT ON POLICY "Public can insert responses" ON public.responses IS 
+'Security: Only allows response insertion for active surveys';
 
 COMMENT ON POLICY "Users can read own survey responses" ON public.responses IS 
 'Security: Users can only access responses from their own surveys';
 
-COMMENT ON POLICY "Authenticated users can insert question responses" ON public.question_responses IS 
-'Security: Only allows question response insertion for users with valid sessions';
+COMMENT ON POLICY "Public can insert question responses" ON public.question_responses IS 
+'Security: Only allows question response insertion for active surveys';
 
 COMMENT ON POLICY "Users can read own survey question responses" ON public.question_responses IS 
 'Security: Users can only access question responses from their own surveys';

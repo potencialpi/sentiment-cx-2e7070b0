@@ -29,22 +29,37 @@ const PaymentSuccess = () => {
 
       try {
         const { data, error } = await supabase.functions.invoke('verify-payment', {
-          body: { sessionId }
+          body: { sessionId },
         });
-        
+
         if (error) {
-          throw new Error(error.message);
-        }
-        
-        if (data?.success) {
+          console.error('Erro verify-payment:', error);
           toast({
-            title: "Pagamento confirmado!",
-            description: `Seu plano ${data.subscriptionTier} foi ativado com sucesso`,
+            title: 'Falha na verificação do pagamento',
+            description: 'Não foi possível confirmar seu pagamento. Tente novamente ou contate o suporte.',
+            variant: 'destructive',
           });
-          setPaymentVerified(true);
-        } else {
-          throw new Error(data?.error || 'Pagamento não confirmado');
+          navigate('/');
+          return;
         }
+
+        if (!data?.success) {
+          console.warn('Pagamento não confirmado:', data);
+          toast({
+            title: 'Pagamento não confirmado',
+            description: data?.error || 'Não foi possível confirmar seu pagamento.',
+            variant: 'destructive',
+          });
+          navigate('/');
+          return;
+        }
+
+        toast({
+          title: 'Pagamento confirmado!',
+          description: 'Sua assinatura foi ativada com sucesso.',
+        });
+        navigate('/admin/start');
+        setPaymentVerified(true);
       } catch (error) {
         console.error('Erro ao verificar pagamento:', error);
         toast({

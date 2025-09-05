@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { MagicLinkValidator } from '@/components/MagicLinkValidator'
 import { useMagicLinkAuth } from '@/hooks/useMagicLinkAuth'
@@ -85,11 +85,12 @@ export function MagicLinkAuth() {
     )
   }
 
-  // Se já está autenticado, redirecionar
-  if (isAuthenticated && surveyId) {
-    navigate(`/survey/${surveyId}`, { replace: true })
-    return null
-  }
+  // useEffect para redirecionar quando já autenticado
+  useEffect(() => {
+    if (isAuthenticated && surveyId) {
+      navigate(`/survey/${surveyId}`, { replace: true })
+    }
+  }, [isAuthenticated, surveyId, navigate])
 
   return (
     <div className="min-h-screen bg-gray-50">

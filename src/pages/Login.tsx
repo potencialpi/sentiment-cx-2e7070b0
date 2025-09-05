@@ -12,6 +12,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import Header from '@/components/Header';
 import { getPlanAdminRoute, getUserPlan } from '@/lib/planUtils';
+import { validateUserPlanAccess, handlePlanError } from '@/lib/planValidation';
 
 const loginSchema = z.object({
   email: z.string().email('E-mail inválido'),
@@ -37,8 +38,9 @@ const Login = () => {
   const redirectToCorrectAdminPage = async (userId: string) => {
     try {
       console.log('🎯 REDIRECT DEBUG - Buscando plano para usuário:', userId);
-      // Usar a função getUserPlan que busca nas tabelas corretas (companies e profiles)
-      const planCode = await getUserPlan(supabase, userId);
+      // Usar validação robusta de plano
+      const planValidation = await validateUserPlanAccess(userId);
+      const planCode = planValidation.planCode;
 
       console.log('🎯 REDIRECT DEBUG - Plano encontrado:', planCode);
       
@@ -48,6 +50,7 @@ const Login = () => {
       console.log('🎯 REDIRECT DEBUG - Navegando para:', adminRoute);
       navigate(adminRoute);
     } catch (error) {
+      handlePlanError(error, 'redirectToCorrectAdminPage');
       console.error('🎯 REDIRECT DEBUG - Erro ao buscar plano do usuário:', error);
       // Em caso de erro, redireciona para o dashboard padrão
       console.log('🎯 REDIRECT DEBUG - Redirecionando para dashboard padrão');

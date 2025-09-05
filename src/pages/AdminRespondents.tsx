@@ -14,6 +14,7 @@ import { MagicLinkRequest } from '@/components/MagicLinkRequest';
 import DeleteConfirmationModal from '@/components/DeleteConfirmationModal';
 import { useRespondentDeletion } from '@/hooks/useRespondentDeletion';
 import { getUserPlan, getPlanDisplayName } from '@/lib/planUtils';
+import { validateUserPlanAccess, handlePlanError } from '@/lib/planValidation';
 
 interface Respondent {
   id: string;
@@ -114,11 +115,14 @@ const AdminRespondents = () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const actualPlan = await getUserPlan(supabase, user.id);
+        // Usar validação robusta de plano
+        const planValidation = await validateUserPlanAccess(user.id);
+        const actualPlan = planValidation.planCode;
         console.log('AdminRespondents - Plano real do usuário:', actualPlan);
         setUserPlan(actualPlan);
       }
     } catch (error) {
+      handlePlanError(error, 'loadUserPlan');
       console.error('Erro ao carregar plano do usuário:', error);
     } finally {
       setPlanLoading(false);

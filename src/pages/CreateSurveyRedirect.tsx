@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { getUserPlan, getPlanCreateSurveyRoute, getPlanAdminRoute } from '@/lib/planUtils';
+import { validateUserPlanAccess, handlePlanError } from '@/lib/planValidation';
 
 const CreateSurveyRedirect = () => {
   const navigate = useNavigate();
@@ -17,24 +18,19 @@ const CreateSurveyRedirect = () => {
           return;
         }
 
-        // Usar a função getUserPlan que busca nas tabelas corretas (companies e profiles)
-        const planCode = await getUserPlan(supabase, user.id);
+        // Usar validação robusta de plano
+        const planValidation = await validateUserPlanAccess(user.id);
+        const planCode = planValidation.planCode;
         
         console.log('CreateSurveyRedirect - Plano encontrado:', planCode);
         
-        // Redireciona para a página de criação de pesquisa correta baseada no plano
         const createSurveyRoute = getPlanCreateSurveyRoute(planCode);
         console.log('CreateSurveyRedirect - Redirecionando para:', createSurveyRoute);
+        
         navigate(createSurveyRoute);
       } catch (error) {
-        console.error('Error in redirect:', error);
-        toast({
-          title: "Erro",
-          description: "Erro ao verificar plano do usuário",
-          variant: "destructive"
-        });
-        // Em caso de erro, redireciona para a página admin padrão
-        navigate('/admin/start');
+        handlePlanError(error, 'checkPlanAndRedirect');
+        navigate('/admin/create-survey/start-quantico');
       } finally {
         setLoading(false);
       }

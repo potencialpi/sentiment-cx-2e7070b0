@@ -1,149 +1,123 @@
-require('dotenv').config({ path: '.env.local' });
 const { createClient } = require('@supabase/supabase-js');
+require('dotenv').config({ path: '.env.local' });
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL;
-const supabaseServiceKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1qdXh2cHBleHlkYWV1b2VybnhhIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MzQ0MDM2NiwiZXhwIjoyMDY5MDE2MzY2fQ._X2HsKnApncZhgPmsr0-VWrulAlmk_dogyuG2-OgMpY';
-
-if (!supabaseUrl || !supabaseServiceKey) {
-  console.error('❌ Variáveis de ambiente não configuradas');
-  process.exit(1);
-}
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+console.log('🔐 TESTE DE VALIDAÇÃO DO MAGIC LINK');
+console.log('=' .repeat(50));
 
 async function testMagicLinkValidation() {
-  console.log('🔍 TESTANDO VALIDAÇÃO E USO DE MAGIC LINK\n');
-  
   try {
-    // 1. Primeiro gerar um magic link
-    console.log('1️⃣ Gerando magic link...');
-    const { data: surveys } = await supabase
-      .from('surveys')
-      .select('id, title')
-      .eq('status', 'active')
-      .limit(1);
-    
-    if (!surveys || surveys.length === 0) {
-      console.log('❌ Nenhuma pesquisa ativa encontrada');
-      return;
-    }
-    
-    const survey = surveys[0];
-    console.log(`📋 Usando pesquisa: ${survey.title} (${survey.id})`);
-    
+    const supabase = createClient(
+      process.env.VITE_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
+
+    const surveyId = 'd813cf8d-c1bf-41a3-a425-60bb80a9d947';
+    const testEmail = 'validation-test@example.com';
+
+    console.log('\n1️⃣ GERANDO NOVO MAGIC LINK:');
     const { data: generateResult, error: generateError } = await supabase.functions.invoke('magic-link', {
       body: {
         action: 'generate',
-        email: 'teste@exemplo.com',
-        surveyId: survey.id
-      },
-      headers: {
-        'Authorization': `Bearer ${supabaseServiceKey}`,
-        'apikey': supabaseServiceKey
+        email: testEmail,
+        surveyId: surveyId
       }
     });
     
     if (generateError) {
-      console.error('❌ Erro ao gerar magic link:', generateError);
+      console.log('❌ Erro na geração:', generateError.message);
       return;
     }
     
-    console.log('✅ Magic link gerado:', generateResult);
+    console.log('✅ Magic link gerado:');
+    console.log('URL:', generateResult.data.magicLinkUrl);
     
-    // Extrair token da URL
-    const magicLinkUrl = generateResult.data.magicLinkUrl;
-    const token = new URL(magicLinkUrl).searchParams.get('token');
+    // Extrair o token da URL
+    const url = new URL(generateResult.data.magicLinkUrl);
+    const token = url.searchParams.get('token');
+    const urlSurveyId = url.searchParams.get('surveyId');
     
-    if (!token) {
-      console.error('❌ Token não encontrado na URL');
-      return;
-    }
-    
-    console.log(`🔑 Token extraído: ${token.substring(0, 8)}...`);
-    
-    // 2. Testar validação do token
-    console.log('\n2️⃣ Validando token...');
+    console.log('Token extraído:', token);
+    console.log('Survey ID extraído:', urlSurveyId);
+
+    console.log('\n2️⃣ VALIDANDO O MAGIC LINK:');
     const { data: validateResult, error: validateError } = await supabase.functions.invoke('magic-link', {
       body: {
         action: 'validate',
-        token: token
-      },
-      headers: {
-        'Authorization': `Bearer ${supabaseServiceKey}`,
-        'apikey': supabaseServiceKey
+        token: token,
+        surveyId: urlSurveyId
       }
     });
     
     if (validateError) {
-      console.error('❌ Erro ao validar token:', validateError);
-      return;
+      console.log('❌ Erro na validação:', validateError.message);
+      console.log('Status:', validateError.context?.status);
+      console.log('StatusText:', validateError.context?.statusText);
+    } else {
+      console.log('✅ Validação bem-sucedida:');
+      console.log(JSON.stringify(validateResult, null, 2));
     }
-    
-    console.log('✅ Validação bem-sucedida:', validateResult);
-    
-    // 3. Testar uso do token (autenticação)
-    console.log('\n3️⃣ Usando token para autenticação...');
+
+    console.log('\n3️⃣ USANDO O MAGIC LINK (MARCAR COMO USADO):');
     const { data: useResult, error: useError } = await supabase.functions.invoke('magic-link', {
       body: {
         action: 'use',
-        token: token
-      },
-      headers: {
-        'Authorization': `Bearer ${supabaseServiceKey}`,
-        'apikey': supabaseServiceKey
+        token: token,
+        surveyId: urlSurveyId
       }
     });
     
     if (useError) {
-      console.error('❌ Erro ao usar token:', useError);
-      return;
+      console.log('❌ Erro ao usar:', useError.message);
+      console.log('Status:', useError.context?.status);
+      console.log('StatusText:', useError.context?.statusText);
+    } else {
+      console.log('✅ Magic link usado com sucesso:');
+      console.log(JSON.stringify(useResult, null, 2));
     }
-    
-    console.log('✅ Autenticação bem-sucedida:', useResult);
-    
-    // 4. Testar acesso aos dados da pesquisa com a sessão criada
-    console.log('\n4️⃣ Testando acesso aos dados da pesquisa...');
-    
-    // Criar cliente com a sessão do usuário autenticado
-    const userSupabase = createClient(supabaseUrl, process.env.VITE_SUPABASE_ANON_KEY, {
-      global: {
-        headers: {
-          Authorization: `Bearer ${useResult.data.session.access_token}`
-        }
+
+    console.log('\n4️⃣ TENTANDO USAR NOVAMENTE (DEVE FALHAR):');
+    const { data: useAgainResult, error: useAgainError } = await supabase.functions.invoke('magic-link', {
+      body: {
+        action: 'use',
+        token: token,
+        surveyId: urlSurveyId
       }
     });
     
-    // Testar busca da pesquisa
-    const { data: surveyData, error: surveyError } = await userSupabase
-      .from('surveys')
-      .select('id, title, description, status, current_responses, max_responses')
-      .eq('id', survey.id)
+    if (useAgainError) {
+      console.log('✅ Erro esperado ao tentar usar novamente:', useAgainError.message);
+    } else {
+      console.log('❌ PROBLEMA: Magic link foi usado novamente quando não deveria!');
+      console.log(JSON.stringify(useAgainResult, null, 2));
+    }
+
+    console.log('\n5️⃣ VERIFICANDO ESTADO FINAL DO MAGIC LINK:');
+    const { data: finalState, error: finalError } = await supabase
+      .from('magic_links')
+      .select('*')
+      .eq('token', token)
       .single();
     
-    if (surveyError) {
-      console.error('❌ Erro ao buscar pesquisa com sessão do usuário:', surveyError);
+    if (finalError) {
+      console.log('❌ Erro ao verificar estado final:', finalError.message);
     } else {
-      console.log('✅ Pesquisa acessada com sucesso:', surveyData);
+      console.log('✅ Estado final do magic link:');
+      console.log('- ID:', finalState.id);
+      console.log('- Email:', finalState.email);
+      console.log('- Usado em:', finalState.used_at);
+      console.log('- Expira em:', finalState.expires_at);
+      console.log('- Status usado:', finalState.used_at ? 'SIM' : 'NÃO');
     }
-    
-    // Testar busca das questões
-    const { data: questionsData, error: questionsError } = await userSupabase
-      .from('questions')
-      .select('id, question_text, question_type, options, question_order')
-      .eq('survey_id', survey.id)
-      .order('question_order', { ascending: true });
-    
-    if (questionsError) {
-      console.error('❌ Erro ao buscar questões com sessão do usuário:', questionsError);
-    } else {
-      console.log(`✅ Questões acessadas com sucesso: ${questionsData?.length || 0} questões`);
-    }
-    
-    console.log('\n🎉 TESTE COMPLETO FINALIZADO!');
-    
+
   } catch (error) {
-    console.error('❌ Erro inesperado:', error);
+    console.error('\n💥 ERRO GERAL:', error.message);
+    console.error('Stack trace:', error.stack);
   }
 }
 
-testMagicLinkValidation();
+// Executar teste
+testMagicLinkValidation().then(() => {
+  console.log('\n🎯 TESTE DE VALIDAÇÃO CONCLUÍDO!');
+}).catch(error => {
+  console.error('💥 Erro fatal:', error);
+});

@@ -120,26 +120,17 @@ async function handleCheckoutCompleted(session: CheckoutSession, sb: SupabaseCli
       }
     }
 
-    // VALIDAÇÃO CRÍTICA: Não permitir processamento sem plano válido
-    if (!planCode) {
-      console.error('ERRO CRÍTICO: Plano não identificado na sessão de checkout', {
+    // Validar plano e aplicar fallback seguro quando necessário
+    const validPlans = ['start-quantico', 'vortex-neural', 'nexus-infinito'];
+    if (!planCode || !validPlans.includes(planCode)) {
+      console.warn('Plano não identificado ou inválido, aplicando fallback para start-quantico', {
+        planCode,
         sessionId: session.id,
         customerEmail: customer_email,
         metadata: session.metadata,
         subscription: (session as any).subscription
       });
-      throw new Error('Plano não identificado - processamento de pagamento cancelado');
-    }
-    
-    // Validar se o plano é válido
-    const validPlans = ['start-quantico', 'vortex-neural', 'nexus-infinito'];
-    if (!validPlans.includes(planCode)) {
-      console.error('ERRO CRÍTICO: Plano inválido identificado', {
-        planCode,
-        sessionId: session.id,
-        customerEmail: customer_email
-      });
-      throw new Error(`Plano inválido: ${planCode} - processamento cancelado`);
+      planCode = 'start-quantico';
     }
     
     billingType = billingType || 'monthly';

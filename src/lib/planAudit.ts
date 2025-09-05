@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
+import { safeRead, rlsFallbacks, logRLSError } from './rlsErrorHandler';
 
 export interface PlanAuditLog {
   user_id: string;
@@ -68,24 +69,24 @@ export async function getCurrentUserPlan(
 ): Promise<string | null> {
   try {
     // Buscar primeiro na tabela companies
-    const { data: companyData } = await supabase
-      .from('companies')
-      .select('plan_name')
-      .eq('user_id', userId)
-      .single();
+    const companyResult = await safeRead(
+      () => supabase.from('companies').select('plan_name').eq('user_id', userId).single(),
+      rlsFallbacks.getCompany(),
+      'fetch company plan'
+    );
 
-    if (companyData?.plan_name) {
-      return companyData.plan_name;
+    if (companyResult.data?.plan_name) {
+      return companyResult.data.plan_name;
     }
 
     // Se não encontrar na companies, buscar na profiles
-    const { data: profileData } = await supabase
-      .from('profiles')
-      .select('plan_name')
-      .eq('user_id', userId)
-      .single();
+    const profileResult = await safeRead(
+      () => supabase.from('profiles').select('plan_name').eq('user_id', userId).single(),
+      rlsFallbacks.getUserProfile(),
+      'fetch profile plan'
+    );
 
-    return profileData?.plan_name || null;
+    return profileResult.data?.plan_name || null;
   } catch (error) {
     console.error('Erro ao buscar plano atual do usuário:', error);
     return null;
@@ -103,9 +104,12 @@ export async function assignPlanWithAudit(
   sessionId?: string,
   metadata?: Record<string, any>
 ): Promise<void> {
-  // Validar plano
-  if (!validatePlan(newPlan)) {
-    throw new Error(`Plano inválido: ${newPlan}`);
+  // Validar/normalizar plano com fallback
+  const normalized = (newPlan || '').toLowerCase();
+  const validPlans = ['start-quantico', 'vortex-neural', 'nexus-infinito'];
+  const effectivePlan = validPlans.includes(normalized) ? normalized : 'start-quantico';
+  if (!validPlans.includes(normalized)) {
+    console.warn(`Plano inválido recebido: ${newPlan}. Aplicando fallback para ${effectivePlan}.`);
   }
 
   // Buscar plano atual
@@ -115,20 +119,22 @@ export async function assignPlanWithAudit(
   await logPlanChange(supabase, {
     user_id: userId,
     old_plan: currentPlan || undefined,
-    new_plan: newPlan,
+    new_plan: effectivePlan,
     source,
     session_id: sessionId,
     metadata: {
       ...metadata,
       action: 'plan_assignment',
-      previous_plan: currentPlan
+      previous_plan: currentPlan,
+      received_plan: newPlan,
+      normalized_plan: normalized
     }
   });
 
   // Atualizar plano nas tabelas
   const updateData = {
-    plan_name: newPlan,
-    plan_type: newPlan,
+    plan_name: effectivePlan,
+    plan_type: effectivePlan,
     updated_at: new Date().toISOString()
   };
 
@@ -145,7 +151,7 @@ export async function assignPlanWithAudit(
   // Atualizar na tabela companies
   const { error: companyError } = await supabase
     .from('companies')
-    .update({ plan_name: newPlan, updated_at: new Date().toISOString() })
+    .update({ plan_name: effectivePlan, updated_at: new Date().toISOString() })
     .eq('user_id', userId);
 
   if (companyError) {
@@ -155,7 +161,7 @@ export async function assignPlanWithAudit(
   console.log('✅ PLANO ATRIBUÍDO COM SUCESSO E AUDITORIA COMPLETA', {
     userId,
     oldPlan: currentPlan,
-    newPlan,
+    newPlan: effectivePlan,
     source,
     sessionId
   });
@@ -169,14 +175,25 @@ export async function checkPlanConsistency(
   userId: string
 ): Promise<{ consistent: boolean; details: any }> {
   try {
-    const [companyData, profileData] = await Promise.all([
-      supabase.from('companies').select('plan_name').eq('user_id', userId).single(),
-      supabase.from('profiles').select('plan_name, plan_type').eq('user_id', userId).single()
+    const [companyResult, profileResult] = await Promise.all([
+      safeRead(
+        () => supabase.from('companies').select('plan_name').eq('user_id', userId).single(),
+        rlsFallbacks.getCompany(),
+        'fetch company plan'
+      ),
+      safeRead(
+        () => supabase.from('profiles').select('plan_name, plan_type').eq('user_id', userId).single(),
+        rlsFallbacks.getUserProfile(),
+        'fetch profile plan'
+      )
     ]);
 
-    const companyPlan = companyData.data?.plan_name;
-    const profilePlan = profileData.data?.plan_name;
-    const profilePlanType = profileData.data?.plan_type;
+    if (companyResult.error) logRLSError(companyResult.error, 'company plan fetch');
+    if (profileResult.error) logRLSError(profileResult.error, 'profile plan fetch');
+
+    const companyPlan = companyResult.data?.plan_name;
+    const profilePlan = profileResult.data?.plan_name;
+    const profilePlanType = profileResult.data?.plan_type;
 
     const consistent = companyPlan === profilePlan && profilePlan === profilePlanType;
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -45,36 +45,55 @@ export function MagicLinkValidator({ onValidationSuccess, onValidationError }: M
   const token = searchParams.get('token')
   const surveyId = searchParams.get('surveyId') || validationData?.surveyId
 
-  useEffect(() => {
-    if (!token) {
-      setStatus('error')
-      setError('Token de acesso não encontrado na URL')
-      return
-    }
 
-    validateMagicLink(token)
-  }, [token])
 
-  useEffect(() => {
-    if (status === 'authenticated' && countdown > 0) {
-      const timer = setTimeout(() => {
-        setCountdown(countdown - 1)
-      }, 1000)
-      return () => clearTimeout(timer)
-    } else if (status === 'authenticated' && countdown === 0) {
-      // Redirecionar para a pesquisa
-      if (surveyId) {
-        navigate(`/survey/${surveyId}`, { replace: true })
+  const authenticateWithMagicLink = useCallback(async (token: string) => {
+    try {
+      setStatus('authenticating')
+      setError(null)
+
+      // Usar o token para autenticação
+      const { data: authResult, error: authError } = await supabase.functions.invoke('magic-link', {
+        body: {
+          action: 'use',
+          token: token
+        }
+      })
+
+      if (authError) {
+        throw new Error(authError.message || 'Erro na autenticação')
       }
-    }
-  }, [status, countdown, surveyId, navigate])
 
-  const validateMagicLink = async (token: string) => {
+      const auth: AuthResponse = authResult
+
+      if (!auth.success) {
+        throw new Error(auth.error || 'Falha na autenticação')
+      }
+
+      // Definir a sessão no Supabase client
+      if (auth.data?.session) {
+        await supabase.auth.setSession(auth.data.session)
+      }
+
+      setStatus('authenticated')
+      setCountdown(3) // Iniciar contagem regressiva
+
+      console.log('Autenticação realizada com sucesso')
+
+    } catch (err: any) {
+      console.error('Erro na autenticação:', err)
+      setStatus('auth_error')
+      setError(err.message || 'Erro interno na autenticação')
+    }
+  }, [])
+
+  const validateMagicLink = useCallback(async (token: string) => {
     try {
       setStatus('validating')
       setError(null)
 
-      // Primeiro, validar o token
+      console.log('Validando magic link token:', token)
+
       const { data: validationResult, error: validationError } = await supabase.functions.invoke('magic-link', {
         body: {
           action: 'validate',
@@ -83,7 +102,7 @@ export function MagicLinkValidator({ onValidationSuccess, onValidationError }: M
       })
 
       if (validationError) {
-        throw new Error(validationError.message || 'Erro ao validar token')
+        throw new Error(validationError.message || 'Erro na validação')
       }
 
       const validation: ValidationResponse = validationResult
@@ -111,6 +130,10 @@ export function MagicLinkValidator({ onValidationSuccess, onValidationError }: M
         authenticateWithMagicLink(token)
       }, 2000)
 
+      if (onValidationSuccess) {
+        onValidationSuccess(validation.data)
+      }
+
     } catch (err: any) {
       console.error('Erro ao validar magic link:', err)
       setStatus('error')
@@ -119,59 +142,31 @@ export function MagicLinkValidator({ onValidationSuccess, onValidationError }: M
         onValidationError(err.message || 'Erro interno')
       }
     }
-  }
+  }, [onValidationError, authenticateWithMagicLink])
 
-  const authenticateWithMagicLink = async (token: string) => {
-    try {
-      setStatus('authenticating')
-      setError(null)
-
-      // Usar o token para autenticação
-      const { data: authResult, error: authError } = await supabase.functions.invoke('magic-link', {
-        body: {
-          action: 'use',
-          token: token
-        }
-      })
-
-      if (authError) {
-        throw new Error(authError.message || 'Erro ao autenticar')
-      }
-
-      const auth: AuthResponse = authResult
-
-      if (!auth.success) {
-        throw new Error(auth.error || 'Falha na autenticação')
-      }
-
-      // Definir a sessão no Supabase client
-      if (auth.data?.session) {
-        await supabase.auth.setSession(auth.data.session)
-      }
-
-      setStatus('authenticated')
-      setCountdown(5) // Iniciar countdown
-
-      if (onValidationSuccess) {
-        onValidationSuccess(auth.data)
-      }
-
-      // Log de sucesso
-      console.log('Autenticação via magic link realizada com sucesso:', {
-        surveyId: auth.data?.surveyData?.surveyId,
-        email: auth.data?.surveyData?.email,
-        timestamp: new Date().toISOString()
-      })
-
-    } catch (err: any) {
-      console.error('Erro ao autenticar com magic link:', err)
+  useEffect(() => {
+    if (!token) {
       setStatus('error')
-      setError(err.message || 'Erro interno na autenticação')
-      if (onValidationError) {
-        onValidationError(err.message || 'Erro na autenticação')
+      setError('Token de acesso não encontrado na URL')
+      return
+    }
+
+    validateMagicLink(token)
+  }, [token, validateMagicLink])
+
+  useEffect(() => {
+    if (status === 'authenticated' && countdown > 0) {
+      const timer = setTimeout(() => {
+        setCountdown(countdown - 1)
+      }, 1000)
+      return () => clearTimeout(timer)
+    } else if (status === 'authenticated' && countdown === 0) {
+      // Redirecionar para a pesquisa
+      if (surveyId) {
+        navigate(`/survey/${surveyId}`, { replace: true })
       }
     }
-  }
+  }, [status, countdown, surveyId, navigate])
 
   const handleRetry = () => {
     if (token) {

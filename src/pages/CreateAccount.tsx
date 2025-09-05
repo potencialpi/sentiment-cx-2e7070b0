@@ -14,6 +14,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { Eye, EyeOff, Check, X } from 'lucide-react';
 import { getPlanAdminRoute, getUserPlan } from '@/lib/planUtils';
+import { validateUserPlanAccess, handlePlanError } from '@/lib/planValidation';
 import StripeCheckout from '@/components/StripeCheckout';
 
 const passwordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*])/;
@@ -51,8 +52,9 @@ const CreateAccount = () => {
 
   const redirectToCorrectAdminPage = async (userId: string) => {
     try {
-      // Usar a função getUserPlan que busca nas tabelas corretas (companies e profiles)
-      const planCode = await getUserPlan(supabase, userId);
+      // Usar validação robusta de plano
+      const planValidation = await validateUserPlanAccess(userId);
+      const planCode = planValidation.planCode;
 
       console.log('CreateAccount - Plano encontrado:', planCode);
       
@@ -61,6 +63,7 @@ const CreateAccount = () => {
       console.log('CreateAccount - Redirecionando para:', adminRoute);
       navigate(adminRoute);
     } catch (error) {
+      handlePlanError(error, 'redirectToCorrectAdminPage');
       console.error('Erro ao buscar plano do usuário:', error);
       // Em caso de erro, redireciona para o dashboard padrão
       navigate('/dashboard');
@@ -87,27 +90,38 @@ const CreateAccount = () => {
       });
 
       if (error) {
-        throw new Error(error.message);
-      }
-
-      if (data?.success) {
-        // Antes verificávamos/insert no perfil aqui, mas isso gerava violação de RLS.
-        // A criação de perfil e empresa agora é garantida pela Edge Function (service role).
-        // Opcionalmente, poderíamos apenas consultar para fins de log, mas não é necessário para prosseguir.
-
-        setUserCredentials({
-          email: data.email,
-          planId: data.planId
-        });
-        setAccountCreated(true);
-        
+        console.error('Erro complete-account-creation:', error);
         toast({
-          title: 'Conta criada com sucesso!',
-          description: 'Você já pode fazer login e acessar sua conta.'
+          title: 'Erro na criação da conta',
+          description: 'Não foi possível completar a criação da conta. Tente novamente ou contate o suporte.',
+          variant: 'destructive'
         });
-      } else {
-        throw new Error(data?.error || 'Erro ao criar conta');
+        navigate('/');
+        return;
       }
+
+      if (!data?.success) {
+        console.warn('Criação de conta não concluída:', data);
+        toast({
+          title: 'Erro na criação da conta',
+          description: data?.error || 'Não foi possível completar a criação da conta.',
+          variant: 'destructive'
+        });
+        navigate('/');
+        return;
+      }
+
+      // Sucesso
+      setUserCredentials({
+        email: data.email,
+        planId: data.planId
+      });
+      setAccountCreated(true);
+      
+      toast({
+        title: 'Conta criada com sucesso!',
+        description: 'Você já pode fazer login e acessar sua conta.'
+      });
     } catch (error) {
       console.error('Erro ao completar criação da conta:', error);
       toast({

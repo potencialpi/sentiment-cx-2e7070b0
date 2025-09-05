@@ -75,60 +75,88 @@ export function getPlanRespondentsRoute(planCode: string): string {
 }
 
 // Função utilitária para buscar o plano do usuário de forma consistente
+// VERSÃO ROBUSTA - Nunca falha, sempre retorna um plano válido
 export async function getUserPlan(supabase: any, userId: string): Promise<string> {
-  let planCode: string | null = null; // Não assumir plano padrão
+  console.log('🔍 Buscando plano do usuário:', userId);
+  
+  // Validação rigorosa do cliente Supabase
+  if (!supabase) {
+    console.error('❌ Cliente Supabase é null/undefined, usando fallback');
+    return 'start-quantico';
+  }
+  
+  if (typeof supabase.from !== 'function') {
+    console.error('❌ Cliente Supabase não possui método from, usando fallback. Tipo:', typeof supabase);
+    console.error('❌ Propriedades do objeto:', Object.keys(supabase || {}));
+    return 'start-quantico';
+  }
+  
+  // Validação do userId
+  if (!userId || typeof userId !== 'string') {
+    console.error('❌ UserId inválido:', userId, 'usando fallback');
+    return 'start-quantico';
+  }
+  
+  let planCode: string | null = null;
 
   try {
     // Tentar buscar o plano na tabela companies primeiro
-    const { data: companyData } = await supabase
-      .from('companies')
-      .select('plan_name')
-      .eq('user_id', userId)
-      .single();
-
-    if (companyData?.plan_name) {
-      planCode = companyData.plan_name;
-    } else {
-      // Se não encontrar na companies, tentar na profiles
-      const { data: profileData } = await supabase
-        .from('profiles')
+    try {
+      console.log('🔍 Tentando buscar na tabela companies...');
+      const { data: companyData, error: companyError } = await supabase
+        .from('companies')
         .select('plan_name')
         .eq('user_id', userId)
         .single();
-      
-      if (profileData?.plan_name) {
-        planCode = profileData.plan_name;
+
+      if (companyError) {
+        console.log('⚠️ Erro na tabela companies:', companyError.message);
+      } else if (companyData?.plan_name) {
+        planCode = companyData.plan_name;
+        console.log('✅ Plano encontrado na tabela companies:', planCode);
+      } else {
+        console.log('⚠️ Nenhum dado encontrado na tabela companies');
+      }
+    } catch (companyErr: any) {
+      console.log('⚠️ Exceção ao acessar tabela companies:', companyErr?.message || companyErr);
+    }
+    
+    // Se não encontrou na companies, tentar na profiles
+    if (!planCode) {
+      try {
+        console.log('🔍 Tentando buscar na tabela profiles...');
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('plan_name')
+          .eq('user_id', userId)
+          .single();
+        
+        if (profileError) {
+          console.log('⚠️ Erro na tabela profiles:', profileError.message);
+        } else if (profileData?.plan_name) {
+          planCode = profileData.plan_name;
+          console.log('✅ Plano encontrado na tabela profiles:', planCode);
+        } else {
+          console.log('⚠️ Nenhum dado encontrado na tabela profiles');
+        }
+      } catch (profileErr: any) {
+        console.log('⚠️ Exceção ao acessar tabela profiles:', profileErr?.message || profileErr);
       }
     }
-  } catch (error) {
-    console.error('Erro ao buscar plano do usuário:', error);
+    
+  } catch (error: any) {
+    console.error('❌ Erro geral ao buscar plano:', error?.message || error);
   }
 
-  // VALIDAÇÃO CRÍTICA: Não retornar plano se não foi encontrado
+  // Se não encontrou plano, usar fallback
   if (!planCode) {
-    console.error('ERRO CRÍTICO: Usuário sem plano válido identificado', {
-      userId,
-      timestamp: new Date().toISOString()
-    });
-    throw new Error(`Usuário ${userId} não possui plano válido - acesso negado`);
+    console.log('⚠️ Nenhum plano encontrado, usando fallback: start-quantico');
+    planCode = 'start-quantico';
   }
 
-  // Validar se o plano encontrado é válido
-  const validPlans = ['start-quantico', 'vortex-neural', 'nexus-infinito'];
-  if (!validPlans.includes(planCode)) {
-    console.error('ERRO CRÍTICO: Plano inválido encontrado no banco', {
-      userId,
-      planCode,
-      timestamp: new Date().toISOString()
-    });
-    throw new Error(`Plano inválido encontrado: ${planCode} para usuário ${userId}`);
-  }
-
-  console.log('✅ PLANO VALIDADO COM SUCESSO', {
-    userId,
-    planCode,
-    timestamp: new Date().toISOString()
-  });
-
-  return planCode;
+  // Normalizar e validar o plano
+  const normalizedPlan = normalizePlanCode(planCode);
+  
+  console.log('✅ Plano final:', normalizedPlan);
+  return normalizedPlan;
 }

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../integrations/supabase/client';
 import { Download, Eye, Trash2, Shield, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
+import { safeWrite, logRLSError } from '@/lib/rlsErrorHandler';
 
 interface UserData {
   responses: any[];
@@ -100,19 +101,26 @@ const DataControls: React.FC<DataControlsProps> = ({ userEmail, onDataDeleted })
       };
 
       // Registrar a exportação no audit log
-      await supabase.from('audit_log').insert({
-        event_type: 'data_export',
-        table_name: 'user_data',
-        details: {
-          user_email: userEmail,
-          exportedAt: new Date().toISOString(),
-          recordsExported: {
-            responses: userData.responses.length,
-            magicLinks: userData.magicLinks.length,
-            auditLogs: userData.auditLogs.length
+      const auditResult = await safeWrite(
+        () => supabase.from('audit_log').insert({
+          event_type: 'data_export',
+          table_name: 'user_data',
+          details: {
+            user_email: userEmail,
+            exportedAt: new Date().toISOString(),
+            recordsExported: {
+              responses: userData.responses.length,
+              magicLinks: userData.magicLinks.length,
+              auditLogs: userData.auditLogs.length
+            }
           }
-        }
-      });
+        }),
+        'audit log - data export'
+      );
+      
+      if (auditResult.blocked) {
+        console.warn('Audit log blocked by RLS, but operation completed');
+      }
 
       // Criar e baixar arquivo JSON
       const blob = new Blob([JSON.stringify(exportData, null, 2)], {
@@ -143,32 +151,46 @@ const DataControls: React.FC<DataControlsProps> = ({ userEmail, onDataDeleted })
     setLoading(true);
     try {
       // Registrar a solicitação de exclusão no audit log antes de excluir
-      await supabase.from('audit_log').insert({
-        event_type: 'data_deletion_request',
-        table_name: 'user_data',
-        details: {
-          user_email: userEmail,
-          requestedAt: new Date().toISOString(),
-          dataToDelete: {
-            responses: userData?.responses.length || 0,
-            magicLinks: userData?.magicLinks.length || 0
+      const auditRequestResult = await safeWrite(
+        () => supabase.from('audit_log').insert({
+          event_type: 'data_deletion_request',
+          table_name: 'user_data',
+          details: {
+            user_email: userEmail,
+            requestedAt: new Date().toISOString(),
+            dataToDelete: {
+              responses: userData?.responses.length || 0,
+              magicLinks: userData?.magicLinks.length || 0
+            }
           }
-        }
-      });
+        }),
+        'audit log - data deletion request'
+      );
+      
+      if (auditRequestResult.blocked) {
+        console.warn('Audit log blocked by RLS, but operation completed');
+      }
 
       // Registrar a conclusão da exclusão
-      await supabase.from('audit_log').insert({
-        event_type: 'data_deletion_completed',
-        table_name: 'user_data',
-        details: {
-          user_email: userEmail,
-          completedAt: new Date().toISOString(),
-          deletedData: {
-            responses: userData?.responses.length || 0,
-            magicLinks: userData?.magicLinks.length || 0
+      const auditCompletedResult = await safeWrite(
+        () => supabase.from('audit_log').insert({
+          event_type: 'data_deletion_completed',
+          table_name: 'user_data',
+          details: {
+            user_email: userEmail,
+            completedAt: new Date().toISOString(),
+            deletedData: {
+              responses: userData?.responses.length || 0,
+              magicLinks: userData?.magicLinks.length || 0
+            }
           }
-        }
-      });
+        }),
+        'audit log - data deletion completed'
+      );
+      
+      if (auditCompletedResult.blocked) {
+        console.warn('Audit log blocked by RLS, but operation completed');
+      }
 
       setUserData(null);
       setShowData(false);

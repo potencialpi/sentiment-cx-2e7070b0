@@ -117,14 +117,18 @@ const CheckoutGuest = () => {
       });
 
       if (checkoutError) {
-        throw new Error(checkoutError.message);
+        console.error('Erro create-checkout-guest:', checkoutError);
+        setError('Não foi possível iniciar o checkout. Tente novamente.');
+        return;
       }
 
       if (checkoutData?.url) {
         // Redirect to Stripe checkout
         window.location.href = checkoutData.url;
       } else {
-        throw new Error('URL de checkout não recebida');
+        console.warn('URL de checkout não recebida do backend', checkoutData);
+        setError('Não foi possível iniciar o checkout agora. Por favor, tente novamente em alguns instantes.');
+        return;
       }
     } catch (err) {
       console.error('Erro ao criar checkout:', err);

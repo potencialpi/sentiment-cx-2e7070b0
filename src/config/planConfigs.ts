@@ -191,7 +191,8 @@ export const getPlanConfig = (planName: string): PlanConfig => {
     case 'nexus infinito':
       return nexusInfinitoConfig;
     default:
-      throw new Error(`Configuração não encontrada para o plano: ${planName}`);
+      console.warn(`Configuração não encontrada para o plano: ${planName}. Aplicando fallback para Start Quântico.`);
+      return startQuanticoConfig;
   }
 };
 

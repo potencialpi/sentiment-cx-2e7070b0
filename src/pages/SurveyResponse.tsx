@@ -12,6 +12,9 @@ import { CheckCircle, AlertTriangle, FileText } from 'lucide-react';
 import { StarRating } from '@/components/ui/star-rating';
 import SurveyResponseFallback from '@/components/SurveyResponseFallback';
 
+// Flag para delegar a análise de sentimento ao banco (trigger) em vez do frontend
+const useDbSentiment = (import.meta as any)?.env?.VITE_USE_DB_SENTIMENT === 'true';
+
 interface Question {
   id: string;
   question_text: string;
@@ -41,6 +44,31 @@ const SurveyResponse = () => {
   const [submitted, setSubmitted] = useState(false);
   const [hasRLSError, setHasRLSError] = useState(false);
   const { toast } = useToast();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  // Verificar autenticação obrigatória
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      if (error || !session) {
+        console.error('❌ Acesso negado: Usuário não autenticado');
+        toast({
+          title: "Acesso Negado",
+          description: "Você precisa estar logado para acessar esta pesquisa.",
+          variant: "destructive",
+        });
+        navigate('/login');
+        return;
+      }
+      
+      console.log('✅ Usuário autenticado:', session.user.email);
+      setIsAuthenticated(true);
+    };
+    
+    checkAuth();
+  }, [navigate, toast]);
+
 
   const loadSurveyData = useCallback(async () => {
     if (!surveyId) return;
@@ -118,8 +146,10 @@ const SurveyResponse = () => {
   }, [surveyId]);
 
   useEffect(() => {
-    loadSurveyData();
-  }, [loadSurveyData]);
+    if (isAuthenticated) {
+      loadSurveyData();
+    }
+  }, [loadSurveyData, isAuthenticated]);
 
   const handleResponseChange = (questionId: string, value: string | string[]) => {
     setResponses(prev => ({
@@ -212,13 +242,12 @@ const SurveyResponse = () => {
       });
 
       // Executar análise de sentimento se houver respostas de texto
-      if (textResponses.length > 0 && responseRecord?.id) {
-        console.log('🔍 Iniciando análise de sentimento:', {
+      if (!useDbSentiment && textResponses.length > 0 && responseRecord?.id) {
+        console.log('🔍 Iniciando análise de sentimento (frontend):', {
           responseId: responseRecord.id,
           textResponsesCount: textResponses.length,
           texts: textResponses
         });
-        
         try {
           const { data: sentimentData, error: sentimentError } = await supabase.functions.invoke('analyze-sentiment', {
             body: {
@@ -236,6 +265,8 @@ const SurveyResponse = () => {
           console.error('❌ Erro na chamada da função de análise de sentimento:', sentimentError);
           // Não bloquear o envio da resposta se a análise falhar
         }
+      } else if (useDbSentiment) {
+        console.log('🗄️ Delegando análise de sentimento ao trigger do banco (useDbSentiment=true)');
       } else {
         console.log('⏭️ Pulando análise de sentimento - sem respostas de texto ou ID de resposta inválido');
       }

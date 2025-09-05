@@ -22,7 +22,13 @@ serve(async (req) => {
     logStep("Function started");
 
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-    if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
+    if (!stripeKey) {
+      logStep("Missing STRIPE_SECRET_KEY");
+      return new Response(JSON.stringify({ error: "Server misconfiguration: missing STRIPE_SECRET_KEY" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500,
+      });
+    }
     
     // DEBUG: Verificar se está usando chave de teste
     logStep("Stripe key verified", { 
@@ -38,19 +44,42 @@ serve(async (req) => {
     );
 
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) throw new Error("No authorization header provided");
+    if (!authHeader) {
+      logStep("Authorization header missing");
+      return new Response(JSON.stringify({ error: "Unauthorized: missing Authorization header" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401,
+      });
+    }
     logStep("Authorization header found");
 
     const token = authHeader.replace("Bearer ", "");
     const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
-    if (userError) throw new Error(`Authentication error: ${userError.message}`);
+    if (userError) {
+      logStep("Authentication error", { message: userError.message });
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401,
+      });
+    }
     const user = userData.user;
-    if (!user?.email) throw new Error("User not authenticated or email not available");
+    if (!user?.email) {
+      logStep("User not authenticated or missing email", { userId: user?.id });
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401,
+      });
+    }
     logStep("User authenticated", { userId: user.id, email: user.email });
 
-    const { planId, billingType } = await req.json();
-    if (!planId || !billingType) throw new Error("Missing planId or billingType");
-    logStep("Request data received", { planId, billingType });
+    const body = await req.json().catch(() => ({}));
+    const { planId, billingType } = body as { planId?: string; billingType?: string };
+    if (!planId || !billingType) {
+      logStep("Missing planId or billingType, applying fallback", { planId, billingType });
+    }
+    let effectivePlanId = (planId?.replace(/_/g, '-') || 'start-quantico') as 'start-quantico' | 'vortex-neural' | 'nexus-infinito';
+    let effectiveBillingType: 'monthly' | 'yearly' = billingType === 'yearly' ? 'yearly' : 'monthly';
+    logStep("Request data received", { planId: effectivePlanId, billingType: effectiveBillingType });
 
     // Price IDs mapping
     const STRIPE_PRICE_IDS = {
@@ -66,14 +95,22 @@ serve(async (req) => {
         monthly: 'price_1RlEaiBN5utVkHFQI9vfPqDb',
         yearly: 'price_1RlEaiBN5utVkHFQyHQzmooL'
       }
-    };
+    } as const;
 
-    const priceIds = STRIPE_PRICE_IDS[planId as keyof typeof STRIPE_PRICE_IDS];
-    if (!priceIds) throw new Error(`Invalid plan: ${planId}`);
+    let priceIds = STRIPE_PRICE_IDS[effectivePlanId];
+    if (!priceIds) {
+      logStep("Invalid plan, applying fallback to start-quantico", { requested: planId });
+      effectivePlanId = 'start-quantico';
+      priceIds = STRIPE_PRICE_IDS['start-quantico'];
+    }
     
-    const priceId = priceIds[billingType as 'monthly' | 'yearly'];
-    if (!priceId) throw new Error(`Invalid billing type: ${billingType}`);
-    logStep("Price ID resolved", { priceId });
+    let priceId = priceIds[effectiveBillingType];
+    if (!priceId) {
+      logStep("Invalid billing type, applying fallback to monthly", { requested: billingType });
+      effectiveBillingType = 'monthly';
+      priceId = priceIds['monthly'];
+    }
+    logStep("Price ID resolved", { priceId, planId: effectivePlanId, billingType: effectiveBillingType });
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
     
@@ -102,14 +139,14 @@ serve(async (req) => {
       success_url: `${origin}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/payment-cancel`,
       metadata: {
-        planId: planId,
-        billingType: billingType,
+        planId: effectivePlanId,
+        billingType: effectiveBillingType,
         userId: user.id
       },
       subscription_data: {
         metadata: {
-          planId: planId,
-          billingType: billingType,
+          planId: effectivePlanId,
+          billingType: effectiveBillingType,
           userId: user.id
         },
       },

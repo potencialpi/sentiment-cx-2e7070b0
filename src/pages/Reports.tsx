@@ -176,7 +176,7 @@ const Reports = () => {
                   variant="outline"
                   onClick={async () => {
                     if (user) {
-                      const planCode = await getUserPlan(user.id, 'start-quantico');
+                      const planCode = await getUserPlan(supabase, user.id);
                       const route = getPlanCreateSurveyRoute(planCode);
                       navigate(route);
                     }

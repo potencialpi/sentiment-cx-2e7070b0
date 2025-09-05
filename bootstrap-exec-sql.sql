@@ -32,9 +32,9 @@ SECURITY DEFINER
 STABLE
 AS $$ SELECT utils.exec_sql($1); $$;
 
--- Configurar permissões
+-- Configurar permissões (SEM acesso anônimo)
 REVOKE ALL ON FUNCTION public.exec_sql(text) FROM public;
-GRANT EXECUTE ON FUNCTION public.exec_sql(text) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.exec_sql(text) TO authenticated, service_role;
 
 -- Verificar se foi criada corretamente
 SELECT 'Função public.exec_sql criada com sucesso!' as status;

@@ -27,6 +27,8 @@ import SurveyResponse from "./pages/SurveyResponse";
 import Reports from "./pages/Reports";
 import NotFound from "./pages/NotFound";
 import MagicLinkAuth from "./pages/MagicLinkAuth";
+import Register from "./pages/Register";
+import ProtectedRoute from "./components/ProtectedRoute";
 import TestSelect from './components/TestSelect';
 import DebugSelect from './components/DebugSelect';
 
@@ -43,31 +45,32 @@ const App = () => (
           <Route path="/checkout-guest" element={<CheckoutGuest />} />
           <Route path="/choose-plan" element={<ChoosePlan />} />
           <Route path="/create-account" element={<CreateAccount />} />
+          <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
           <Route path="/payment-success" element={<PaymentSuccess />} />
           <Route path="/payment-cancel" element={<PaymentCancel />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/admin" element={<Admin />} />
+          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
 
-          <Route path="/admin/questionarios" element={<AdminQuestionarios />} />
-          <Route path="/admin/start" element={<AdminQuestionarios />} />
-          <Route path="/admin/vortex" element={<AdminVortex />} />
-          <Route path="/admin/nexus" element={<AdminNexus />} />
-          <Route path="/admin/questionarios/nexus" element={<AdminNexus />} />
+          <Route path="/admin/questionarios" element={<ProtectedRoute><AdminQuestionarios /></ProtectedRoute>} />
+          <Route path="/admin/start" element={<ProtectedRoute><AdminQuestionarios /></ProtectedRoute>} />
+          <Route path="/admin/vortex" element={<ProtectedRoute><AdminVortex /></ProtectedRoute>} />
+          <Route path="/admin/nexus" element={<ProtectedRoute><AdminNexus /></ProtectedRoute>} />
+          <Route path="/admin/questionarios/nexus" element={<ProtectedRoute><AdminNexus /></ProtectedRoute>} />
 
-          <Route path="/admin/start-quantico/respondents" element={<AdminRespondents />} />
-          <Route path="/admin/vortex-neural/respondents" element={<AdminRespondents />} />
-          <Route path="/admin/nexus-infinito/respondents" element={<AdminRespondents />} />
+          <Route path="/admin/start-quantico/respondents" element={<ProtectedRoute><AdminRespondents /></ProtectedRoute>} />
+          <Route path="/admin/vortex-neural/respondents" element={<ProtectedRoute><AdminRespondents /></ProtectedRoute>} />
+          <Route path="/admin/nexus-infinito/respondents" element={<ProtectedRoute><AdminRespondents /></ProtectedRoute>} />
           {/* Rotas alternativas para compatibilidade */}
-          <Route path="/admin/vortex/respondentes" element={<AdminRespondents />} />
-          <Route path="/admin/nexus/respondentes" element={<AdminRespondents />} />
-          <Route path="/create-survey" element={<CreateSurveyRedirect />} />
+          <Route path="/admin/vortex/respondentes" element={<ProtectedRoute><AdminRespondents /></ProtectedRoute>} />
+          <Route path="/admin/nexus/respondentes" element={<ProtectedRoute><AdminRespondents /></ProtectedRoute>} />
+          <Route path="/create-survey" element={<ProtectedRoute><CreateSurveyRedirect /></ProtectedRoute>} />
 
-          <Route path="/create-survey-vortex" element={<CreateSurveyVortex />} />
-          <Route path="/create-survey-nexus" element={<CreateSurveyNexus />} />
-          <Route path="/manage-surveys" element={<CreateSurvey />} />
-          <Route path="/survey/:surveyId" element={<SurveyResponse />} />
-          <Route path="/reports" element={<Reports />} />
+          <Route path="/create-survey-vortex" element={<ProtectedRoute><CreateSurveyVortex /></ProtectedRoute>} />
+          <Route path="/create-survey-nexus" element={<ProtectedRoute><CreateSurveyNexus /></ProtectedRoute>} />
+          <Route path="/manage-surveys" element={<ProtectedRoute><CreateSurvey /></ProtectedRoute>} />
+          <Route path="/survey/:surveyId" element={<ProtectedRoute><SurveyResponse /></ProtectedRoute>} />
+          <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
           <Route path="/auth/magic-link" element={<MagicLinkAuth />} />
           <Route path="/test-select" element={<TestSelect />} />
             <Route path="/debug-select" element={<DebugSelect />} />

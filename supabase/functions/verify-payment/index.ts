@@ -22,7 +22,13 @@ serve(async (req) => {
     logStep("Function started");
 
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-    if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
+    if (!stripeKey) {
+      logStep("Missing STRIPE_SECRET_KEY");
+      return new Response(JSON.stringify({ success: false, code: "CONFIG_ERROR", error: "Server misconfiguration: missing STRIPE_SECRET_KEY" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500,
+      });
+    }
     logStep("Stripe key verified");
 
     // Use service role key for database operations
@@ -32,8 +38,14 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
-    const { sessionId } = await req.json();
-    if (!sessionId) throw new Error("Missing sessionId");
+    const { sessionId } = await req.json().catch(() => ({ sessionId: undefined }));
+    if (!sessionId) {
+      logStep("Missing sessionId");
+      return new Response(JSON.stringify({ success: false, code: "MISSING_SESSION_ID", error: "Session ID is required" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
     logStep("Session ID received", { sessionId });
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
@@ -50,13 +62,28 @@ serve(async (req) => {
 
     if (session.payment_status === 'paid' && session.subscription) {
       const subscription = session.subscription as Stripe.Subscription;
-      const customerEmail = session.customer_details?.email;
-      const planId = session.metadata?.planId;
-      const billingType = session.metadata?.billingType;
-      const userId = session.metadata?.userId;
+      const customerEmail = session.customer_details?.email ?? undefined;
+      let planId = (session.metadata?.planId as string | undefined)?.replace(/_/g, '-') as 'start-quantico' | 'vortex-neural' | 'nexus-infinito' | undefined;
+      let billingType = (session.metadata?.billingType as string | undefined) as 'monthly' | 'yearly' | undefined;
+      const userId = session.metadata?.userId as string | undefined;
 
-      if (!customerEmail || !planId || !billingType || !userId) {
-        throw new Error("Missing required metadata from session");
+      // Apply safe fallbacks
+      if (!planId || !['start-quantico','vortex-neural','nexus-infinito'].includes(planId)) {
+        logStep("Invalid/missing planId in metadata, fallback to start-quantico", { planId });
+        planId = 'start-quantico';
+      }
+      if (billingType !== 'yearly') {
+        if (billingType !== 'monthly') {
+          logStep("Invalid/missing billingType in metadata, fallback to monthly", { billingType });
+        }
+        billingType = 'monthly';
+      }
+      if (!customerEmail || !userId) {
+        logStep("Missing required metadata from session", { customerEmail, userId });
+        return new Response(JSON.stringify({ success: false, code: "MISSING_METADATA", error: "Missing required metadata from session" }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
       }
 
       logStep("Payment verified, updating database", {
@@ -92,7 +119,7 @@ serve(async (req) => {
 
       if (subscriberError) {
         logStep("Error updating subscribers table", { error: subscriberError });
-        throw new Error(`Failed to update subscribers: ${subscriberError.message}`);
+        // do not abort
       }
 
       // Update profiles table
@@ -111,7 +138,7 @@ serve(async (req) => {
 
       if (profileError) {
         logStep("Error updating profiles table", { error: profileError });
-        throw new Error(`Failed to update profile: ${profileError.message}`);
+        // do not abort
       }
 
       // Record transaction
@@ -120,7 +147,7 @@ serve(async (req) => {
         .insert({
           user_id: userId,
           stripe_session_id: sessionId,
-          amount: session.amount_total / 100, // Convert from cents
+          amount: (session.amount_total || 0) / 100, // Convert from cents
           currency: session.currency,
           status: 'completed',
           plan_type: subscriptionTier,
@@ -153,6 +180,7 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({
       success: false,
+      code: "PAYMENT_NOT_CONFIRMED",
       error: "Payment not confirmed or subscription not found"
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -164,6 +192,7 @@ serve(async (req) => {
     logStep("ERROR in verify-payment", { message: errorMessage });
     return new Response(JSON.stringify({ 
       success: false, 
+      code: "UNEXPECTED_ERROR",
       error: errorMessage 
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

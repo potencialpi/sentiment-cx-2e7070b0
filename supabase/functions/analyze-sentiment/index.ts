@@ -134,10 +134,58 @@ serve(async (req) => {
   }
 
   try {
+    // VALIDAÇÃO CRÍTICA: Rejeitar completamente acesso anônimo
+    const authHeader = req.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Acesso negado: Autenticação obrigatória',
+          message: 'Esta função requer autenticação. Usuários anônimos não são permitidos.' 
+        }), 
+        { 
+          status: 401, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    // Criar cliente Supabase com service role para operações internas
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
+
+    // Criar cliente com token do usuário para validar autenticação
+    const userToken = authHeader.replace('Bearer ', '');
+    const supabaseUser = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      {
+        global: {
+          headers: {
+            Authorization: authHeader
+          }
+        }
+      }
+    );
+
+    // Validar se o usuário está realmente autenticado
+    const { data: { user }, error: authError } = await supabaseUser.auth.getUser(userToken);
+    
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Token de autenticação inválido',
+          message: 'Falha na validação do token de autenticação.' 
+        }), 
+        { 
+          status: 401, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    console.log(`✅ Usuário autenticado: ${user.id} (${user.email})`);
 
     if (req.method === 'POST') {
       const { responseId, texts } = await req.json();
@@ -172,14 +220,33 @@ serve(async (req) => {
         total: results.length
       };
 
+      // Buscar informações do response para obter survey_id e user_id
+      const { data: responseData, error: responseError } = await supabaseClient
+        .from('responses')
+        .select('survey_id, surveys(user_id)')
+        .eq('id', responseId)
+        .single();
+
+      if (responseError || !responseData) {
+        console.error('Error fetching response data:', responseError);
+        return new Response(
+          JSON.stringify({ error: 'Response not found' }), 
+          { 
+            status: 404, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
+
       // Salvar análise de sentimento no banco
       const { error: insertError } = await supabaseClient
         .from('sentiment_analysis')
         .insert({
           response_id: responseId,
+          survey_id: responseData.survey_id,
+          user_id: responseData.surveys.user_id,
           sentiment_results: results,
-          sentiment_summary: summary,
-          analyzed_at: new Date().toISOString()
+          summary_stats: summary
         });
 
       if (insertError) {

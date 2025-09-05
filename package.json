@@ -20,7 +20,8 @@
     "supabase:reset": "supabase db reset",
     "supabase:migrate": "supabase db push",
     "supabase:generate-types": "supabase gen types typescript --local > src/integrations/supabase/types.ts",
-    "db:seed": "supabase seed"
+    "db:seed": "supabase seed",
+    "configure:db-sentiment": "node configure-db-sentiment.cjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

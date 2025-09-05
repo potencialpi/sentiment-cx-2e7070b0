@@ -2,10 +2,13 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { BarChart3, Users, FileText, Settings, ArrowLeft, UserPlus } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { BarChart3, Users, FileText, Settings, ArrowLeft, UserPlus, Shield } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getPlanDisplayName, getPlanCreateSurveyRoute, getPlanRespondentsRoute, getUserPlan } from '@/lib/planUtils';
+import { validateUserPlanAccess, handlePlanError } from '@/lib/planValidation';
+import SecurityAdmin from '@/components/SecurityAdmin';
 
 interface UserData {
   plan_name: string;
@@ -17,6 +20,7 @@ const Admin = () => {
   const { toast } = useToast();
   const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('dashboard');
 
   const checkAuthAndFetchData = useCallback(async () => {
     try {
@@ -27,8 +31,9 @@ const Admin = () => {
         return;
       }
 
-      // Usar a função getUserPlan que busca nas tabelas corretas (companies e profiles)
-      const planCode = await getUserPlan(supabase, session.user.id);
+      // Usar validação robusta de plano
+    const planValidation = await validateUserPlanAccess(session.user.id);
+    const planCode = planValidation.planCode;
       
       console.log('Admin - Plano encontrado:', planCode);
       setUserData({ plan_name: planCode, user_id: session.user.id });
@@ -130,6 +135,21 @@ const Admin = () => {
             </div>
           </CardContent>
         </div>
+
+        {/* Sistema de Abas */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-8">
+            <TabsTrigger value="dashboard" className="flex items-center gap-2">
+              <BarChart3 className="w-4 h-4" />
+              Dashboard
+            </TabsTrigger>
+            <TabsTrigger value="security" className="flex items-center gap-2">
+              <Shield className="w-4 h-4" />
+              Segurança
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="dashboard" className="space-y-8">
 
         <div className="mb-12 text-center fade-in">
           <h2 className="text-4xl font-bold text-brand-dark-blue mb-4">
@@ -277,6 +297,12 @@ const Admin = () => {
             </div>
           </div>
         </div>
+          </TabsContent>
+
+          <TabsContent value="security" className="space-y-8">
+            <SecurityAdmin />
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );
