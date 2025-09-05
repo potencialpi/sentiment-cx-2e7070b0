@@ -182,7 +182,11 @@ export const useSurveyManager = (): UseSurveyManagerReturn => {
         .single();
 
       if (surveyError) {
-        const config = { planName, maxQuestions, maxSurveysPerMonth };
+        const config = { 
+          planName: limits.planDisplayName, 
+          maxQuestions: limits.maxQuestions, 
+          maxSurveysPerMonth: limits.maxSurveysPerMonth 
+        };
         handlePlanLimitError(surveyError, config, toast);
         return;
       }
